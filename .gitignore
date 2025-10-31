@@ -1,0 +1,37 @@
+# ----------------------------------------------------------------------
+# Unity Project Files to IGNORE (NÃO ENVIAR)
+# São arquivos de cache e gerados automaticamente, que incham o repo.
+# ----------------------------------------------------------------------
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/Packages/
+/MonoBleedingEdge/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.meta
+*.pidb.meta
+*.pdb.meta
+
+# Arquivos de IDEs e do Sistema
+.vscode/
+.vs/
+.gitattributes
+*.DS_Store
+Thumbs.db
+
+# ----------------------------------------------------------------------
+# Arquivos de Build/Executável - NÃO ESTÃO IGNORADOS AQUI
+# Seus arquivos de Build (E-estagiario.exe e E-estagiario_Data) estão
+# na pasta raiz e serão INCLUÍDOS no rastreamento.
+# ----------------------------------------------------------------------
