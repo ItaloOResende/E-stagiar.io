@@ -10,7 +10,7 @@ Projeto para o campeonato **FRAMEWORK ARCADE** (Framework Tecnologia). **Inscri�
 
 ## 2. Documentos de referência
 
-- **GDD:** `GameDocCampeonato_V1.docx` (v1.1, 06/10/2026) — fonte principal de requisitos. Fica em `docs/` ao lado do repositório (fora do git, em `E-stagiar.io/docs/`).
+- **GDD:** `GameDocCampeonato_V1.docx` (v1.1, 06/10/2026) — fonte principal de requisitos. Fica em `docs/` ao lado do repositório (fora do git, em `E-stagiar.io/docs/`). O **guia prático de mecânicas** da equipe também fica FORA do repositório: `../docs/GUIA_DE_MECANICAS.md`.
 - **Regulamento:** `Regulamento-Framework-Arcade.pdf` (mesma pasta). Pontos relevantes: item 6.3 (entrega), 7.2 (build que não abre = desclassificação), 14.2 (somos responsáveis por licenças de todo asset, código, fonte e áudio).
 
 ## 3. Stack
@@ -40,7 +40,7 @@ Separar claramente:
 
 | Camada | Pasta | Responsabilidade |
 |---|---|---|
-| Interação | `Assets/Scripts/Interaction` | `Interaction` (raycast da câmera), `Interactable` (contrato), futuros destaque, `Pickable`, `Socket` |
+| Interação | `Assets/Scripts/Interaction` | `InteractionDetector` (raycast no centro da câmera + mãozinha + clique esquerdo), `ItemHolder` (ponto de mão, pegar/soltar), `Interactable` (base) → `PickupInteractable`, `OpenableInteractable` + `DrawerContents` (conteúdo por gaveta via Inspector); futuros `Socket` |
 | Player | `Assets/Scripts/Player` | `PlayerMovement` (CharacterController), `PlayerLook` (câmera FPS) |
 | Lógica de gameplay | `Assets/Scripts/Gameplay` | chamados, estados, vidas, infrações — lógica sem dependência de modelos |
 | Dados | `Assets/Scripts/Data`, `Assets/Data` | ScriptableObjects: chamados (`Data/Tickets`), itens/peças (`Data/Items`), textos educativos |
@@ -48,6 +48,7 @@ Separar claramente:
 | UI | `Assets/Scripts/UI` | HUD, manual/tablet/livro, feedback educativo |
 | Minigames | `Assets/Scripts/Minigames` | estrutura para minigames |
 | Núcleo | `Assets/Scripts/Core` | bootstrap, eventos, serviços compartilhados |
+| Documentação | `../docs/GUIA_DE_MECANICAS.md` | guia prático (Inspector/prefabs) das mecânicas; guia prático externo ao repositório, atualizado junto com as mudanças de código |
 | Arte | `Assets/Art` | `Placeholders/` (temporário) e `Official/` (Matheus) |
 | Prefabs lógicos | `Assets/Prefabs/Gameplay` | prefabs de gameplay estáveis |
 
@@ -59,7 +60,7 @@ Separar claramente:
 Assets/
   Scripts/{Core,Gameplay,Data,NPC,UI,Minigames,Player,Interaction}
   Data/{Tickets,Items}
-  Art/Placeholders/{Models,Textures,Materials,Prefabs}   <- temporário, vem do master
+  Art/Placeholders/{Models,Textures,Sprites,Materials,Prefabs}   <- temporário, vem do master (Sprites = ilustrações 2D)
   Art/Official/                                          <- assets do Matheus
   Prefabs/Gameplay/
   Scenes/{Prototype,SampleScene,Office_Placeholder}
@@ -102,6 +103,9 @@ Assets/
 - Placeholders migrados do `master` (9 FBX, 12 texturas) em `Art/Placeholders`, materiais recriados em URP/Lit, prefabs `PH_*` com BoxCollider (ainda sem `Interactable`/lógica).
 - Cena `Office_Placeholder` (sala 8x6x3 m: piso, 4 paredes, teto, 2 mesas com PC, bancada+gaveta na parede oeste, rack, porta na leste, janela na oeste; Player copiado da `Prototype`), revisada visualmente no Unity. FBX importados com `useFileScale` ligado (gaveta 0.25, cabos 0.1, estimados); prefabs `PH_*` = root lógico (origem na base, sem rotação/escala, BoxCollider) + filho `Visual` com o FBX. FBX de mesh único trazem rotação 270° X no root: não sobrescrever.
 - Projeto importa e compila no Unity 6000.3.25f1 em batchmode, sem erros.
+- Interação (aguardando teste visual do usuário): clique esquerdo (Input System), mãozinha 2D (`ui_mao.png`) quando há `Interactable` ao alcance (3 m), `PickupInteractable` (pega/carrega/solta), `OpenableInteractable` (gaveta desliza; eixo/distância configuráveis). Prefabs lógicos em `Assets/Prefabs/Gameplay` (root lógico + `Visual` aninhado). Braço placeholder = cubo na câmera (ref. legado). Gaveta e cabos da `Office_Placeholder` configurados para teste. `PickupInteractable` preserva escala/rotação mundiais e usa bounds dos renderers, então funciona até em nós de FBX; ainda assim preferir root lógico de escala 1 + `Visual` (prefabs `Pickup_*`).
+- Gaveteiros: `DrawerContents` (ao lado do `OpenableInteractable`) lista entradas {prefab `PickupInteractable`, quantidade, `PhysicalInDrawer` ou `DirectToHand`, posição/step locais}. Físicos são criados 1x no Awake, ocultos com a gaveta fechada, e saem do conteúdo ao serem pegos (sem cópias ao reabrir); entrega direta consome estoque (1 por abertura, mão livre). Prefab de teste `Gaveteiro_Teste` (4 gavetas: placa-mãe, 3 RAM, 2 ferramentas à mão, vazia) em `Office_Placeholder`. Itens: `Pickup_PlacaMae/MemoriaRAM/Ferramenta` (provisórios).
+- Ilustrações 2D (pixel art do legado) integradas em `Art/Placeholders/Sprites` e usadas como itens no 3D (`Pickup_PlacaMae/MemoriaRAM/HD/Ferramenta`): dois quads (frente/verso) com material URP/Lit Alpha Clip, deitados; segurados inclinados (`Hold Euler Offset` -60,0,0). Aguardando teste visual.
 - **Não existem ainda:** tickets, minigames, NPCs, chefe, vidas, manual, UI de jogo.
 
 ## 11. Roadmap até a entrega (21/10/2026)
@@ -128,4 +132,5 @@ Se o prazo apertar: manter fundação, CH-01, armário, chefe simplificado + bui
 5. Não colocar lógica de gameplay dentro de prefabs de arte; manter o desacoplamento Visual × lógica (seção 6).
 6. Qualquer asset novo precisa de origem/licença conhecida (Regulamento 14.2). Placeholders ficam em `Art/Placeholders` e são documentados em `ORIGEM.md`.
 7. Não implementar sistemas fora do escopo pedido na etapa atual.
-8. Texto de jogo e conteúdo educativo em português; conteúdo técnico de TI deve ser revisado antes da entrega.
+8. **Documentação obrigatória de mecânicas:** toda mecânica reutilizável nova ou alterada deve ser acompanhada, no mesmo trabalho, de atualização de `../docs/GUIA_DE_MECANICAS.md` (uma seção por mecânica, não por objeto): componentes e em qual GameObject ficam (raiz lógica × `Visual` × FBX), componentes nativos (Collider/Rigidbody), campos do Inspector com exemplos, criação de prefab e de novas instâncias, como configurar um objeto novo sem código, como testar, erros comuns, limitações e dependências. Baseado em código/prefabs reais; marcar o status (implementado / testado manualmente / planejado) e nunca documentar o que não existe. O objetivo é que a equipe configure novos objetos sozinha; se um objeto exigir comportamento realmente novo, explicar por que os componentes existentes não bastam. Não basta compilar nem funcionar só nos objetos configurados pelo agente.
+9. Texto de jogo e conteúdo educativo em português; conteúdo técnico de TI deve ser revisado antes da entrega.
