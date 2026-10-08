@@ -100,7 +100,7 @@ Assets/
 - Player (`PlayerMovement`, `PlayerLook`) e `Interaction`/`Interactable` básicos funcionando na cena `Prototype` (`Interaction` ainda só faz `Debug.Log`).
 - Estrutura de pastas criada (vazias, com `.gitkeep`).
 - Placeholders migrados do `master` (9 FBX, 12 texturas) em `Art/Placeholders`, materiais recriados em URP/Lit, prefabs `PH_*` com BoxCollider (ainda sem `Interactable`/lógica).
-- Cena `Office_Placeholder` pronta (escritório 8x6 m, 2 mesas com PC, gaveta, rack, bancada, porta, janela; Player copiado da `Prototype`). Escalas ajustadas no importador: cabos 0.1, gaveta 0.25 (valores estimados, revisar visualmente no Editor).
+- Cena `Office_Placeholder` (sala 8x6x3 m: piso, 4 paredes, teto, 2 mesas com PC, bancada+gaveta na parede oeste, rack, porta na leste, janela na oeste; Player copiado da `Prototype`), revisada visualmente no Unity. FBX importados com `useFileScale` ligado (gaveta 0.25, cabos 0.1, estimados); prefabs `PH_*` = root lógico (origem na base, sem rotação/escala, BoxCollider) + filho `Visual` com o FBX. FBX de mesh único trazem rotação 270° X no root: não sobrescrever.
 - Projeto importa e compila no Unity 6000.3.25f1 em batchmode, sem erros.
 - **Não existem ainda:** tickets, minigames, NPCs, chefe, vidas, manual, UI de jogo.
 
