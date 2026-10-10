@@ -18,4 +18,10 @@ public class Interactable : MonoBehaviour
     {
         Debug.Log(interactionMessage, this);
     }
+
+    /// <summary>O objeto aceita a interação secundária (clique direito) agora? Padrão: não.</summary>
+    public virtual bool CanInteractSecondary(InteractionDetector interactor) => false;
+
+    /// <summary>Executa a interação secundária (clique direito).</summary>
+    public virtual void InteractSecondary(InteractionDetector interactor) { }
 }
