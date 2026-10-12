@@ -75,3 +75,11 @@ O legado simulava o braço com um cubo (`braco`, escala ~0.07×0.06×0.5, filho 
 ## Deliberadamente NÃO migrados
 
 Scripts, prefabs com scripts quebrados (`Gabinete`, `gaveteiro*`), cenas legadas (`FUNEC Riacho`, `Tela Inicial`, `testes`), TextMesh Pro antigo, `ProjectSettings`, Input Manager, tags, build antigo, ~125 materiais `parede bege N`, texturas de cenário escolar e a textura 8K `Fence007A_8K_Displacement.jpg`.
+
+
+### Manutenção do PC: telas e materiais (2026-10-12)
+
+- `Sprites/ui_tela_sistema_rede.png`: variante da `ui_tela_sistema` com "Rede: conectado", gerada pelo mesmo `Tools/screens/gerar_telas_monitor.py` (que também atualizou a BIOS com a linha do cooler e "VGA/HDMI", e a tela do sistema com o aviso "sem conexão").
+- `Materials/M_Item2D_Fonte` e `M_Item2D_Cooler`: cópias do `M_Item2D_HD` com os sprites `ui_fonte`/`ui_cooler` (itens `Pickup_Fonte`/`Pickup_Cooler`).
+- `Materials/M_CaboHDMI`: cópia do material do cabo de vídeo, cinza-escuro, para o `Pickup_CaboHDMI`.
+- Criados por `Assets/Editor/PcManutencaoSetup.cs` (menu *Tools > E-stagiar.io > Configurar manutenção do PC*).
