@@ -42,10 +42,10 @@ Separar claramente:
 |---|---|---|
 | Interação | `Assets/Scripts/Interaction` | `InteractionDetector` (raycast no centro da câmera + mãozinha + clique esquerdo e direito), `ItemHolder` (ponto de mão, pegar/soltar), `Interactable` (base) → `PickupInteractable`, `OpenableInteractable` + `DrawerContents` (conteúdo por gaveta via Inspector), `UIScreenInteractable` (clique direito abre tela 2D); futuros `Socket` |
 | Player | `Assets/Scripts/Player` | `PlayerMovement` (CharacterController), `PlayerLook` (câmera FPS) |
-| Lógica de gameplay | `Assets/Scripts/Gameplay` | chamados, estados, vidas, infrações — lógica sem dependência de modelos. `Gameplay/Computer` (assembly `EstagiarIo.Computer`): `ComputerCase` (parafusos/estado do gabinete), `ToolItem`/`ToolType` (ferramentas) |
+| Lógica de gameplay | `Assets/Scripts/Gameplay` | chamados, estados, vidas, infrações — lógica sem dependência de modelos. `Gameplay/Computer` (assembly `EstagiarIo.Computer`): `ComputerCase` (parafusos, estado e peças do gabinete), `ComputerPower` (cabos, Power, BIOS/sistema), `MonitorDisplay` (tela do monitor 3D), `ToolItem`/`ToolType`, `CableItem`, `ComputerPartItem` (identificam ferramenta/cabo/peça na mão) |
 | Dados | `Assets/Scripts/Data`, `Assets/Data` | ScriptableObjects: chamados (`Data/Tickets`), itens/peças (`Data/Items`), textos educativos |
 | NPCs / Chefe | `Assets/Scripts/NPC` | solicitantes e chefe (NavMesh, percepção) |
-| UI | `Assets/Scripts/UI` | `UIScreenManager` (abre/fecha telas 2D e trava/libera o jogador) e `UIScreen` (raiz do prefab da tela, em `Assets/Prefabs/UI`; recebe `Source`/`Interactor` ao abrir); `UI/Computer`: `ComputerScreenController` e `ScrewView` (tela do gabinete, só apresentação); futuros HUD, manual/tablet/livro, feedback educativo |
+| UI | `Assets/Scripts/UI` | `UIScreenManager` (abre/fecha telas 2D e trava/libera o jogador) e `UIScreen` (raiz do prefab da tela, em `Assets/Prefabs/UI`; recebe `Source`/`Interactor` ao abrir); `UI/Computer`: `ComputerScreenController`, `ScrewView`, `ComputerPortView`, `ComputerSlotView`, `CableLineView` (tela do gabinete, só apresentação); `InteractionPrompt` (HUD: ações dos cliques esquerdo/direito); futuros HUD, manual/tablet/livro, feedback educativo |
 | Minigames | `Assets/Scripts/Minigames` | estrutura para minigames |
 | Testes | `Assets/Tests/EditMode`, `Assets/Tests/PlayMode` | testes automáticos (NUnit/Test Framework): lógica do `ComputerCase` e fluxo da tela com os prefabs reais. Rodar em batchmode com o Editor fechado: `-runTests -testPlatform EditMode\|PlayMode` |
 | Núcleo | `Assets/Scripts/Core` | bootstrap, eventos, serviços compartilhados |
@@ -124,8 +124,17 @@ Assets/
   - Validado: 21 testes Edit Mode + 8 Play Mode + capturas renderizadas; **aguardando teste manual** (clique real, cursor). Guia: `../docs/GUIA_DE_MECANICAS.md` §4.3.
 - **Personagem oficial:**
   - `Player/Visual` = `character.fbx` (malha estática, sem rig), ajustado à cápsula do `CharacterController` e com o espelhamento do FBX preservado.
-  - **Shadows Only**: invisível para a câmera em 1ª pessoa, só projeta sombra.
+  - **Visível** (*Cast Shadows* On) na camada **`PlayerBody`** (layer 8), excluída só da `Main Camera` (que fica dentro da cabeça). O antigo *Shadows Only* era a causa do modelo "transparente" em todas as vistas. A sala fechada não recebe sol, então o corpo não projeta sombra em nenhum modo.
+  - Braço em 1ª pessoa = braço livre do próprio personagem: `character_braco_fp.fbx`, extraído por `Tools/blender/character_braco_fp.py`, em `Main Camera/Arm_Personagem` (`ItemHolder.armVisual`). O `Arm_Placeholder` (cubo) ficou desativado. `Main Camera` com near clip 0,05 (era 0,3 e cortava braço e item na mão).
   - A cápsula placeholder da raiz ficou com o `MeshRenderer` desligado. Na cena, o `Player` está com escala 0,514 (ajuste feito no Editor durante a conferência da cena).
+- **HUD de interação:** `HUD/Prompt` (`InteractionPrompt`) mostra a mão + ação do clique esquerdo e, à direita, o ícone + ação do clique direito (`Interactable.promptIcon`/`PromptText`). No gabinete: "Esq.: Pegar" e chave de fenda "Dir.: Manutenção". O `InteractionDetector.handCursor` ficou vazio (legado).
+- **Energia, cabos e peças do PC (implementado, aguardando teste manual):**
+  - `ComputerPower` no root do `Gabinete`. Cabos: energia (tomada ↔ gabinete) e vídeo (gabinete ↔ monitor), conectados pela Traseira da tela 2D com o cabo na mão (`CableItem`).
+  - Peças (`ComputerPartItem`) instaladas/retiradas pelos encaixes do Interior (`ComputerCase.UsePartSlot`). Itens conectados/instalados saem da mão (`ItemHolder.Stow`) e voltam por `Retrieve`: nunca são destruídos. Peça que veio no gabinete vira uma instância do prefab configurado ao ser retirada.
+  - Power (Frente) → BIOS com energia + vídeo + placa-mãe + RAM; → sistema com + HD; sem requisitos não liga; perder requisito com o PC ligado desliga; HD novo só vale após reiniciar.
+  - Monitor: tela 2D (`Frente/Monitor/Area/Tela`) e 3D (`OF_Monitor/.../Tela` com `MonitorDisplay`). Telas `ui_tela_bios`/`ui_tela_sistema` geradas por `Tools/screens/gerar_telas_monitor.py`.
+  - Tomada (`tomada_energia`, agora Sprite) à direita do gabinete na Traseira.
+  - Validado: 31 testes Edit Mode + 9 Play Mode + capturas. Guia: `../docs/GUIA_DE_MECANICAS.md` §4.4.
 - **Assets oficiais do Matheus (1ª leva, aguardando conferência no Editor):** 15 FBX de escritório em `Art/Official/Models`, 6 texturas e 10 materiais convertidos de Unity Toon Shader para URP/Lit (o contorno/toon foi perdido; 2 materiais pendentes por textura ausente). Vieram por engano da `master` e foram integrados por cópia seletiva com GUIDs preservados; cenas/Player/ProjectSettings do commit dele não entraram. Detalhes: `Art/Official/ORIGEM.md`.
 - **Uso dos oficiais na `Office_Placeholder` (aguardando conferência visual):**
   - Prefabs visuais `Art/Official/Prefabs/OF_*` (root lógico + `Visual`, escala única k=0,364).
@@ -133,7 +142,7 @@ Assets/
   - `PC_2` (PH_Pc) foi desativado e substituído por `OF_Monitor`/`OF_Teclado`/`OF_Mouse`. Também entraram 2 `OF_Cadeira`, `OF_Vaso` e `OF_Xicara`.
   - `Gabinete.prefab` trocou só o `Visual` (malha oficial) e o tamanho do `BoxCollider`.
   - Continuam placeholders: `PC_1` (tem pickups de teste nos nós do FBX), gaveteiro/gavetas (o `gaveta.fbx` oficial é malha única, sem gavetas móveis), bancada, porta, janela, rack, cabos, paredes/piso/teto.
-- **Não existem ainda:** tickets, minigames, NPCs, chefe, vidas, manual, HUD de jogo, bancada, arraste/encaixe/remoção de peças (o interior do PC é só visualização), cabos/monitor/periféricos funcionais na tela, diagnóstico do PC. Princípio para a bancada: peças vêm dos objetos físicos próximos; instalar/remover deve manter UI e mundo em correspondência, sem duplicar nem destruir definitivamente os itens.
+- **Não existem ainda:** tickets, minigames, NPCs, chefe, vidas, manual, HUD de jogo (além do prompt), bancada, encaixe de cabos/peças no mundo 3D (`Socket`), energia do monitor, rede e periféricos, tela "sem sinal". Princípio para a bancada: peças vêm dos objetos físicos próximos; instalar/remover deve manter UI e mundo em correspondência, sem duplicar nem destruir definitivamente os itens.
 
 ## 11. Roadmap até a entrega (21/10/2026)
 

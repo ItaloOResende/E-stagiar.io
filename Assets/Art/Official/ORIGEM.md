@@ -11,6 +11,11 @@
   - `ProjectSettings`, `.vscode` e `.slnx`.
 - A cena `NOVO.unity` da `master` serve de referência de layout e de qual material vai em cada modelo.
 
+### Derivado: `Models/character_braco_fp.fbx` (braço em 1ª pessoa)
+- Mesma autoria e licença do `character.fbx` (Matheus): é o braço livre do personagem (parte solta do braço + manga), sem alteração de geometria, UV ou material.
+- Só a posição, a orientação e a escala mudam (ombro na origem, braço para a frente).
+- Gerado por `Tools/blender/character_braco_fp.py` (Blender 5.2, headless) e usado em `Player/Main Camera/Arm_Personagem` com `M_Character_CylinderLayer2`.
+
 ### Modelos (`Models/`, origem `Assets/Modelos/`)
 
 São 15 arquivos: `cadeira`, `character`, `divisa`, `gabinete`, `gaveta`, `mesa`, `mesa_2` (`mesa 2`), `mesa_3` (`mesa 3`), `mesa_grande` (`mesa grande`), `monitor`, `mouse`, `teclado`, `tela_projetor` (`tela projetor`), `vaso` e `xicara`.

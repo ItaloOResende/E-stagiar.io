@@ -60,6 +60,10 @@ Usadas também no interior da tela (vista Interior): `placa_mae`, `memoria_ram` 
 - `ui_monitor_traseira.png` (678×577): traseira simples do monitor, com entrada de energia e de vídeo (VGA).
 - `ui_cursor_chave_de_fenda.png` (64×64): cursor da vista Traseira. Importado como **Texture Type = Cursor**, com hotspot (0, 62) na ponta. É **derivado** de `chave_de_fenda.png` (legado, licença desconhecida), por recorte e redução sem filtro; segue a licença dessa origem.
 
+**Telas do monitor criadas para o projeto (sem terceiros):** `ui_tela_bios.png` e `ui_tela_sistema.png` (640×320, pixel art, mesmo formato da `tela_no_signal`), geradas por `Tools/screens/gerar_telas_monitor.py`. Texto rasterizado com DejaVu Sans Mono (licença livre Bitstream Vera/DejaVu; cópia que acompanha o Blender). Marcas fictícias ("E-STAGIAR.IO BIOS", "EstagiOS"). Usadas na tela 2D do gabinete e no monitor 3D (`M_Tela_Monitor`, URP/Unlit, criado para o projeto).
+
+**`Textures/tomada_energia.png`** passou a ser importada como **Sprite** (mesmo arquivo e GUID; não era usada por nenhum material) para a tomada da Traseira da tela do gabinete.
+
 **Sprites de feedback criados para o projeto (sem terceiros):** gerados por script próprio durante o desenvolvimento, livres de licença externa. `ui_parafuso_furo.png` (disco escuro com borda metálica; cobre o parafuso removido), `ui_parafuso_anel.png` (anel branco: destaque ao passar o mouse e clarão ao remover), `ui_branco.png` (quadrado branco 8×8; preenchimento da barra de progresso). Usados em `Prefabs/UI/ScrewView` e `UI_Screen_Gabinete`. Substituíveis pela arte oficial.
 
 Materiais correspondentes (URP/Lit, Alpha Clipping 0,5): `M_Item2D_PlacaMae/MemoriaRAM/HD/ChaveDeFenda`.
