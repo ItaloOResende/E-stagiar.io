@@ -25,12 +25,16 @@ public enum PartSlotResult
     HandsFull,
     /// <summary>A peça veio no gabinete e não há prefab configurado para devolvê-la à mão.</summary>
     NoItemToReturn,
+    /// <summary>A peça encaixa em outra que ainda não está instalada (RAM e cooler vão na placa-mãe).</summary>
+    MissingBase,
+    /// <summary>Há peças montadas sobre esta (tire a RAM e o cooler antes da placa-mãe).</summary>
+    BlockedByParts,
     Invalid
 }
 
 /// <summary>Componentes internos que um gabinete pode ter (cada um presente ou ausente de forma independente).</summary>
 [Flags]
-public enum PcComponent { None = 0, Motherboard = 1, Ram = 2, Hdd = 4 }
+public enum PcComponent { None = 0, Motherboard = 1, Ram = 2, Hdd = 4, Psu = 8, CpuCooler = 16 }
 
 /// <summary>
 /// Um parafuso da traseira do gabinete. Dado puro (serializado no Inspector do <see cref="ComputerCase"/>).
@@ -81,13 +85,19 @@ public class ComputerCase : MonoBehaviour
     [Tooltip("Semente do sorteio. 0 = semente nova por instância (cada PC diferente). Outro valor = resultado reproduzível.")]
     [SerializeField] private int componentSeed;
     [Tooltip("Componentes usados quando o sorteio está desligado.")]
-    [SerializeField] private PcComponent fixedComponents = PcComponent.Motherboard | PcComponent.Ram | PcComponent.Hdd;
+    [SerializeField] private PcComponent fixedComponents = AllComponents;
 
     [Header("Itens devolvidos ao retirar peças que já vieram no gabinete")]
     [Tooltip("Prefab (Pickup + ComputerPartItem) criado UMA vez quando o jogador retira a placa-mãe sorteada/fixa. Vazio = não dá para retirar.")]
     [SerializeField] private GameObject motherboardItemPrefab;
     [SerializeField] private GameObject ramItemPrefab;
     [SerializeField] private GameObject hddItemPrefab;
+    [SerializeField] private GameObject psuItemPrefab;
+    [SerializeField] private GameObject coolerItemPrefab;
+
+    /// <summary>Todos os componentes instaláveis (um encaixe para cada).</summary>
+    public const PcComponent AllComponents =
+        PcComponent.Motherboard | PcComponent.Ram | PcComponent.Hdd | PcComponent.Psu | PcComponent.CpuCooler;
 
     private PcComponent components;
     private bool componentsResolved;
@@ -145,6 +155,25 @@ public class ComputerCase : MonoBehaviour
 
     public bool HasComponent(PcComponent component) => component != PcComponent.None && (Components & component) == component;
 
+    /// <summary>Um único componente instalável (não None nem combinação).</summary>
+    public static bool IsSingleComponent(PcComponent c) =>
+        c != PcComponent.None && (c & AllComponents) == c && (c & (c - 1)) == 0;
+
+    /// <summary>Peça sobre a qual este componente é montado (RAM e cooler: placa-mãe). None = encaixe próprio no gabinete.</summary>
+    public static PcComponent BaseOf(PcComponent c) =>
+        c == PcComponent.Ram || c == PcComponent.CpuCooler ? PcComponent.Motherboard : PcComponent.None;
+
+    /// <summary>Remove peças sem a base onde são montadas (ex.: RAM sem placa-mãe).</summary>
+    public static PcComponent Sanitize(PcComponent value)
+    {
+        value &= AllComponents;
+        if ((value & PcComponent.Motherboard) == 0) value &= ~(PcComponent.Ram | PcComponent.CpuCooler);
+        return value;
+    }
+
+    /// <summary>O encaixe pode ser usado agora (a base dele, se houver, está instalada).</summary>
+    public bool IsSlotAvailable(PcComponent slot) => BaseOf(slot) == PcComponent.None || HasComponent(BaseOf(slot));
+
     private void Reset() => Configure(CreateDefaultTowerBackScrews());
 
     private void Awake()
@@ -156,14 +185,14 @@ public class ComputerCase : MonoBehaviour
     {
         components = randomizeComponents
             ? RollComponents(componentSeed != 0 ? componentSeed : UnityEngine.Random.Range(1, int.MaxValue), componentChance)
-            : fixedComponents;
+            : Sanitize(fixedComponents);
         componentsResolved = true;
     }
 
     /// <summary>Fixa os componentes desta instância (ex.: configuração de um chamado), sem sorteio.</summary>
     public void SetComponents(PcComponent value)
     {
-        components = value;
+        components = Sanitize(value);
         componentsResolved = true;
         installedItems.Clear();
         ComponentsChanged?.Invoke();
@@ -179,12 +208,14 @@ public class ComputerCase : MonoBehaviour
     public PartSlotResult UsePartSlot(PcComponent slot, ComputerPartItem heldPart, bool holdingSomething, out GameObject itemForHand)
     {
         itemForHand = null;
-        if (slot != PcComponent.Motherboard && slot != PcComponent.Ram && slot != PcComponent.Hdd) return PartSlotResult.Invalid;
+        if (!IsSingleComponent(slot)) return PartSlotResult.Invalid;
         if (state != CaseState.Open) return PartSlotResult.CaseClosed;
 
         if (HasComponent(slot))
         {
             if (holdingSomething) return PartSlotResult.HandsFull;
+            if (slot == PcComponent.Motherboard && (HasComponent(PcComponent.Ram) || HasComponent(PcComponent.CpuCooler)))
+                return PartSlotResult.BlockedByParts;
             if (!installedItems.TryGetValue(slot, out GameObject item) || item == null)
             {
                 GameObject prefab = ItemPrefabFor(slot);
@@ -200,6 +231,7 @@ public class ComputerCase : MonoBehaviour
 
         if (heldPart == null) return PartSlotResult.NeedsPart;
         if (heldPart.Component != slot) return PartSlotResult.WrongPart;
+        if (!IsSlotAvailable(slot)) return PartSlotResult.MissingBase;
 
         components |= slot;
         installedItems[slot] = heldPart.gameObject;
@@ -207,10 +239,23 @@ public class ComputerCase : MonoBehaviour
         return PartSlotResult.Installed;
     }
 
-    private GameObject ItemPrefabFor(PcComponent slot) =>
-        slot == PcComponent.Motherboard ? motherboardItemPrefab : slot == PcComponent.Ram ? ramItemPrefab : hddItemPrefab;
+    private GameObject ItemPrefabFor(PcComponent slot)
+    {
+        switch (slot)
+        {
+            case PcComponent.Motherboard: return motherboardItemPrefab;
+            case PcComponent.Ram: return ramItemPrefab;
+            case PcComponent.Hdd: return hddItemPrefab;
+            case PcComponent.Psu: return psuItemPrefab;
+            case PcComponent.CpuCooler: return coolerItemPrefab;
+            default: return null;
+        }
+    }
 
-    /// <summary>Sorteio independente de cada componente; mesma semente = mesmo resultado.</summary>
+    /// <summary>
+    /// Sorteio independente de cada componente; mesma semente = mesmo resultado. Peças que dependem da placa-mãe
+    /// (RAM, cooler) só ficam se ela também for sorteada.
+    /// </summary>
     public static PcComponent RollComponents(int seed, float chance)
     {
         var rng = new System.Random(seed);
@@ -218,7 +263,9 @@ public class ComputerCase : MonoBehaviour
         if (rng.NextDouble() < chance) result |= PcComponent.Motherboard;
         if (rng.NextDouble() < chance) result |= PcComponent.Ram;
         if (rng.NextDouble() < chance) result |= PcComponent.Hdd;
-        return result;
+        if (rng.NextDouble() < chance) result |= PcComponent.Psu;
+        if (rng.NextDouble() < chance) result |= PcComponent.CpuCooler;
+        return Sanitize(result);
     }
 
     /// <summary>Substitui a lista de parafusos (estado de abertura volta a fechado).</summary>

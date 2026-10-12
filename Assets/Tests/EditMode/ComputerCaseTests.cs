@@ -236,24 +236,35 @@ public class ComputerCaseTests
     }
 
     [Test]
-    public void RollComponents_SameSeedSameResult_AndAllEightCombinationsHappen()
+    public void RollComponents_SameSeedSameResult_AndEveryValidCombinationHappens()
     {
         Assert.AreEqual(ComputerCase.RollComponents(1234, 0.5f), ComputerCase.RollComponents(1234, 0.5f));
         var seen = new HashSet<PcComponent>();
-        for (int seed = 1; seed <= 500; seed++) seen.Add(ComputerCase.RollComponents(seed, 0.5f));
-        Assert.AreEqual(8, seen.Count, "cada componente presente/ausente de forma independente");
+        for (int seed = 1; seed <= 3000; seed++) seen.Add(ComputerCase.RollComponents(seed, 0.5f));
+        // sem placa-mãe: HD e fonte livres (4); com placa-mãe: HD, fonte, RAM e cooler livres (16)
+        Assert.AreEqual(20, seen.Count, "cada componente presente/ausente de forma independente, respeitando a base");
+        foreach (PcComponent c in seen)
+            if ((c & PcComponent.Motherboard) == 0)
+                Assert.AreEqual(PcComponent.None, c & (PcComponent.Ram | PcComponent.CpuCooler), "RAM/cooler sem placa-mãe");
         Assert.AreEqual(PcComponent.None, ComputerCase.RollComponents(7, 0f));
-        Assert.AreEqual(PcComponent.Motherboard | PcComponent.Ram | PcComponent.Hdd, ComputerCase.RollComponents(7, 1f));
+        Assert.AreEqual(ComputerCase.AllComponents, ComputerCase.RollComponents(7, 1f));
     }
 
     [Test]
     public void SetComponents_FixesTheConfiguration()
     {
-        pcCase.SetComponents(PcComponent.Ram);
+        pcCase.SetComponents(PcComponent.Motherboard | PcComponent.Ram);
         Assert.IsTrue(pcCase.HasComponent(PcComponent.Ram));
-        Assert.IsFalse(pcCase.HasComponent(PcComponent.Motherboard));
+        Assert.IsTrue(pcCase.HasComponent(PcComponent.Motherboard));
         Assert.IsFalse(pcCase.HasComponent(PcComponent.Hdd));
         Assert.IsFalse(pcCase.HasComponent(PcComponent.None));
+    }
+
+    [Test]
+    public void SetComponents_DropsPartsWithoutTheirBase()
+    {
+        pcCase.SetComponents(PcComponent.Ram | PcComponent.CpuCooler | PcComponent.Psu);
+        Assert.AreEqual(PcComponent.Psu, pcCase.Components, "RAM e cooler só existem montados na placa-mãe");
     }
 
     // ---- ToolItem ------------------------------------------------------------------------------------------

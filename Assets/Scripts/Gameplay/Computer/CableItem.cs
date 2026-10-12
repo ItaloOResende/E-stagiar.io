@@ -1,7 +1,7 @@
 using UnityEngine;
 
-/// <summary>Tipos de cabo reconhecidos pela lógica do PC.</summary>
-public enum CableType { Power, Video, Network }
+/// <summary>Tipos de cabo reconhecidos pela lógica do PC. Video = VGA (valor mantido por compatibilidade).</summary>
+public enum CableType { Power, Video, Network, Hdmi }
 
 /// <summary>
 /// Marca um item do mundo (em geral um prefab Pickup_Cabo*) como cabo de um tipo.

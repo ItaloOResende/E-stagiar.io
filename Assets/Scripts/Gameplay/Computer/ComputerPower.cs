@@ -12,8 +12,23 @@ public enum PcPort
     /// <summary>Saída VGA na traseira do gabinete.</summary>
     CaseVideo,
     /// <summary>Entrada VGA na traseira do monitor.</summary>
-    MonitorVideo
+    MonitorVideo,
+    /// <summary>Entrada de energia na traseira do monitor.</summary>
+    MonitorPower,
+    /// <summary>Tomada própria do monitor (ponta "de fora" do cabo de energia do monitor).</summary>
+    MonitorOutlet,
+    /// <summary>Saída HDMI na traseira do gabinete.</summary>
+    CaseHdmi,
+    /// <summary>Entrada HDMI na traseira do monitor.</summary>
+    MonitorHdmi,
+    /// <summary>Porta Ethernet (RJ45) na traseira do gabinete.</summary>
+    CaseNetwork,
+    /// <summary>Porta RJ45 do equipamento de rede (ponto de rede na parede).</summary>
+    NetworkJack
 }
+
+/// <summary>Cada cabo que a estação aceita (um item de cabo por ligação). Valores novos sempre no fim.</summary>
+public enum PcLink { Power, MonitorPower, Vga, Hdmi, Network }
 
 /// <summary>O que o monitor mostra. Desligado = tela preta.</summary>
 public enum PcPowerState { Off, Bios, OperatingSystem }
@@ -41,16 +56,18 @@ public enum PortResult
 public enum PowerButtonResult { TurnedOn, TurnedOff, MissingRequirements }
 
 /// <summary>
-/// Energia e funcionamento do PC: cabos (energia: tomada ↔ gabinete; vídeo: gabinete ↔ monitor), botão Power e
-/// o que o monitor mostra. Vai no ROOT LÓGICO do gabinete, ao lado do <see cref="ComputerCase"/> (que guarda as peças).
+/// Energia e funcionamento do PC: cabos (energia: tomada ↔ gabinete e tomada do monitor ↔ monitor; vídeo VGA ou
+/// HDMI: gabinete ↔ monitor; rede: ponto de rede ↔ gabinete), botão Power e o que o monitor mostra. Vai no ROOT LÓGICO do gabinete, ao lado do <see cref="ComputerCase"/> (que guarda as peças).
 ///
 /// Regras (GDD/CH-01):
 ///  - Desligado ou sem requisitos → tela preta.
-///  - Power com energia nas duas pontas + vídeo nas duas pontas + placa-mãe + memória RAM → liga na BIOS.
+///  - Power com energia do PC e do monitor (cada cabo nas duas pontas) + vídeo (VGA ou HDMI) nas duas pontas
+///    + fonte + placa-mãe + memória RAM + cooler → liga na BIOS.
 ///  - Os mesmos requisitos + HD → liga no sistema operacional.
 ///  - Sem os requisitos o botão não liga o PC. Se um requisito some com o PC ligado (cabo solto, peça retirada),
 ///    o PC desliga: nunca fica num estado incompatível com a configuração. Instalar o HD com o PC na BIOS
 ///    só tem efeito depois de reiniciar (desligar e ligar).
+///  - Rede: opcional para ligar; no sistema operacional, o cabo de rede nas duas pontas deixa o PC "conectado".
 /// Cada cabo é um item real: ao conectar a primeira ponta ele sai da mão e fica guardado aqui (desativado);
 /// ao soltar as duas pontas o MESMO objeto volta para a mão.
 /// Sem dependência de UI, modelo, tag ou nome.
@@ -61,8 +78,8 @@ public class ComputerPower : MonoBehaviour
     private class Cable
     {
         public GameObject item;
-        public bool endA; // Outlet / CaseVideo
-        public bool endB; // CasePower / MonitorVideo
+        public bool endA; // ponta "de fora": tomada / saída de vídeo do gabinete / ponto de rede
+        public bool endB; // ponta do equipamento: gabinete / monitor
         public bool Attached => endA || endB;
         public bool Complete => endA && endB;
     }
@@ -70,8 +87,7 @@ public class ComputerPower : MonoBehaviour
     [Tooltip("Somente leitura em jogo: o que o monitor mostra agora.")]
     [SerializeField] private PcPowerState state = PcPowerState.Off;
 
-    private readonly Cable power = new Cable();
-    private readonly Cable video = new Cable();
+    private readonly Dictionary<PcLink, Cable> cables = new Dictionary<PcLink, Cable>();
     private ComputerCase pcCase;
     private bool subscribed;
 
@@ -91,12 +107,21 @@ public class ComputerPower : MonoBehaviour
         }
     }
 
-    public bool PowerConnected => power.Complete;
-    public bool VideoConnected => video.Complete;
+    /// <summary>Cabo de energia do PC (tomada ↔ fonte do gabinete) nas duas pontas.</summary>
+    public bool PowerConnected => IsComplete(PcLink.Power);
+    public bool MonitorPowerConnected => IsComplete(PcLink.MonitorPower);
+    public bool VgaConnected => IsComplete(PcLink.Vga);
+    public bool HdmiConnected => IsComplete(PcLink.Hdmi);
+    /// <summary>Há imagem chegando ao monitor (VGA ou HDMI).</summary>
+    public bool VideoConnected => VgaConnected || HdmiConnected;
+    public bool NetworkConnected => IsComplete(PcLink.Network);
+    /// <summary>No sistema operacional e com o cabo de rede ligado.</summary>
+    public bool Online => state == PcPowerState.OperatingSystem && NetworkConnected;
 
     /// <summary>Requisitos para ligar e chegar à BIOS.</summary>
     public bool CanReachBios =>
-        PowerConnected && VideoConnected && Case.HasComponent(PcComponent.Motherboard) && Case.HasComponent(PcComponent.Ram);
+        PowerConnected && MonitorPowerConnected && VideoConnected && Case.HasComponent(PcComponent.Psu) &&
+        Case.HasComponent(PcComponent.Motherboard) && Case.HasComponent(PcComponent.Ram) && Case.HasComponent(PcComponent.CpuCooler);
 
     /// <summary>Requisitos para ligar e chegar ao sistema operacional.</summary>
     public bool CanReachOperatingSystem => CanReachBios && Case.HasComponent(PcComponent.Hdd);
@@ -116,19 +141,47 @@ public class ComputerPower : MonoBehaviour
         subscribed = true;
     }
 
-    public static CableType CableFor(PcPort port) =>
-        port == PcPort.Outlet || port == PcPort.CasePower ? CableType.Power : CableType.Video;
+    /// <summary>Cabo (ligação) a que a porta pertence e se ela é a ponta A ("de fora") dele.</summary>
+    public static PcLink LinkFor(PcPort port, out bool isEndA)
+    {
+        isEndA = port == PcPort.Outlet || port == PcPort.MonitorOutlet || port == PcPort.CaseVideo ||
+                 port == PcPort.CaseHdmi || port == PcPort.NetworkJack;
+        switch (port)
+        {
+            case PcPort.Outlet: case PcPort.CasePower: return PcLink.Power;
+            case PcPort.MonitorOutlet: case PcPort.MonitorPower: return PcLink.MonitorPower;
+            case PcPort.CaseVideo: case PcPort.MonitorVideo: return PcLink.Vga;
+            case PcPort.CaseHdmi: case PcPort.MonitorHdmi: return PcLink.Hdmi;
+            default: return PcLink.Network;
+        }
+    }
+
+    public static CableType CableFor(PcLink link)
+    {
+        switch (link)
+        {
+            case PcLink.Power: case PcLink.MonitorPower: return CableType.Power;
+            case PcLink.Vga: return CableType.Video;
+            case PcLink.Hdmi: return CableType.Hdmi;
+            default: return CableType.Network;
+        }
+    }
+
+    public static CableType CableFor(PcPort port) => CableFor(LinkFor(port, out _));
+
+    private Cable Get(PcLink link)
+    {
+        if (!cables.TryGetValue(link, out Cable c)) cables[link] = c = new Cable();
+        return c;
+    }
+
+    public bool IsComplete(PcLink link) => cables.TryGetValue(link, out Cable c) && c.Complete;
 
     public bool IsPlugged(PcPort port)
     {
-        switch (port)
-        {
-            case PcPort.Outlet: return power.endA;
-            case PcPort.CasePower: return power.endB;
-            case PcPort.CaseVideo: return video.endA;
-            case PcPort.MonitorVideo: return video.endB;
-            default: return false;
-        }
+        if (!Enum.IsDefined(typeof(PcPort), port)) return false;
+        PcLink link = LinkFor(port, out bool isEndA);
+        return cables.TryGetValue(link, out Cable c) && (isEndA ? c.endA : c.endB);
     }
 
     /// <summary>
@@ -140,8 +193,8 @@ public class ComputerPower : MonoBehaviour
     {
         itemForHand = null;
         if (!Enum.IsDefined(typeof(PcPort), port)) return PortResult.Invalid;
-        Cable cable = CableFor(port) == CableType.Power ? power : video;
-        bool isEndA = port == PcPort.Outlet || port == PcPort.CaseVideo;
+        PcLink link = LinkFor(port, out bool isEndA);
+        Cable cable = Get(link);
 
         PortResult result;
         if (IsPlugged(port))
@@ -213,12 +266,20 @@ public class ComputerPower : MonoBehaviour
     public List<string> MissingForBios()
     {
         var missing = new List<string>();
-        if (!power.endA) missing.Add("cabo de energia na tomada");
-        if (!power.endB) missing.Add("cabo de energia no gabinete");
-        if (!video.endA) missing.Add("cabo de vídeo no gabinete");
-        if (!video.endB) missing.Add("cabo de vídeo no monitor");
+        if (!IsPlugged(PcPort.Outlet)) missing.Add("cabo de energia na tomada");
+        if (!IsPlugged(PcPort.CasePower)) missing.Add("cabo de energia no gabinete");
+        if (!IsPlugged(PcPort.MonitorOutlet)) missing.Add("cabo de energia do monitor na tomada");
+        if (!IsPlugged(PcPort.MonitorPower)) missing.Add("cabo de energia no monitor");
+        if (!VideoConnected)
+        {
+            bool hdmi = Get(PcLink.Hdmi).Attached && !Get(PcLink.Vga).Attached;
+            if (!IsPlugged(hdmi ? PcPort.CaseHdmi : PcPort.CaseVideo)) missing.Add("cabo de vídeo no gabinete");
+            if (!IsPlugged(hdmi ? PcPort.MonitorHdmi : PcPort.MonitorVideo)) missing.Add("cabo de vídeo no monitor");
+        }
+        if (!Case.HasComponent(PcComponent.Psu)) missing.Add("fonte de alimentação");
         if (!Case.HasComponent(PcComponent.Motherboard)) missing.Add("placa-mãe");
         if (!Case.HasComponent(PcComponent.Ram)) missing.Add("memória RAM");
+        if (!Case.HasComponent(PcComponent.CpuCooler)) missing.Add("cooler do processador");
         return missing;
     }
 }
