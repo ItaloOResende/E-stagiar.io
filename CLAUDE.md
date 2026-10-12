@@ -108,8 +108,32 @@ Assets/
 - Gaveteiros: `DrawerContents` (ao lado do `OpenableInteractable`) lista entradas {prefab `PickupInteractable`, quantidade, `PhysicalInDrawer` ou `DirectToHand`, posição/step locais}. Físicos são criados 1x no Awake, ocultos com a gaveta fechada, e saem do conteúdo ao serem pegos (sem cópias ao reabrir); entrega direta consome estoque (1 por abertura, mão livre). Prefab de teste `Gaveteiro_Teste` (4 gavetas: placa-mãe, 3 RAM, 2 ferramentas à mão, vazia) em `Office_Placeholder`. Itens: `Pickup_PlacaMae/MemoriaRAM/Ferramenta` (provisórios).
 - Ilustrações 2D (pixel art do legado) integradas em `Art/Placeholders/Sprites` e usadas como itens no 3D (`Pickup_PlacaMae/MemoriaRAM/HD/Ferramenta`): dois quads (frente/verso) com material URP/Lit Alpha Clip, deitados; segurados inclinados (`Hold Euler Offset` -60,0,0). Aguardando teste visual.
 - Telas 2D (Canvas): clique direito num objeto com `UIScreenInteractable` abre um prefab de tela (`Assets/Prefabs/UI`) sobre a primeira pessoa; o `UIScreenManager` (no Player) libera o cursor, desliga `PlayerLook`/`PlayerMovement` e bloqueia o `InteractionDetector` até fechar (Esc ou botão). Primeira tela: `UI_Screen_Gabinete`. Cena tem `ScreenCanvas` e `EventSystem` (ações UI do `InputSystem_Actions`). Texto em `Text` legado (TMP sem Essential Resources). Com item na mão o clique direito continua abrindo telas (o esquerdo só solta).
-- **Gabinete com parafusos (etapa 1 do Canvas, implementada):** `Gabinete.prefab` agora é root lógico escala 1 (`ComputerCase`, `UIScreenInteractable`, `PickupInteractable`, Rigidbody, BoxCollider) + filho `Visual` (malha do FBX). `ComputerCase` guarda 8 parafusos reais da traseira (medidos na textura `pc_back`; o modelo 3D é malha única, sem parafusos 3D) e o estado Fechado/Aberto — estado no objeto lógico, persiste ao fechar/reabrir a tela. Chave de fenda = item real (`Pickup_Ferramenta` + `ToolItem`, `Screwdriver`), na mão do jogador; a tela (`ComputerScreenController`/`ScrewView`, saídas por UnityEvent para trocar fontes/skin) remove parafusos individualmente com feedback (furo, brilho, tremida se sem chave), mostra progresso n/8 e só libera "Abrir gabinete" com 8/8, trocando para a vista do interior (`gabinete_aberto`). Validado: 15 testes Edit Mode + 3 Play Mode (batchmode) + captura renderizada; **aguardando teste manual** (clique real, chave vinda da gaveta, animações). Guia: `../docs/GUIA_DE_MECANICAS.md` §4.3.
-- **Não existem ainda:** tickets, minigames, NPCs, chefe, vidas, manual, HUD de jogo, bancada, arraste/encaixe de peças, cabos/monitor/periféricos na tela, diagnóstico do PC, peças pré-instaladas por chamado (sem aleatoriedade, a vir da configuração do chamado). Princípio para a bancada: peças vêm dos objetos físicos próximos; instalar/remover deve manter UI e mundo em correspondência, sem duplicar nem destruir definitivamente os itens.
+- **Manutenção do PC (tela do gabinete, implementada):**
+  - **Gabinete:** `Gabinete.prefab` = root lógico escala 1 (`ComputerCase`, `UIScreenInteractable`, `PickupInteractable`, Rigidbody, BoxCollider) + filho `Visual`.
+  - **Tela:** `UI_Screen_Gabinete` ocupa a tela inteira, com 3 vistas: Frente (`monitor_frente` + `pc_front`), Traseira (`ui_monitor_traseira` + `pc_back` com 8 parafusos) e Interior (`gabinete_aberto` + componentes).
+    - Navegação linear Voltar/Avançar (sem dar a volta) e Fechar, no canto inferior direito.
+    - Sem barra/contador de progresso.
+    - Cursor = chave de fenda só na Traseira (`Cursor.SetCursor`, hotspot na ponta; restaurado ao trocar de vista ou fechar).
+  - **Parafusos:** `ScrewData.required`. Só os 3 da direita são obrigatórios; topo e esquerda são opcionais.
+    - `ComputerCase.RequiredScrewsRemoved`/`TryOpen` verificam o conjunto de obrigatórios, não a contagem.
+    - Avançar da Traseira abre a tampa e mostra o Interior; sem os obrigatórios, fica na Traseira.
+  - **Componentes internos** (`PcComponent`: placa-mãe, RAM, HD):
+    - Sorteados de forma independente, uma vez por instância, no `ComputerCase` (`Randomize Components`, `Component Chance`, `Component Seed`, ou `Fixed Components`/`SetComponents`).
+    - Estáveis ao fechar/reabrir; a tela só mostra ou esconde os sprites.
+  - Estado sempre no objeto lógico. Chave de fenda = item real (`Pickup_Ferramenta` + `ToolItem`).
+  - Validado: 21 testes Edit Mode + 8 Play Mode + capturas renderizadas; **aguardando teste manual** (clique real, cursor). Guia: `../docs/GUIA_DE_MECANICAS.md` §4.3.
+- **Personagem oficial:**
+  - `Player/Visual` = `character.fbx` (malha estática, sem rig), ajustado à cápsula do `CharacterController` e com o espelhamento do FBX preservado.
+  - **Shadows Only**: invisível para a câmera em 1ª pessoa, só projeta sombra.
+  - A cápsula placeholder da raiz ficou com o `MeshRenderer` desligado. Na cena, o `Player` está com escala 0,514 (ajuste feito no Editor durante a conferência da cena).
+- **Assets oficiais do Matheus (1ª leva, aguardando conferência no Editor):** 15 FBX de escritório em `Art/Official/Models`, 6 texturas e 10 materiais convertidos de Unity Toon Shader para URP/Lit (o contorno/toon foi perdido; 2 materiais pendentes por textura ausente). Vieram por engano da `master` e foram integrados por cópia seletiva com GUIDs preservados; cenas/Player/ProjectSettings do commit dele não entraram. Detalhes: `Art/Official/ORIGEM.md`.
+- **Uso dos oficiais na `Office_Placeholder` (aguardando conferência visual):**
+  - Prefabs visuais `Art/Official/Prefabs/OF_*` (root lógico + `Visual`, escala única k=0,364).
+  - As 2 mesas usam `OF_Mesa`. Os primitivos `Top`/`Side_*` foram desativados, não apagados.
+  - `PC_2` (PH_Pc) foi desativado e substituído por `OF_Monitor`/`OF_Teclado`/`OF_Mouse`. Também entraram 2 `OF_Cadeira`, `OF_Vaso` e `OF_Xicara`.
+  - `Gabinete.prefab` trocou só o `Visual` (malha oficial) e o tamanho do `BoxCollider`.
+  - Continuam placeholders: `PC_1` (tem pickups de teste nos nós do FBX), gaveteiro/gavetas (o `gaveta.fbx` oficial é malha única, sem gavetas móveis), bancada, porta, janela, rack, cabos, paredes/piso/teto.
+- **Não existem ainda:** tickets, minigames, NPCs, chefe, vidas, manual, HUD de jogo, bancada, arraste/encaixe/remoção de peças (o interior do PC é só visualização), cabos/monitor/periféricos funcionais na tela, diagnóstico do PC. Princípio para a bancada: peças vêm dos objetos físicos próximos; instalar/remover deve manter UI e mundo em correspondência, sem duplicar nem destruir definitivamente os itens.
 
 ## 11. Roadmap até a entrega (21/10/2026)
 
@@ -122,7 +146,7 @@ Se o prazo apertar: manter fundação, CH-01, armário, chefe simplificado + bui
 - `main` oficial; `master` só referência; sem merge (históricos independentes).
 - Scripts legados **não** são migrados; servem como especificação de comportamento (ex.: máquina de estados do PC: sem vídeo → BIOS → sistema; a gaveta que abre/fecha).
 - Interação por **componentes** (`Interactable` etc.), não por tags nem por nome de GameObject.
-- **Sem aleatoriedade** para a conclusão de chamados: só sucesso técnico (GDD §10). Evitar `Random` decidindo peças/estados (o legado fazia isso).
+- **Sem aleatoriedade** para a **conclusão** de chamados: só sucesso técnico (GDD §10). Exceção decidida na revisão do projeto (10/2026): o **conteúdo interno** de cada PC (placa-mãe/RAM/HD) é sorteado uma vez por instância, de forma estável. Um chamado que dependa de um componente deve **fixá-lo** (`Fixed Components`/`SetComponents` ou `Component Seed`), nunca contar com o sorteio.
 - Manipulação **3D** em primeira pessoa; o minigame 2D de arrastar ícones do legado não é o modelo-alvo.
 - Chamados definidos como dados (ScriptableObjects), com ficha conforme GDD §6.2.
 
