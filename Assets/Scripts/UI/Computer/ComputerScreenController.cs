@@ -3,24 +3,31 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 
+/// <summary>Vistas da tela de manutenção do PC, na ordem de navegação.</summary>
+public enum ComputerView { Front, Rear, Interior }
+
 /// <summary>
-/// Controla a tela 2D do gabinete: vista TRASEIRA (parafusos clicáveis) e vista do INTERIOR.
-/// Fica no GameObject raiz do prefab da tela, ao lado do <see cref="UIScreen"/>.
+/// Controla a tela 2D de manutenção do PC: três vistas em tela cheia (FRENTE → TRASEIRA → INTERIOR) com
+/// botões Voltar/Avançar (navegação linear, sem dar a volta) e Fechar. Fica no GameObject raiz do prefab da tela,
+/// ao lado do <see cref="UIScreen"/>.
 ///
 /// Separação lógica × apresentação: o estado vive no <see cref="ComputerCase"/> do objeto do mundo (descoberto a
 /// partir de <see cref="UIScreen.Source"/> ao abrir); aqui só se lê esse estado e se comanda o ComputerCase.
 /// Como a mesma instância de tela é reaproveitada por vários gabinetes, a tela é revinculada a cada abertura.
-/// Textos e valores saem por UnityEvents (<c>UnityEvent&lt;string&gt;</c>/<c>&lt;float&gt;</c>): ligue-os a qualquer
-/// componente de texto (Text, TextMeshPro...) ou barra, então fontes, botões e fundos podem ser trocados no prefab
-/// sem alterar este script.
+///  - Traseira: parafusos clicáveis; o cursor vira a chave de fenda só nesta vista.
+///  - Avançar da traseira abre a tampa (<see cref="ComputerCase.TryOpen"/>) e só passa ao interior se os parafusos
+///    OBRIGATÓRIOS tiverem sido removidos; senão fica na traseira e mostra a dica.
+///  - Interior: mostra/esconde cada componente conforme <see cref="ComputerCase.HasComponent"/>.
+/// Textos saem por UnityEvents (<c>UnityEvent&lt;string&gt;</c>): ligue-os a qualquer componente de texto.
 /// </summary>
 [RequireComponent(typeof(UIScreen))]
 public class ComputerScreenController : MonoBehaviour
 {
-    [Header("Vistas")]
-    [Tooltip("Vista da traseira (gabinete fechado) com os parafusos.")]
+    [Header("Vistas (cada uma ocupa a tela inteira)")]
+    [SerializeField] private GameObject frontView;
+    [Tooltip("Vista da traseira com os parafusos.")]
     [SerializeField] private GameObject rearView;
-    [Tooltip("Vista do interior (só depois de remover todos os parafusos e abrir).")]
+    [Tooltip("Vista do interior (só depois de remover os parafusos obrigatórios).")]
     [SerializeField] private GameObject interiorView;
 
     [Header("Parafusos")]
@@ -28,41 +35,60 @@ public class ComputerScreenController : MonoBehaviour
     [SerializeField] private RectTransform screwLayer;
     [SerializeField] private ScrewView screwPrefab;
 
-    [Header("Controles")]
-    [SerializeField] private Button openButton;
+    [Header("Componentes internos (presença vem do ComputerCase)")]
+    [SerializeField] private GameObject motherboardView;
+    [SerializeField] private GameObject ramView;
+    [SerializeField] private GameObject hddView;
 
-    [Header("Saídas (ligue a qualquer texto/barra)")]
+    [Header("Navegação")]
+    [SerializeField] private Button backButton;
+    [SerializeField] private Button nextButton;
+
+    [Header("Cursor da traseira")]
+    [Tooltip("Textura do cursor (Texture Type = Cursor). Vazio = cursor padrão em todas as vistas.")]
+    [SerializeField] private Texture2D rearCursor;
+    [Tooltip("Ponto de clique em pixels a partir do canto SUPERIOR ESQUERDO da textura (a ponta da chave).")]
+    [SerializeField] private Vector2 rearCursorHotspot;
+    [Tooltip("Desenho decorativo da ferramenta na lateral da traseira (não é o cursor). Fica opaco com a chave na mão.")]
+    [SerializeField] private Graphic toolDecoration;
+
+    [Header("Saídas (ligue a qualquer texto)")]
     public UnityEvent<string> onTitleText;
-    public UnityEvent<string> onProgressText;
-    public UnityEvent<float> onProgressValue;
     public UnityEvent<string> onToolText;
     public UnityEvent<string> onHintText;
 
     [Header("Mensagens (português; edite aqui)")]
-    [SerializeField] private string titleRear = "Gabinete - traseira";
+    [SerializeField] private string titleFront = "Computador - frente";
+    [SerializeField] private string titleRear = "Computador - traseira";
     [SerializeField] private string titleInterior = "Gabinete - interior";
-    [Tooltip("{0} = removidos, {1} = total.")]
-    [SerializeField] private string progressFormat = "Parafusos removidos: {0}/{1}";
     [Tooltip("{0} = nome da ferramenta.")]
     [SerializeField] private string toolHoldingFormat = "Na mão: {0}";
     [SerializeField] private string toolEmpty = "Na mão: nada";
     [SerializeField] private string toolOther = "Na mão: um item que não é ferramenta";
-    [SerializeField] private string hintStart = "Clique em cada parafuso com a chave de fenda na mão para removê-lo.";
+    [SerializeField] private string hintFront = "Frente do monitor e do gabinete. Avance para ver a traseira.";
+    [SerializeField] private string hintStart = "Retire os parafusos do lado direito da tampa para abrir o gabinete.";
     [SerializeField] private string hintNoTool = "Você precisa de uma chave de fenda na mão. Pegue uma no armário, segure-a e abra esta tela de novo.";
     [SerializeField] private string hintWrongTool = "Esta ferramenta não serve para parafusos. Use uma chave de fenda.";
     [SerializeField] private string hintRemoved = "Parafuso removido.";
-    [SerializeField] private string hintAllRemoved = "Todos os parafusos foram removidos. Já é possível abrir o gabinete.";
-    [SerializeField] private string hintInterior = "Gabinete aberto. Interior liberado.";
+    [SerializeField] private string hintLocked = "A tampa ainda está presa: faltam parafusos do lado direito.";
+    [SerializeField] private string hintUnlocked = "Tampa solta. Avance para ver o interior.";
+    [Tooltip("{0} = lista de componentes presentes.")]
+    [SerializeField] private string hintInteriorFormat = "Componentes encontrados: {0}.";
+    [SerializeField] private string hintInteriorEmpty = "O gabinete está vazio: sem placa-mãe, memória RAM ou HD.";
 
     private UIScreen screen;
     private ComputerCase boundCase;
     private bool subscribed;
+    private ComputerView current = ComputerView.Front;
     private readonly List<ScrewView> views = new List<ScrewView>();
+
+    public ComputerView CurrentView => current;
 
     private void Awake()
     {
         screen = GetComponent<UIScreen>();
-        if (openButton != null) openButton.onClick.AddListener(OpenCase);
+        if (backButton != null) backButton.onClick.AddListener(Back);
+        if (nextButton != null) nextButton.onClick.AddListener(Next);
     }
 
     private void OnEnable()
@@ -81,16 +107,19 @@ public class ComputerScreenController : MonoBehaviour
             BuildScrewViews();
         }
         Subscribe();
-        Refresh();
+        ShowView(ComputerView.Front);
     }
 
-    private void OnDisable() => Unsubscribe();
+    private void OnDisable()
+    {
+        Unsubscribe();
+        ApplyCursor(false);
+    }
 
     private void Subscribe()
     {
         if (subscribed || boundCase == null) return;
         boundCase.ScrewRemoved += HandleScrewRemoved;
-        boundCase.StateChanged += HandleStateChanged;
         subscribed = true;
     }
 
@@ -98,7 +127,6 @@ public class ComputerScreenController : MonoBehaviour
     {
         if (!subscribed || boundCase == null) { subscribed = false; return; }
         boundCase.ScrewRemoved -= HandleScrewRemoved;
-        boundCase.StateChanged -= HandleStateChanged;
         subscribed = false;
     }
 
@@ -130,41 +158,85 @@ public class ComputerScreenController : MonoBehaviour
         }
     }
 
-    // ---- estado → tela -------------------------------------------------------------------------------------------
+    // ---- navegação -----------------------------------------------------------------------------------------------
 
-    private void Refresh()
+    /// <summary>Botão Avançar: Frente → Traseira → Interior. Da traseira só passa com os obrigatórios removidos.</summary>
+    public void Next()
     {
         if (boundCase == null) return;
+        switch (current)
+        {
+            case ComputerView.Front:
+                ShowView(ComputerView.Rear);
+                break;
+            case ComputerView.Rear:
+                if (boundCase.TryOpen() == CaseOpenResult.ScrewsRemaining) onHintText.Invoke(hintLocked);
+                else ShowView(ComputerView.Interior);
+                break;
+        }
+    }
 
-        bool open = boundCase.State == CaseState.Open;
-        if (rearView != null) rearView.SetActive(!open);
-        if (interiorView != null) interiorView.SetActive(open);
-        onTitleText.Invoke(open ? titleInterior : titleRear);
+    /// <summary>Botão Voltar: Interior → Traseira → Frente.</summary>
+    public void Back()
+    {
+        if (boundCase == null) return;
+        if (current == ComputerView.Interior) ShowView(ComputerView.Rear);
+        else if (current == ComputerView.Rear) ShowView(ComputerView.Front);
+    }
+
+    private void ShowView(ComputerView view)
+    {
+        if (view == ComputerView.Interior && boundCase.State != CaseState.Open) view = ComputerView.Rear;
+        current = view;
+
+        if (frontView != null) frontView.SetActive(view == ComputerView.Front);
+        if (rearView != null) rearView.SetActive(view == ComputerView.Rear);
+        if (interiorView != null) interiorView.SetActive(view == ComputerView.Interior);
+        if (backButton != null) backButton.interactable = view != ComputerView.Front;
+        if (nextButton != null) nextButton.interactable = view != ComputerView.Interior;
+        ApplyCursor(view == ComputerView.Rear);
 
         for (int i = 0; i < views.Count; i++)
             views[i].SetRemoved(boundCase.Screws[i].removed, false);
+        if (motherboardView != null) motherboardView.SetActive(boundCase.HasComponent(PcComponent.Motherboard));
+        if (ramView != null) ramView.SetActive(boundCase.HasComponent(PcComponent.Ram));
+        if (hddView != null) hddView.SetActive(boundCase.HasComponent(PcComponent.Hdd));
 
-        UpdateProgress();
         UpdateTool(out ToolType held);
-
-        if (open) onHintText.Invoke(hintInterior);
-        else if (boundCase.AllScrewsRemoved) onHintText.Invoke(hintAllRemoved);
-        else onHintText.Invoke(held == ToolType.Screwdriver ? hintStart : hintNoTool);
-    }
-
-    private void UpdateProgress()
-    {
-        int total = boundCase.TotalCount;
-        int removed = boundCase.RemovedCount;
-        onProgressText.Invoke(string.Format(progressFormat, removed, total));
-        onProgressValue.Invoke(total == 0 ? 1f : (float)removed / total);
-
-        if (openButton != null)
+        switch (view)
         {
-            openButton.gameObject.SetActive(boundCase.State == CaseState.Closed);
-            openButton.interactable = boundCase.CanOpen;
+            case ComputerView.Front:
+                onTitleText.Invoke(titleFront);
+                onHintText.Invoke(hintFront);
+                break;
+            case ComputerView.Rear:
+                onTitleText.Invoke(titleRear);
+                if (boundCase.State == CaseState.Open || boundCase.RequiredScrewsRemoved) onHintText.Invoke(hintUnlocked);
+                else onHintText.Invoke(held == ToolType.Screwdriver ? hintStart : hintNoTool);
+                break;
+            case ComputerView.Interior:
+                onTitleText.Invoke(titleInterior);
+                onHintText.Invoke(InteriorHint());
+                break;
         }
     }
+
+    private string InteriorHint()
+    {
+        var names = new List<string>();
+        if (boundCase.HasComponent(PcComponent.Motherboard)) names.Add("placa-mãe");
+        if (boundCase.HasComponent(PcComponent.Ram)) names.Add("memória RAM");
+        if (boundCase.HasComponent(PcComponent.Hdd)) names.Add("HD");
+        return names.Count == 0 ? hintInteriorEmpty : string.Format(hintInteriorFormat, string.Join(", ", names));
+    }
+
+    private void ApplyCursor(bool screwdriver)
+    {
+        if (screwdriver && rearCursor != null) Cursor.SetCursor(rearCursor, rearCursorHotspot, CursorMode.Auto);
+        else Cursor.SetCursor(null, Vector2.zero, CursorMode.Auto);
+    }
+
+    // ---- ferramenta ----------------------------------------------------------------------------------------------
 
     private void UpdateTool(out ToolType held)
     {
@@ -173,6 +245,13 @@ public class ComputerScreenController : MonoBehaviour
 
         if (tool != null) onToolText.Invoke(string.Format(toolHoldingFormat, tool.DisplayName));
         else onToolText.Invoke(holdingSomething ? toolOther : toolEmpty);
+
+        if (toolDecoration != null)
+        {
+            Color c = toolDecoration.color;
+            c.a = held == ToolType.Screwdriver ? 1f : 0.35f;
+            toolDecoration.color = c;
+        }
     }
 
     private ToolItem GetHeldToolItem(out bool holdingSomething)
@@ -196,7 +275,7 @@ public class ComputerScreenController : MonoBehaviour
         switch (boundCase.TryRemoveScrew(index, held))
         {
             case ScrewRemovalResult.Removed:
-                // Feedback, progresso e estado chegam por HandleScrewRemoved.
+                // Feedback e dica chegam por HandleScrewRemoved.
                 break;
             case ScrewRemovalResult.WrongTool:
                 views[index].PlayRejected();
@@ -205,18 +284,9 @@ public class ComputerScreenController : MonoBehaviour
         }
     }
 
-    /// <summary>Botão "Abrir gabinete": só funciona com todos os parafusos removidos.</summary>
-    public void OpenCase()
-    {
-        if (boundCase != null) boundCase.TryOpen();
-    }
-
     private void HandleScrewRemoved(int index)
     {
         if (index >= 0 && index < views.Count) views[index].SetRemoved(true, true);
-        UpdateProgress();
-        onHintText.Invoke(boundCase.AllScrewsRemoved ? hintAllRemoved : hintRemoved);
+        onHintText.Invoke(boundCase.RequiredScrewsRemoved ? hintUnlocked : hintRemoved);
     }
-
-    private void HandleStateChanged(CaseState state) => Refresh();
 }
