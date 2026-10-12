@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 4927308309182210040}
   - component: {fileID: 1573490853129729101}
   - component: {fileID: 2024458994103880426}
+  - component: {fileID: 3566388828923860649}
   m_Layer: 0
   m_Name: Gabinete
   m_TagString: Untagged
@@ -98,6 +99,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PickupInteractable
   interactionMessage: Pegar
+  promptIcon: {fileID: 0}
   holdPositionOffset: {x: -0.1, y: 0.2, z: 0.2}
   holdEulerOffset: {x: 0, y: 0, z: 0}
   startsFrozen: 0
@@ -113,7 +115,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 75082bb817a437147b2423ae7827a29f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UIScreenInteractable
-  interactionMessage: Ver o gabinete
+  interactionMessage: "Manuten\xE7\xE3o"
+  promptIcon: {fileID: 21300000, guid: bff5d7302279b7f40ab19b3cb09a4961, type: 3}
   screen: {fileID: 6234093262246679750, guid: 660a10d9d8b038244876acfab8f3f526, type: 3}
 --- !u!114 &2024458994103880426
 MonoBehaviour:
@@ -172,7 +175,23 @@ MonoBehaviour:
   randomizeComponents: 1
   componentChance: 0.5
   componentSeed: 0
-  fixedComponents: 7
+  fixedComponents: -1
+  motherboardItemPrefab: {fileID: 6564981409461720845, guid: f51d0a7c463b55a47bfc12a3f86efcef, type: 3}
+  ramItemPrefab: {fileID: 5354285645995597624, guid: 290f929f086ceb347ab385d185e0f11f, type: 3}
+  hddItemPrefab: {fileID: 7111895194680197847, guid: 815cfbed6bfc21a4ca00a5379c802cad, type: 3}
+--- !u!114 &3566388828923860649
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3175404954762507022}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4ba68d177b04bea43b1fe9a6ff2e76e9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EstagiarIo.Computer::ComputerPower
+  state: 0
 --- !u!1 &8922226345445970396
 GameObject:
   m_ObjectHideFlags: 0

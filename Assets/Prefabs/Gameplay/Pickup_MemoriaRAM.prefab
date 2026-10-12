@@ -102,6 +102,7 @@ GameObject:
   - component: {fileID: 1286051590133385095}
   - component: {fileID: 2955068661301066974}
   - component: {fileID: 2736785130418716308}
+  - component: {fileID: 8862713571856040191}
   m_Layer: 0
   m_Name: Pickup_MemoriaRAM
   m_TagString: Untagged
@@ -186,9 +187,24 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PickupInteractable
   interactionMessage: Pegar
+  promptIcon: {fileID: 0}
   holdPositionOffset: {x: 0, y: 0, z: 0}
   holdEulerOffset: {x: -60, y: 0, z: 0}
   startsFrozen: 1
+--- !u!114 &8862713571856040191
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5354285645995597624}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cd0c98bc00928c04b9658ca9655f71a6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EstagiarIo.Computer::ComputerPartItem
+  component: 2
+  displayName: "mem\xF3ria RAM"
 --- !u!1 &5691123211912454387
 GameObject:
   m_ObjectHideFlags: 0

@@ -225,6 +225,7 @@ GameObject:
   - component: {fileID: 3605926536739700839}
   - component: {fileID: 7027361978601358562}
   - component: {fileID: 5685848229411537940}
+  - component: {fileID: 4526217068511605969}
   m_Layer: 0
   m_Name: Pickup_PlacaMae
   m_TagString: Untagged
@@ -309,6 +310,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PickupInteractable
   interactionMessage: Pegar
+  promptIcon: {fileID: 0}
   holdPositionOffset: {x: 0, y: 0, z: 0}
   holdEulerOffset: {x: -60, y: 0, z: 0}
   startsFrozen: 1
+--- !u!114 &4526217068511605969
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6564981409461720845}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cd0c98bc00928c04b9658ca9655f71a6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EstagiarIo.Computer::ComputerPartItem
+  component: 1
+  displayName: "placa-m\xE3e"

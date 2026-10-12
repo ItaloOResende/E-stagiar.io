@@ -24,6 +24,22 @@ public class ComputerScreenController : MonoBehaviour
     [SerializeField] private GameObject ramView;
     [SerializeField] private GameObject hddView;
 
+    [Header("Energia e monitor (opcional: exige ComputerPower no gabinete)")]
+    [SerializeField] private Button powerButton;
+    [Tooltip("Imagem sobre a área da tela do monitor, na vista da frente.")]
+    [SerializeField] private Image monitorScreen;
+    [SerializeField] private Sprite biosScreen;
+    [SerializeField] private Sprite operatingSystemScreen;
+    [SerializeField] private Color screenOffColor = Color.black;
+
+    [Header("Cabos (traseira)")]
+    [SerializeField] private List<ComputerPortView> ports = new List<ComputerPortView>();
+    [SerializeField] private CableLineView powerCableLine;
+    [SerializeField] private CableLineView videoCableLine;
+
+    [Header("Encaixes de peças (interior)")]
+    [SerializeField] private List<ComputerSlotView> slots = new List<ComputerSlotView>();
+
     [Header("Navegação")]
     [SerializeField] private Button backButton;
     [SerializeField] private Button nextButton;
@@ -45,6 +61,7 @@ public class ComputerScreenController : MonoBehaviour
 
     private UIScreen screen;
     private ComputerCase boundCase;
+    private ComputerPower boundPower;
     private bool subscribed;
     private ComputerView current = ComputerView.Front;
     private readonly List<ScrewView> views = new List<ScrewView>();
@@ -56,6 +73,9 @@ public class ComputerScreenController : MonoBehaviour
         screen = GetComponent<UIScreen>();
         if (backButton != null) backButton.onClick.AddListener(Back);
         if (nextButton != null) nextButton.onClick.AddListener(Next);
+        if (powerButton != null) powerButton.onClick.AddListener(PressPower);
+        foreach (ComputerPortView p in ports) if (p != null) p.Init(OnPortClicked);
+        foreach (ComputerSlotView v in slots) if (v != null) v.Init(OnSlotClicked);
     }
 
     private void OnEnable()
@@ -71,6 +91,7 @@ public class ComputerScreenController : MonoBehaviour
         {
             Unsubscribe();
             boundCase = found;
+            boundPower = found.GetComponent<ComputerPower>();
             BuildScrewViews();
         }
         Subscribe();
@@ -87,6 +108,12 @@ public class ComputerScreenController : MonoBehaviour
     {
         if (subscribed || boundCase == null) return;
         boundCase.ScrewRemoved += HandleScrewRemoved;
+        boundCase.ComponentsChanged += RefreshHardware;
+        if (boundPower != null)
+        {
+            boundPower.PowerStateChanged += HandlePowerState;
+            boundPower.ConnectionsChanged += RefreshHardware;
+        }
         subscribed = true;
     }
 
@@ -94,6 +121,12 @@ public class ComputerScreenController : MonoBehaviour
     {
         if (!subscribed || boundCase == null) { subscribed = false; return; }
         boundCase.ScrewRemoved -= HandleScrewRemoved;
+        boundCase.ComponentsChanged -= RefreshHardware;
+        if (boundPower != null)
+        {
+            boundPower.PowerStateChanged -= HandlePowerState;
+            boundPower.ConnectionsChanged -= RefreshHardware;
+        }
         subscribed = false;
     }
 
@@ -159,9 +192,34 @@ public class ComputerScreenController : MonoBehaviour
 
         for (int i = 0; i < views.Count; i++)
             views[i].SetRemoved(boundCase.Screws[i].removed, false);
+        RefreshHardware();
+    }
+
+    /// <summary>Peças do interior, portas/cabos e tela do monitor, conforme o estado do objeto do mundo.</summary>
+    private void RefreshHardware()
+    {
+        if (boundCase == null) return;
         if (motherboardView != null) motherboardView.SetActive(boundCase.HasComponent(PcComponent.Motherboard));
         if (ramView != null) ramView.SetActive(boundCase.HasComponent(PcComponent.Ram));
         if (hddView != null) hddView.SetActive(boundCase.HasComponent(PcComponent.Hdd));
+        foreach (ComputerSlotView v in slots) if (v != null) v.SetInstalled(boundCase.HasComponent(v.Slot));
+
+        foreach (ComputerPortView p in ports)
+            if (p != null) p.SetPlugged(boundPower != null && boundPower.IsPlugged(p.Port));
+        if (powerCableLine != null) powerCableLine.Show(current == ComputerView.Rear && boundPower != null && boundPower.PowerConnected);
+        if (videoCableLine != null) videoCableLine.Show(current == ComputerView.Rear && boundPower != null && boundPower.VideoConnected);
+
+        ShowScreen(boundPower != null ? boundPower.State : PcPowerState.Off);
+    }
+
+    private void HandlePowerState(PcPowerState state) => ShowScreen(state);
+
+    private void ShowScreen(PcPowerState state)
+    {
+        if (monitorScreen == null) return;
+        Sprite s = state == PcPowerState.Bios ? biosScreen : state == PcPowerState.OperatingSystem ? operatingSystemScreen : null;
+        monitorScreen.sprite = s;
+        monitorScreen.color = s != null ? Color.white : screenOffColor;
     }
 
     private void ApplyViewCursor(ComputerView view)
@@ -219,6 +277,39 @@ public class ComputerScreenController : MonoBehaviour
         ItemHolder holder = screen.Interactor != null ? screen.Interactor.Holder : null;
         if (holder == null || !holder.IsHolding) return null;
         return holder.Current.GetComponentInParent<ToolItem>();
+    }
+
+    private ItemHolder Holder => screen.Interactor != null ? screen.Interactor.Holder : null;
+
+    /// <summary>Botão Power (frente do gabinete): liga só com os requisitos; ligado, desliga.</summary>
+    public void PressPower()
+    {
+        if (boundPower != null) boundPower.PressPower();
+    }
+
+    // Itens conectados/instalados saem da mão e ficam guardados no objeto do mundo (nunca destruídos).
+    private void OnPortClicked(PcPort port)
+    {
+        if (boundPower == null) return;
+        ItemHolder holder = Holder;
+        PickupInteractable held = holder != null ? holder.Current : null;
+        CableItem cable = held != null ? held.GetComponentInParent<CableItem>() : null;
+
+        PortResult result = boundPower.UsePort(port, cable, held != null, out GameObject back);
+        if (result == PortResult.PluggedFromHand) holder.Stow(boundCase.transform.position);
+        else if (result == PortResult.CableReturned && holder != null) holder.Retrieve(back);
+    }
+
+    private void OnSlotClicked(PcComponent slot)
+    {
+        if (boundCase == null) return;
+        ItemHolder holder = Holder;
+        PickupInteractable held = holder != null ? holder.Current : null;
+        ComputerPartItem part = held != null ? held.GetComponentInParent<ComputerPartItem>() : null;
+
+        PartSlotResult result = boundCase.UsePartSlot(slot, part, held != null, out GameObject back);
+        if (result == PartSlotResult.Installed) holder.Stow(boundCase.transform.position);
+        else if (result == PartSlotResult.Removed && holder != null) holder.Retrieve(back);
     }
 
     private void OnScrewClicked(int index)
