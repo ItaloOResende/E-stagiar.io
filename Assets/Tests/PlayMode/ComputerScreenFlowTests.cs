@@ -11,7 +11,8 @@ using Object = UnityEngine.Object;
 /// <summary>
 /// Integração em Play Mode (batchmode): prefabs reais do gabinete, da tela e da chave, com um "Player" mínimo.
 /// Os componentes do projeto vivem no Assembly-CSharp (que um asmdef de teste não pode referenciar), então são
-/// usados por reflexão. Cobre a fiação dos prefabs; a aparência e o clique real do mouse continuam sendo teste manual.
+/// usados por reflexão. Cobre a fiação dos prefabs e a navegação; a aparência, o cursor e o clique real do mouse
+/// continuam sendo teste manual.
 /// </summary>
 public class ComputerScreenFlowTests
 {
@@ -49,6 +50,9 @@ public class ComputerScreenFlowTests
         return m.Invoke(target, args);
     }
 
+    private static object Get(object target, string property) =>
+        target.GetType().GetProperty(property, BindingFlags.Instance | BindingFlags.Public).GetValue(target);
+
     [SetUp]
     public void SetUp()
     {
@@ -78,17 +82,11 @@ public class ComputerScreenFlowTests
         foreach (var c in Object.FindObjectsByType<ComputerCase>(FindObjectsSortMode.None)) Object.Destroy(c.gameObject);
     }
 
-    private GameObject SpawnCase(Vector3 pos)
-    {
-        var prefab = LoadPrefab(CasePrefab);
-        Assert.IsNotNull(prefab);
-        return Object.Instantiate(prefab, pos, Quaternion.identity);
-    }
+    private GameObject SpawnCase(Vector3 pos) => Object.Instantiate(LoadPrefab(CasePrefab), pos, Quaternion.identity);
 
     private GameObject OpenScreen(GameObject source)
     {
-        var screenPrefab = LoadPrefab(ScreenPrefab);
-        Component screenComp = screenPrefab.GetComponent(T("UIScreen"));
+        Component screenComp = LoadPrefab(ScreenPrefab).GetComponent(T("UIScreen"));
         bool opened = (bool)Call(manager, "Open", screenComp, source, detector);
         Assert.IsTrue(opened, "UIScreenManager.Open recusou");
         return canvasGo.transform.GetChild(0).gameObject;
@@ -99,124 +97,230 @@ public class ComputerScreenFlowTests
     private static Text TextNamed(GameObject screen, string name) =>
         screen.GetComponentsInChildren<Text>(true).First(t => t.name == name);
 
+    private static Button ButtonNamed(GameObject screen, string name) =>
+        screen.GetComponentsInChildren<Button>(true).First(b => b.name == name);
+
     private static Component[] Views(GameObject screen) => screen.GetComponentsInChildren(T("ScrewView"), true);
 
-    private static Transform Child(GameObject screen, string path) => screen.transform.Find(path);
+    private static bool Active(GameObject screen, string path) => screen.transform.Find(path).gameObject.activeSelf;
+
+    private static string CurrentView(GameObject screen) =>
+        Get(screen.GetComponent(T("ComputerScreenController")), "CurrentView").ToString();
 
     private void GiveScrewdriverToPlayer()
     {
         var toolGo = Object.Instantiate(LoadPrefab(ToolPrefab));
-        Assert.IsNotNull(toolGo.GetComponent<ToolItem>(), "Pickup_Ferramenta sem ToolItem");
         Assert.AreEqual(ToolType.Screwdriver, toolGo.GetComponent<ToolItem>().Type);
-        bool picked = (bool)Call(holder, "Pick", toolGo.GetComponent(T("PickupInteractable")));
-        Assert.IsTrue(picked);
+        Assert.IsTrue((bool)Call(holder, "Pick", toolGo.GetComponent(T("PickupInteractable"))));
+    }
+
+    private static void AssertOnly(GameObject screen, string view)
+    {
+        foreach (string v in new[] { "Frente", "Traseira", "Interior" })
+            Assert.AreEqual(v == view, Active(screen, v), $"vista {v} (esperada só {view})");
     }
 
     [UnityTest]
-    public IEnumerator Gabinete_Prefab_TemRootLogicoComVisual()
+    public IEnumerator Gabinete_Prefab_TemRootLogicoComVisual_E3ParafusosObrigatorios()
     {
         GameObject g = SpawnCase(Vector3.zero);
         yield return null;
-        Assert.IsNotNull(g.GetComponent<ComputerCase>());
+        var pcCase = g.GetComponent<ComputerCase>();
         Assert.IsNotNull(g.GetComponent(T("UIScreenInteractable")));
         Assert.IsNotNull(g.GetComponent(T("PickupInteractable")));
         Assert.IsNotNull(g.GetComponent<BoxCollider>());
         Assert.IsNull(g.GetComponent<MeshRenderer>(), "malha deve ficar só no Visual");
         Assert.IsNotNull(g.transform.Find("Visual")?.GetComponent<MeshRenderer>());
         Assert.AreEqual(Vector3.one, g.transform.localScale);
-        Assert.AreEqual(8, g.GetComponent<ComputerCase>().TotalCount);
+        Assert.AreEqual(8, pcCase.TotalCount);
+        Assert.AreEqual(3, pcCase.Screws.Count(s => s.required));
     }
 
     [UnityTest]
-    public IEnumerator Fluxo_Completo_SemFerramenta_Depois_ComChave_AbreInterior()
+    public IEnumerator Tela_TemTresVistasEmTelaCheia_E3Botoes_SemBarraDeProgresso()
     {
         GameObject g = SpawnCase(Vector3.zero);
-        var pcCase = g.GetComponent<ComputerCase>();
         yield return null;
-
-        // --- abre a tela com as mãos vazias -------------------------------------------------------------------
         GameObject screen = OpenScreen(g);
         yield return null;
 
-        Component[] views = Views(screen);
-        Assert.AreEqual(8, views.Length, "um ScrewView por parafuso");
-        Assert.IsTrue(Child(screen, "Moldura/Traseira").gameObject.activeSelf, "vista traseira visível");
-        Assert.IsFalse(Child(screen, "Moldura/Interior").gameObject.activeSelf, "interior bloqueado");
-        Assert.AreEqual("Parafusos removidos: 0/8", TextNamed(screen, "Progresso").text);
-        Assert.AreEqual("Na mão: nada", TextNamed(screen, "Ferramenta").text);
-        Assert.AreEqual("Gabinete - traseira", TextNamed(screen, "Titulo").text);
-        Button openButton = screen.GetComponentsInChildren<Button>(true).First(b => b.name == "BotaoAbrir");
-        Assert.IsFalse(openButton.interactable, "Abrir gabinete bloqueado");
-
-        // Posição de cada parafuso = dado do ComputerCase (Y invertido para âncora de UI).
-        for (int i = 0; i < 8; i++)
+        var rt = (RectTransform)screen.transform;
+        Assert.AreEqual(Vector2.zero, rt.anchorMin); Assert.AreEqual(Vector2.one, rt.anchorMax);
+        foreach (string v in new[] { "Fundo", "Frente", "Traseira", "Interior" })
         {
-            var rt = (RectTransform)views[i].transform;
-            Vector2 p = pcCase.Screws[i].normalizedPosition;
-            Assert.AreEqual(p.x, rt.anchorMin.x, 1e-5f);
-            Assert.AreEqual(1f - p.y, rt.anchorMin.y, 1e-5f);
+            var vr = (RectTransform)screen.transform.Find(v);
+            Assert.AreEqual(Vector2.zero, vr.anchorMin, v); Assert.AreEqual(Vector2.one, vr.anchorMax, v);
+            Assert.AreEqual(Vector2.zero, vr.offsetMin, v); Assert.AreEqual(Vector2.zero, vr.offsetMax, v);
         }
+        var nav = (RectTransform)screen.transform.Find("Navegacao");
+        Assert.AreEqual(new Vector2(1f, 0f), nav.anchorMin, "canto inferior direito");
+        CollectionAssert.AreEqual(new[] { "BotaoVoltar", "BotaoAvancar", "BotaoFechar" },
+            nav.GetComponentsInChildren<Button>(true).Select(b => b.name).ToArray());
+        Assert.IsFalse(screen.GetComponentsInChildren<Text>(true).Any(t => t.name == "Progresso"));
+        Assert.IsNull(screen.transform.Find("BarraFundo"));
+        Assert.IsFalse(screen.GetComponentsInChildren<Transform>(true).Any(t => t.name == "BarraFundo" || t.name == "BotaoAbrir"));
+    }
 
-        // --- clique sem ferramenta: nada acontece, mensagem de ajuda --------------------------------------------
-        views[0].GetComponent<Button>().onClick.Invoke();
-        yield return null;
-        Assert.AreEqual(0, pcCase.RemovedCount);
-        StringAssert.Contains("chave de fenda", TextNamed(screen, "Instrucao").text);
-
-        // --- pega a chave (item real), reabre a tela -------------------------------------------------------------
-        CloseScreen();
-        yield return null;
+    [UnityTest]
+    public IEnumerator Navegacao_Linear_InteriorBloqueadoAteParafusosObrigatorios()
+    {
+        GameObject g = SpawnCase(Vector3.zero);
+        var pcCase = g.GetComponent<ComputerCase>();
         GiveScrewdriverToPlayer();
-        screen = OpenScreen(g);
         yield return null;
-        Assert.AreEqual("Na mão: chave de fenda", TextNamed(screen, "Ferramenta").text);
-        views = Views(screen);
+        GameObject screen = OpenScreen(g);
+        yield return null;
+        Button back = ButtonNamed(screen, "BotaoVoltar"), next = ButtonNamed(screen, "BotaoAvancar");
 
-        // --- remove 7: ainda não abre ----------------------------------------------------------------------------
-        for (int i = 0; i < 7; i++)
-        {
-            views[i].GetComponent<Button>().onClick.Invoke();
-            yield return null;
-            Assert.IsTrue(pcCase.Screws[i].removed);
-            Assert.IsFalse(views[i].GetComponent<Button>().interactable, "parafuso removido não é mais clicável");
-            Assert.IsTrue(views[i].transform.Find("Furo").gameObject.activeSelf, "furo visível = feedback de remoção");
-            Assert.AreEqual($"Parafusos removidos: {i + 1}/8", TextNamed(screen, "Progresso").text);
-        }
-        Assert.IsFalse(openButton.interactable, "com 7/8 continua bloqueado");
-        Assert.AreEqual(CaseOpenResult.ScrewsRemaining, pcCase.TryOpen());
+        // Abre na frente; Voltar não dá a volta.
+        AssertOnly(screen, "Frente");
+        Assert.AreEqual("Computador - frente", TextNamed(screen, "Titulo").text);
+        Assert.IsFalse(back.interactable);
+        back.onClick.Invoke(); yield return null;
+        AssertOnly(screen, "Frente");
 
-        // --- fecha e reabre a tela: estado persiste no objeto lógico ----------------------------------------------
-        CloseScreen();
-        yield return null;
-        screen = OpenScreen(g);
-        yield return null;
-        views = Views(screen);
-        Assert.AreEqual(7, pcCase.RemovedCount);
-        Assert.AreEqual("Parafusos removidos: 7/8", TextNamed(screen, "Progresso").text);
-        for (int i = 0; i < 7; i++) Assert.IsFalse(views[i].GetComponent<Button>().interactable);
-        Assert.IsTrue(views[7].GetComponent<Button>().interactable);
+        // Frente → Traseira (8 parafusos clicáveis).
+        next.onClick.Invoke(); yield return null;
+        AssertOnly(screen, "Traseira");
+        Assert.AreEqual("Rear", CurrentView(screen));
+        Component[] views = Views(screen);
+        Assert.AreEqual(8, views.Length);
 
-        // --- último parafuso libera o botão; abrir mostra o interior -----------------------------------------------
-        views[7].GetComponent<Button>().onClick.Invoke();
-        yield return null;
-        openButton = screen.GetComponentsInChildren<Button>(true).First(b => b.name == "BotaoAbrir");
-        Assert.IsTrue(openButton.interactable, "8/8 libera o botão");
-        Assert.AreEqual(CaseState.Closed, pcCase.State, "só abre ao clicar em Abrir");
+        // Sem nenhum parafuso: Avançar não sai da traseira.
+        next.onClick.Invoke(); yield return null;
+        AssertOnly(screen, "Traseira");
+        Assert.AreEqual(CaseState.Closed, pcCase.State);
+        StringAssert.Contains("faltam parafusos", TextNamed(screen, "Instrucao").text);
 
-        openButton.onClick.Invoke();
-        yield return null;
+        // Bloqueado: Traseira ↔ Frente continua funcionando.
+        back.onClick.Invoke(); yield return null;
+        AssertOnly(screen, "Frente");
+        next.onClick.Invoke(); yield return null;
+        AssertOnly(screen, "Traseira");
+
+        // Todos os opcionais (topo + lado esquerdo): ainda bloqueado.
+        foreach (int i in new[] { 0, 1, 2, 4, 6 }) { views[i].GetComponent<Button>().onClick.Invoke(); yield return null; }
+        Assert.AreEqual(5, pcCase.RemovedCount);
+        next.onClick.Invoke(); yield return null;
+        AssertOnly(screen, "Traseira");
+
+        // 2 de 3 obrigatórios: ainda bloqueado.
+        views[3].GetComponent<Button>().onClick.Invoke(); yield return null;
+        views[5].GetComponent<Button>().onClick.Invoke(); yield return null;
+        next.onClick.Invoke(); yield return null;
+        AssertOnly(screen, "Traseira");
+        Assert.IsTrue(views[3].transform.Find("Furo").gameObject.activeSelf, "feedback individual do parafuso");
+
+        // Último obrigatório: libera.
+        views[7].GetComponent<Button>().onClick.Invoke(); yield return null;
+        next.onClick.Invoke(); yield return null;
+        AssertOnly(screen, "Interior");
         Assert.AreEqual(CaseState.Open, pcCase.State);
-        Assert.IsFalse(Child(screen, "Moldura/Traseira").gameObject.activeSelf);
-        Assert.IsTrue(Child(screen, "Moldura/Interior").gameObject.activeSelf);
-        Assert.AreEqual("Gabinete - interior", TextNamed(screen, "Titulo").text);
+        Assert.IsFalse(next.interactable, "última tela: Avançar não volta à frente");
+        next.onClick.Invoke(); yield return null;
+        AssertOnly(screen, "Interior");
 
-        // --- reabrir depois de aberto continua no interior ---------------------------------------------------------
-        CloseScreen();
+        // Interior → Traseira → Frente.
+        back.onClick.Invoke(); yield return null;
+        AssertOnly(screen, "Traseira");
+        back.onClick.Invoke(); yield return null;
+        AssertOnly(screen, "Frente");
+
+        // Fechar (botão real, listener persistente) fecha a tela.
+        ButtonNamed(screen, "BotaoFechar").onClick.Invoke(); yield return null;
+        Assert.IsFalse((bool)Get(manager, "IsOpen"));
+        Assert.IsFalse(screen.activeSelf);
+    }
+
+    [UnityTest]
+    public IEnumerator SoObrigatorios_LiberamOInterior()
+    {
+        GameObject g = SpawnCase(Vector3.zero);
+        GiveScrewdriverToPlayer();
         yield return null;
-        screen = OpenScreen(g);
+        GameObject screen = OpenScreen(g);
         yield return null;
-        Assert.IsTrue(Child(screen, "Moldura/Interior").gameObject.activeSelf);
-        Assert.IsFalse(Child(screen, "Moldura/Traseira").gameObject.activeSelf);
+        Button next = ButtonNamed(screen, "BotaoAvancar");
+        next.onClick.Invoke(); yield return null;
+        Component[] views = Views(screen);
+        foreach (int i in new[] { 3, 5, 7 }) { views[i].GetComponent<Button>().onClick.Invoke(); yield return null; }
+        next.onClick.Invoke(); yield return null;
+        AssertOnly(screen, "Interior");
+        Assert.AreEqual(3, g.GetComponent<ComputerCase>().RemovedCount, "opcionais continuam no lugar");
+    }
+
+    [UnityTest]
+    public IEnumerator Componentes_NaoSaoSorteadosDeNovo_AoReabrir()
+    {
+        GameObject g = SpawnCase(Vector3.zero);
+        var pcCase = g.GetComponent<ComputerCase>();
+        GiveScrewdriverToPlayer();
+        yield return null;
+        PcComponent rolled = pcCase.Components;
+
+        GameObject screen = OpenScreen(g);
+        yield return null;
+        Button next = ButtonNamed(screen, "BotaoAvancar");
+        next.onClick.Invoke(); yield return null;
+        Component[] views = Views(screen);
+        foreach (int i in new[] { 3, 5, 7 }) { views[i].GetComponent<Button>().onClick.Invoke(); yield return null; }
+
+        for (int round = 0; round < 5; round++)
+        {
+            if (round > 0)
+            {
+                screen = OpenScreen(g);
+                yield return null;
+                next = ButtonNamed(screen, "BotaoAvancar");
+                next.onClick.Invoke(); yield return null;
+            }
+            next.onClick.Invoke(); yield return null;
+            AssertOnly(screen, "Interior");
+            Assert.AreEqual(rolled, pcCase.Components);
+            Assert.AreEqual(pcCase.HasComponent(PcComponent.Motherboard), Active(screen, "Interior/ContainerInterior_Area/ContainerInterior/Componentes/PlacaMae"));
+            Assert.AreEqual(pcCase.HasComponent(PcComponent.Ram), Active(screen, "Interior/ContainerInterior_Area/ContainerInterior/Componentes/MemoriaRAM"));
+            Assert.AreEqual(pcCase.HasComponent(PcComponent.Hdd), Active(screen, "Interior/ContainerInterior_Area/ContainerInterior/Componentes/HD"));
+            CloseScreen();
+            yield return null;
+        }
+    }
+
+    [UnityTest]
+    public IEnumerator Componentes_Fixos_AparecemConformeOEstado()
+    {
+        GameObject g = SpawnCase(Vector3.zero);
+        var pcCase = g.GetComponent<ComputerCase>();
+        pcCase.SetComponents(PcComponent.Ram | PcComponent.Hdd);
+        GiveScrewdriverToPlayer();
+        yield return null;
+        GameObject screen = OpenScreen(g);
+        yield return null;
+        Button next = ButtonNamed(screen, "BotaoAvancar");
+        next.onClick.Invoke(); yield return null;
+        Component[] views = Views(screen);
+        foreach (int i in new[] { 3, 5, 7 }) { views[i].GetComponent<Button>().onClick.Invoke(); yield return null; }
+        next.onClick.Invoke(); yield return null;
+        const string c = "Interior/ContainerInterior_Area/ContainerInterior/Componentes/";
+        Assert.IsFalse(Active(screen, c + "PlacaMae"));
+        Assert.IsTrue(Active(screen, c + "MemoriaRAM"));
+        Assert.IsTrue(Active(screen, c + "HD"));
+        StringAssert.Contains("memória RAM, HD", TextNamed(screen, "Instrucao").text);
+    }
+
+    [UnityTest]
+    public IEnumerator SemFerramenta_ParafusoNaoSai_E_SegundaTelaNaoAbre()
+    {
+        GameObject g = SpawnCase(Vector3.zero);
+        yield return null;
+        GameObject screen = OpenScreen(g);
+        yield return null;
+        Assert.IsFalse((bool)Call(manager, "Open", LoadPrefab(ScreenPrefab).GetComponent(T("UIScreen")), g, detector),
+            "não abre outra instância com uma já aberta");
+        ButtonNamed(screen, "BotaoAvancar").onClick.Invoke(); yield return null;
+        Views(screen)[3].GetComponent<Button>().onClick.Invoke(); yield return null;
+        Assert.AreEqual(0, g.GetComponent<ComputerCase>().RemovedCount);
+        StringAssert.Contains("chave de fenda", TextNamed(screen, "Instrucao").text);
+        Assert.AreEqual("Na mão: nada", TextNamed(screen, "Ferramenta").text);
     }
 
     [UnityTest]
@@ -229,6 +333,7 @@ public class ComputerScreenFlowTests
 
         GameObject screen = OpenScreen(a);
         yield return null;
+        ButtonNamed(screen, "BotaoAvancar").onClick.Invoke(); yield return null;
         Views(screen)[2].GetComponent<Button>().onClick.Invoke();
         yield return null;
         Assert.AreEqual(1, a.GetComponent<ComputerCase>().RemovedCount);
@@ -237,15 +342,14 @@ public class ComputerScreenFlowTests
 
         screen = OpenScreen(b);
         yield return null;
+        AssertOnly(screen, "Frente");
         Assert.AreEqual(0, b.GetComponent<ComputerCase>().RemovedCount);
-        Assert.AreEqual("Parafusos removidos: 0/8", TextNamed(screen, "Progresso").text);
         Assert.AreEqual(8, Views(screen).Count(v => v.GetComponent<Button>().interactable), "views reconstruídas para o outro gabinete");
         CloseScreen();
         yield return null;
 
         screen = OpenScreen(a);
         yield return null;
-        Assert.AreEqual("Parafusos removidos: 1/8", TextNamed(screen, "Progresso").text);
         Assert.IsFalse(Views(screen)[2].GetComponent<Button>().interactable);
     }
 }

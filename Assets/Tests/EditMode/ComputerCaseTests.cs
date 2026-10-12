@@ -103,11 +103,12 @@ public class ComputerCaseTests
     // ---- abertura ------------------------------------------------------------------------------------------
 
     [Test]
-    public void CannotOpen_UntilEveryScrewIsRemoved()
+    public void CannotOpen_UntilEveryRequiredScrewIsRemoved()
     {
         for (int i = 0; i < 7; i++) pcCase.TryRemoveScrew(i, ToolType.Screwdriver);
 
         Assert.IsFalse(pcCase.AllScrewsRemoved);
+        Assert.IsFalse(pcCase.RequiredScrewsRemoved, "base-direita (obrigatório) ainda no lugar");
         Assert.IsFalse(pcCase.CanOpen);
         Assert.AreEqual(CaseOpenResult.ScrewsRemaining, pcCase.TryOpen());
         Assert.AreEqual(CaseState.Closed, pcCase.State);
@@ -188,6 +189,71 @@ public class ComputerCaseTests
         pcCase.Configure(new List<ScrewData>());
         Assert.IsTrue(pcCase.CanOpen);
         Assert.AreEqual(CaseOpenResult.Opened, pcCase.TryOpen());
+    }
+
+    // ---- parafusos obrigatórios × opcionais -------------------------------------------------------------------
+
+    [Test]
+    public void DefaultTowerBack_OnlyRightSideScrewsAreRequired()
+    {
+        var required = new List<string>();
+        foreach (ScrewData s in pcCase.Screws) if (s.required) required.Add(s.id);
+        CollectionAssert.AreEquivalent(new[] { "alto-direita", "meio-direita", "base-direita" }, required);
+    }
+
+    [Test]
+    public void OptionalScrews_DoNotUnlock_AndAreNotNeeded()
+    {
+        // Todos os opcionais (topo e lado esquerdo) removidos: ainda fechado.
+        foreach (int i in new[] { 0, 1, 2, 4, 6 }) pcCase.TryRemoveScrew(i, ToolType.Screwdriver);
+        Assert.IsFalse(pcCase.RequiredScrewsRemoved);
+        Assert.AreEqual(CaseOpenResult.ScrewsRemaining, pcCase.TryOpen());
+
+        // Só os obrigatórios: abre, mesmo com opcionais no lugar (verifica o conjunto, não a quantidade).
+        TearDown();
+        SetUp();
+        foreach (int i in new[] { 3, 5, 7 }) pcCase.TryRemoveScrew(i, ToolType.Screwdriver);
+        Assert.AreEqual(3, pcCase.RemovedCount);
+        Assert.IsTrue(pcCase.RequiredScrewsRemoved);
+        Assert.AreEqual(CaseOpenResult.Opened, pcCase.TryOpen());
+    }
+
+    [Test]
+    public void FiveScrewsRemoved_ButOneRequiredMissing_StaysClosed()
+    {
+        foreach (int i in new[] { 0, 1, 2, 3, 5 }) pcCase.TryRemoveScrew(i, ToolType.Screwdriver);
+        Assert.AreEqual(5, pcCase.RemovedCount);
+        Assert.IsFalse(pcCase.CanOpen, "falta o base-direita (obrigatório)");
+    }
+
+    // ---- componentes internos ------------------------------------------------------------------------------
+
+    [Test]
+    public void Components_AreStableOnTheSameInstance()
+    {
+        PcComponent first = pcCase.Components;
+        for (int i = 0; i < 20; i++) Assert.AreEqual(first, pcCase.Components);
+    }
+
+    [Test]
+    public void RollComponents_SameSeedSameResult_AndAllEightCombinationsHappen()
+    {
+        Assert.AreEqual(ComputerCase.RollComponents(1234, 0.5f), ComputerCase.RollComponents(1234, 0.5f));
+        var seen = new HashSet<PcComponent>();
+        for (int seed = 1; seed <= 500; seed++) seen.Add(ComputerCase.RollComponents(seed, 0.5f));
+        Assert.AreEqual(8, seen.Count, "cada componente presente/ausente de forma independente");
+        Assert.AreEqual(PcComponent.None, ComputerCase.RollComponents(7, 0f));
+        Assert.AreEqual(PcComponent.Motherboard | PcComponent.Ram | PcComponent.Hdd, ComputerCase.RollComponents(7, 1f));
+    }
+
+    [Test]
+    public void SetComponents_FixesTheConfiguration()
+    {
+        pcCase.SetComponents(PcComponent.Ram);
+        Assert.IsTrue(pcCase.HasComponent(PcComponent.Ram));
+        Assert.IsFalse(pcCase.HasComponent(PcComponent.Motherboard));
+        Assert.IsFalse(pcCase.HasComponent(PcComponent.Hdd));
+        Assert.IsFalse(pcCase.HasComponent(PcComponent.None));
     }
 
     // ---- ToolItem ------------------------------------------------------------------------------------------
