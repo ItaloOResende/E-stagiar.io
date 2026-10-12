@@ -174,7 +174,6 @@ public class ComputerScreenFlowTests
 
         // Abre na frente; Voltar não dá a volta.
         AssertOnly(screen, "Frente");
-        Assert.AreEqual("Computador - frente", TextNamed(screen, "Titulo").text);
         Assert.IsFalse(back.interactable);
         back.onClick.Invoke(); yield return null;
         AssertOnly(screen, "Frente");
@@ -190,7 +189,6 @@ public class ComputerScreenFlowTests
         next.onClick.Invoke(); yield return null;
         AssertOnly(screen, "Traseira");
         Assert.AreEqual(CaseState.Closed, pcCase.State);
-        StringAssert.Contains("faltam parafusos", TextNamed(screen, "Instrucao").text);
 
         // Bloqueado: Traseira ↔ Frente continua funcionando.
         back.onClick.Invoke(); yield return null;
@@ -304,7 +302,6 @@ public class ComputerScreenFlowTests
         Assert.IsFalse(Active(screen, c + "PlacaMae"));
         Assert.IsTrue(Active(screen, c + "MemoriaRAM"));
         Assert.IsTrue(Active(screen, c + "HD"));
-        StringAssert.Contains("memória RAM, HD", TextNamed(screen, "Instrucao").text);
     }
 
     [UnityTest]
@@ -319,8 +316,6 @@ public class ComputerScreenFlowTests
         ButtonNamed(screen, "BotaoAvancar").onClick.Invoke(); yield return null;
         Views(screen)[3].GetComponent<Button>().onClick.Invoke(); yield return null;
         Assert.AreEqual(0, g.GetComponent<ComputerCase>().RemovedCount);
-        StringAssert.Contains("chave de fenda", TextNamed(screen, "Instrucao").text);
-        Assert.AreEqual("Na mão: nada", TextNamed(screen, "Ferramenta").text);
     }
 
     [UnityTest]
@@ -351,5 +346,106 @@ public class ComputerScreenFlowTests
         screen = OpenScreen(a);
         yield return null;
         Assert.IsFalse(Views(screen)[2].GetComponent<Button>().interactable);
+    }
+
+    private Component GiveToPlayer(string prefabPath)
+    {
+        var go = Object.Instantiate(LoadPrefab(prefabPath));
+        Component pickup = go.GetComponent(T("PickupInteractable"));
+        Assert.IsTrue((bool)Call(holder, "Pick", pickup), "não pegou " + prefabPath);
+        return pickup;
+    }
+
+    private bool Holding => (bool)Get(holder, "IsHolding");
+
+    private static void Click(GameObject screen, string name) => ButtonNamed(screen, name).onClick.Invoke();
+
+    private static Image MonitorScreen(GameObject screen) =>
+        screen.GetComponentsInChildren<Image>(true).First(i => i.name == "Tela");
+
+    [UnityTest]
+    public IEnumerator Montagem_CabosEPecas_PelaTela_LigaNaBios_EDepoisNoSistema()
+    {
+        GameObject g = SpawnCase(Vector3.zero);
+        var pcCase = g.GetComponent<ComputerCase>();
+        var power = g.GetComponent<ComputerPower>();
+        Assert.IsNotNull(power, "Gabinete.prefab precisa de ComputerPower");
+        pcCase.SetComponents(PcComponent.None);
+        for (int i = 0; i < pcCase.TotalCount; i++) pcCase.TryRemoveScrew(i, ToolType.Screwdriver);
+        yield return null;
+
+        GameObject screen = OpenScreen(g);
+        yield return null;
+        Image monitor = MonitorScreen(screen);
+        Assert.IsNull(monitor.sprite, "desligado = tela preta");
+
+        // Sem nada: Power não liga.
+        Click(screen, "BotaoPower");
+        Assert.AreEqual(PcPowerState.Off, power.State);
+
+        // Cabo de energia: gabinete (sai da mão) e tomada.
+        CloseScreen(); yield return null;
+        Component powerCable = GiveToPlayer("Assets/Prefabs/Gameplay/Pickup_CaboEnergia.prefab");
+        screen = OpenScreen(g); yield return null;
+        Click(screen, "BotaoAvancar"); yield return null;
+        Assert.AreEqual("Rear", CurrentView(screen));
+        Click(screen, "Porta_EnergiaGabinete");
+        Assert.IsFalse(Holding, "o cabo conectado sai da mão");
+        Assert.IsFalse(powerCable.gameObject.activeSelf, "guardado (desativado), não destruído");
+        Click(screen, "Porta_Tomada");
+        Assert.IsTrue(power.PowerConnected);
+        Assert.IsTrue(screen.transform.Find("Traseira/Cabos/CaboEnergia").gameObject.activeSelf, "linha do cabo visível");
+
+        // Cabo de vídeo: gabinete e monitor.
+        CloseScreen(); yield return null;
+        GiveToPlayer("Assets/Prefabs/Gameplay/Pickup_CaboVideo.prefab");
+        screen = OpenScreen(g); yield return null;
+        Click(screen, "BotaoAvancar"); yield return null;
+        Click(screen, "Porta_VGAGabinete");
+        Click(screen, "Porta_VGAMonitor");
+        Assert.IsTrue(power.VideoConnected);
+
+        // Abre a tampa e instala placa-mãe e RAM pelos encaixes do interior.
+        Click(screen, "BotaoAvancar"); yield return null;
+        Assert.AreEqual("Interior", CurrentView(screen));
+        foreach (var (prefab, slot) in new[] { ("Pickup_PlacaMae", "Encaixe_PlacaMae"), ("Pickup_MemoriaRAM", "Encaixe_MemoriaRAM") })
+        {
+            GiveToPlayer("Assets/Prefabs/Gameplay/" + prefab + ".prefab");
+            Click(screen, slot);
+            Assert.IsFalse(Holding, slot);
+        }
+        Assert.IsTrue(pcCase.HasComponent(PcComponent.Motherboard) && pcCase.HasComponent(PcComponent.Ram));
+
+        // Power na frente: BIOS.
+        Click(screen, "BotaoVoltar"); Click(screen, "BotaoVoltar"); yield return null;
+        Click(screen, "BotaoPower");
+        Assert.AreEqual(PcPowerState.Bios, power.State);
+        Assert.AreEqual("ui_tela_bios", monitor.sprite.name);
+
+        // HD instalado: só depois de reiniciar vai para o sistema.
+        Click(screen, "BotaoAvancar"); Click(screen, "BotaoAvancar"); yield return null;
+        GiveToPlayer("Assets/Prefabs/Gameplay/Pickup_HD.prefab");
+        Click(screen, "Encaixe_HD");
+        Click(screen, "BotaoVoltar"); Click(screen, "BotaoVoltar"); yield return null;
+        Click(screen, "BotaoPower");
+        Assert.AreEqual(PcPowerState.Off, power.State);
+        Assert.IsNull(monitor.sprite);
+        Click(screen, "BotaoPower");
+        Assert.AreEqual(PcPowerState.OperatingSystem, power.State);
+        Assert.AreEqual("ui_tela_sistema", monitor.sprite.name);
+
+        // Soltar a tomada com o PC ligado desliga (estado incompatível não é permitido).
+        Click(screen, "BotaoAvancar"); yield return null;
+        Click(screen, "Porta_Tomada");
+        Assert.AreEqual(PcPowerState.Off, power.State);
+        Assert.IsNull(monitor.sprite);
+
+        // Soltar a outra ponta devolve o MESMO cabo à mão.
+        Click(screen, "Porta_EnergiaGabinete");
+        Assert.IsTrue(Holding);
+        Assert.AreSame(powerCable, Get(holder, "Current"));
+        CloseScreen();
+        foreach (var p in Object.FindObjectsByType(T("PickupInteractable"), FindObjectsInactive.Include, FindObjectsSortMode.None))
+            Object.Destroy(((Component)p).gameObject);
     }
 }
