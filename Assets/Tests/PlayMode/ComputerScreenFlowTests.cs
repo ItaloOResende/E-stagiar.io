@@ -278,6 +278,8 @@ public class ComputerScreenFlowTests
             Assert.AreEqual(pcCase.HasComponent(PcComponent.Motherboard), Active(screen, "Interior/ContainerInterior_Area/ContainerInterior/Componentes/PlacaMae"));
             Assert.AreEqual(pcCase.HasComponent(PcComponent.Ram), Active(screen, "Interior/ContainerInterior_Area/ContainerInterior/Componentes/MemoriaRAM"));
             Assert.AreEqual(pcCase.HasComponent(PcComponent.Hdd), Active(screen, "Interior/ContainerInterior_Area/ContainerInterior/Componentes/HD"));
+            Assert.AreEqual(pcCase.HasComponent(PcComponent.Psu), Active(screen, "Interior/ContainerInterior_Area/ContainerInterior/Componentes/Fonte"));
+            Assert.AreEqual(pcCase.HasComponent(PcComponent.CpuCooler), Active(screen, "Interior/ContainerInterior_Area/ContainerInterior/Componentes/Cooler"));
             CloseScreen();
             yield return null;
         }
@@ -288,7 +290,7 @@ public class ComputerScreenFlowTests
     {
         GameObject g = SpawnCase(Vector3.zero);
         var pcCase = g.GetComponent<ComputerCase>();
-        pcCase.SetComponents(PcComponent.Ram | PcComponent.Hdd);
+        pcCase.SetComponents(PcComponent.Psu | PcComponent.Hdd);
         GiveScrewdriverToPlayer();
         yield return null;
         GameObject screen = OpenScreen(g);
@@ -300,8 +302,16 @@ public class ComputerScreenFlowTests
         next.onClick.Invoke(); yield return null;
         const string c = "Interior/ContainerInterior_Area/ContainerInterior/Componentes/";
         Assert.IsFalse(Active(screen, c + "PlacaMae"));
-        Assert.IsTrue(Active(screen, c + "MemoriaRAM"));
+        Assert.IsFalse(Active(screen, c + "MemoriaRAM"));
         Assert.IsTrue(Active(screen, c + "HD"));
+        Assert.IsTrue(Active(screen, c + "Fonte"));
+        Assert.IsFalse(Active(screen, c + "Cooler"));
+        // RAM e cooler encaixam na placa-mãe: sem ela, os encaixes nem aparecem
+        const string e = "Interior/ContainerInterior_Area/ContainerInterior/Encaixes/";
+        Assert.IsFalse(Active(screen, e + "Encaixe_MemoriaRAM"));
+        Assert.IsFalse(Active(screen, e + "Encaixe_Cooler"));
+        Assert.IsTrue(Active(screen, e + "Encaixe_Fonte"));
+        Assert.IsTrue(Active(screen, e + "Encaixe_PlacaMae"));
     }
 
     [UnityTest]
@@ -382,6 +392,8 @@ public class ComputerScreenFlowTests
         // Sem nada: Power não liga.
         Click(screen, "BotaoPower");
         Assert.AreEqual(PcPowerState.Off, power.State);
+        const string led = "Frente/Gabinete/Area/BotaoPower/LED";
+        Assert.IsFalse(Active(screen, led), "desligado: LED do Power apagado");
 
         // Cabo de energia: gabinete (sai da mão) e tomada.
         CloseScreen(); yield return null;
@@ -396,31 +408,45 @@ public class ComputerScreenFlowTests
         Assert.IsTrue(power.PowerConnected);
         Assert.IsTrue(screen.transform.Find("Traseira/Cabos/CaboEnergia").gameObject.activeSelf, "linha do cabo visível");
 
-        // Cabo de vídeo: gabinete e monitor.
+        // Cabo de energia do monitor: tomada própria e entrada do monitor.
         CloseScreen(); yield return null;
-        GiveToPlayer("Assets/Prefabs/Gameplay/Pickup_CaboVideo.prefab");
+        GiveToPlayer("Assets/Prefabs/Gameplay/Pickup_CaboEnergia.prefab");
+        screen = OpenScreen(g); yield return null;
+        Click(screen, "BotaoAvancar"); yield return null;
+        Click(screen, "Porta_EnergiaMonitor");
+        Click(screen, "Porta_TomadaMonitor");
+        Assert.IsTrue(power.MonitorPowerConnected);
+        Assert.IsTrue(screen.transform.Find("Traseira/Cabos/CaboEnergiaMonitor").gameObject.activeSelf);
+
+        // Cabo de vídeo: HDMI (gabinete e monitor).
+        CloseScreen(); yield return null;
+        GiveToPlayer("Assets/Prefabs/Gameplay/Pickup_CaboHDMI.prefab");
         screen = OpenScreen(g); yield return null;
         Click(screen, "BotaoAvancar"); yield return null;
         Click(screen, "Porta_VGAGabinete");
-        Click(screen, "Porta_VGAMonitor");
+        Assert.IsTrue(Holding, "HDMI não entra na VGA");
+        Click(screen, "Porta_HDMIGabinete");
+        Click(screen, "Porta_HDMIMonitor");
         Assert.IsTrue(power.VideoConnected);
 
         // Abre a tampa e instala placa-mãe e RAM pelos encaixes do interior.
         Click(screen, "BotaoAvancar"); yield return null;
         Assert.AreEqual("Interior", CurrentView(screen));
-        foreach (var (prefab, slot) in new[] { ("Pickup_PlacaMae", "Encaixe_PlacaMae"), ("Pickup_MemoriaRAM", "Encaixe_MemoriaRAM") })
+        foreach (var (prefab, slot) in new[] { ("Pickup_Fonte", "Encaixe_Fonte"), ("Pickup_PlacaMae", "Encaixe_PlacaMae"),
+                                               ("Pickup_MemoriaRAM", "Encaixe_MemoriaRAM"), ("Pickup_Cooler", "Encaixe_Cooler") })
         {
             GiveToPlayer("Assets/Prefabs/Gameplay/" + prefab + ".prefab");
             Click(screen, slot);
             Assert.IsFalse(Holding, slot);
         }
-        Assert.IsTrue(pcCase.HasComponent(PcComponent.Motherboard) && pcCase.HasComponent(PcComponent.Ram));
+        Assert.AreEqual(PcComponent.Psu | PcComponent.Motherboard | PcComponent.Ram | PcComponent.CpuCooler, pcCase.Components);
 
         // Power na frente: BIOS.
         Click(screen, "BotaoVoltar"); Click(screen, "BotaoVoltar"); yield return null;
         Click(screen, "BotaoPower");
         Assert.AreEqual(PcPowerState.Bios, power.State);
         Assert.AreEqual("ui_tela_bios", monitor.sprite.name);
+        Assert.IsTrue(Active(screen, led), "ligado: LED do Power aceso");
 
         // HD instalado: só depois de reiniciar vai para o sistema.
         Click(screen, "BotaoAvancar"); Click(screen, "BotaoAvancar"); yield return null;
@@ -434,11 +460,24 @@ public class ComputerScreenFlowTests
         Assert.AreEqual(PcPowerState.OperatingSystem, power.State);
         Assert.AreEqual("ui_tela_sistema", monitor.sprite.name);
 
+        // Cabo de rede: gabinete ↔ ponto de rede → sistema "conectado".
+        CloseScreen(); yield return null;
+        GiveToPlayer("Assets/Prefabs/Gameplay/Pickup_CaboRede.prefab");
+        screen = OpenScreen(g); yield return null;
+        monitor = MonitorScreen(screen);
+        Click(screen, "BotaoAvancar"); yield return null;
+        Click(screen, "Porta_RedeGabinete");
+        Click(screen, "Porta_Rede");
+        Assert.IsTrue(power.Online);
+        Assert.AreEqual("ui_tela_sistema_rede", monitor.sprite.name);
+        Click(screen, "BotaoVoltar"); yield return null;
+
         // Soltar a tomada com o PC ligado desliga (estado incompatível não é permitido).
         Click(screen, "BotaoAvancar"); yield return null;
         Click(screen, "Porta_Tomada");
         Assert.AreEqual(PcPowerState.Off, power.State);
         Assert.IsNull(monitor.sprite);
+        Assert.IsFalse(Active(screen, led), "desligou: LED apaga");
 
         // Soltar a outra ponta devolve o MESMO cabo à mão.
         Click(screen, "Porta_EnergiaGabinete");
