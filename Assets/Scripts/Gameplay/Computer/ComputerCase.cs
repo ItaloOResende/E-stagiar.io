@@ -8,6 +8,26 @@ public enum ScrewRemovalResult { Removed, WrongTool, AlreadyRemoved, InvalidScre
 
 public enum CaseOpenResult { Opened, ScrewsRemaining, AlreadyOpen }
 
+/// <summary>Resultado de clicar num encaixe de peça do interior (<see cref="ComputerCase.UsePartSlot"/>).</summary>
+public enum PartSlotResult
+{
+    /// <summary>A peça da mão foi instalada (o chamador tira o item da mão e o guarda).</summary>
+    Installed,
+    /// <summary>A peça foi retirada; o item volta para a mão.</summary>
+    Removed,
+    /// <summary>O gabinete está fechado.</summary>
+    CaseClosed,
+    /// <summary>Encaixe vazio e nada (ou não uma peça) na mão.</summary>
+    NeedsPart,
+    /// <summary>Encaixe vazio e a peça da mão é de outro tipo.</summary>
+    WrongPart,
+    /// <summary>Para retirar uma peça, a mão precisa estar livre.</summary>
+    HandsFull,
+    /// <summary>A peça veio no gabinete e não há prefab configurado para devolvê-la à mão.</summary>
+    NoItemToReturn,
+    Invalid
+}
+
 /// <summary>Componentes internos que um gabinete pode ter (cada um presente ou ausente de forma independente).</summary>
 [Flags]
 public enum PcComponent { None = 0, Motherboard = 1, Ram = 2, Hdd = 4 }
@@ -63,13 +83,23 @@ public class ComputerCase : MonoBehaviour
     [Tooltip("Componentes usados quando o sorteio está desligado.")]
     [SerializeField] private PcComponent fixedComponents = PcComponent.Motherboard | PcComponent.Ram | PcComponent.Hdd;
 
+    [Header("Itens devolvidos ao retirar peças que já vieram no gabinete")]
+    [Tooltip("Prefab (Pickup + ComputerPartItem) criado UMA vez quando o jogador retira a placa-mãe sorteada/fixa. Vazio = não dá para retirar.")]
+    [SerializeField] private GameObject motherboardItemPrefab;
+    [SerializeField] private GameObject ramItemPrefab;
+    [SerializeField] private GameObject hddItemPrefab;
+
     private PcComponent components;
     private bool componentsResolved;
+    // Objeto físico de cada peça instalada pelo jogador (desativado enquanto está no gabinete).
+    private readonly Dictionary<PcComponent, GameObject> installedItems = new Dictionary<PcComponent, GameObject>();
 
     /// <summary>Disparado com o índice do parafuso removido.</summary>
     public event Action<int> ScrewRemoved;
     /// <summary>Disparado quando o estado do gabinete muda (fechado → aberto).</summary>
     public event Action<CaseState> StateChanged;
+    /// <summary>Disparado quando uma peça é instalada ou retirada (ou os componentes são redefinidos).</summary>
+    public event Action ComponentsChanged;
 
     public CaseState State => state;
     public IReadOnlyList<ScrewData> Screws => screws;
@@ -135,7 +165,50 @@ public class ComputerCase : MonoBehaviour
     {
         components = value;
         componentsResolved = true;
+        installedItems.Clear();
+        ComponentsChanged?.Invoke();
     }
+
+    /// <summary>
+    /// Clique num encaixe do interior (<paramref name="slot"/> = um único componente).
+    /// Encaixe vazio + peça certa na mão → instala (o chamador tira <paramref name="heldPart"/> da mão; o objeto fica
+    /// guardado aqui). Encaixe ocupado + mão livre → retira e devolve em <paramref name="itemForHand"/> o MESMO objeto
+    /// que foi instalado (ou, para peças que vieram no gabinete, uma instância do prefab configurado).
+    /// Só funciona com o gabinete aberto.
+    /// </summary>
+    public PartSlotResult UsePartSlot(PcComponent slot, ComputerPartItem heldPart, bool holdingSomething, out GameObject itemForHand)
+    {
+        itemForHand = null;
+        if (slot != PcComponent.Motherboard && slot != PcComponent.Ram && slot != PcComponent.Hdd) return PartSlotResult.Invalid;
+        if (state != CaseState.Open) return PartSlotResult.CaseClosed;
+
+        if (HasComponent(slot))
+        {
+            if (holdingSomething) return PartSlotResult.HandsFull;
+            if (!installedItems.TryGetValue(slot, out GameObject item) || item == null)
+            {
+                GameObject prefab = ItemPrefabFor(slot);
+                if (prefab == null) return PartSlotResult.NoItemToReturn;
+                item = Instantiate(prefab, transform.position, Quaternion.identity);
+            }
+            installedItems.Remove(slot);
+            components &= ~slot;
+            itemForHand = item;
+            ComponentsChanged?.Invoke();
+            return PartSlotResult.Removed;
+        }
+
+        if (heldPart == null) return PartSlotResult.NeedsPart;
+        if (heldPart.Component != slot) return PartSlotResult.WrongPart;
+
+        components |= slot;
+        installedItems[slot] = heldPart.gameObject;
+        ComponentsChanged?.Invoke();
+        return PartSlotResult.Installed;
+    }
+
+    private GameObject ItemPrefabFor(PcComponent slot) =>
+        slot == PcComponent.Motherboard ? motherboardItemPrefab : slot == PcComponent.Ram ? ramItemPrefab : hddItemPrefab;
 
     /// <summary>Sorteio independente de cada componente; mesma semente = mesmo resultado.</summary>
     public static PcComponent RollComponents(int seed, float chance)
