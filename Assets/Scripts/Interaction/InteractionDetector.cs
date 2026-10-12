@@ -15,7 +15,8 @@ public class InteractionDetector : MonoBehaviour
     [SerializeField] private float interactionDistance = 3f;
     [SerializeField] private Camera playerCamera;
     [SerializeField] private LayerMask interactionMask = ~0;
-    [Tooltip("Mãozinha 2D mostrada quando há algo interagível sob a mira.")]
+    [Tooltip("Opcional (legado): mãozinha 2D mostrada quando há algo interagível sob a mira. " +
+             "Com um InteractionPrompt no HUD, deixe vazio: o prompt mostra as duas interações.")]
     [SerializeField] private GameObject handCursor;
     [SerializeField] private ItemHolder holder;
     [Tooltip("Opcional: se houver tela de UI aberta, o detector não age. Padrão: busca no mesmo objeto.")]
@@ -29,6 +30,10 @@ public class InteractionDetector : MonoBehaviour
     public UIScreenManager Screens => screens;
     /// <summary>Alvo do clique esquerdo sob a mira (null se não houver).</summary>
     public Interactable CurrentTarget => primary;
+    /// <summary>Alvo do clique direito sob a mira (null se não houver).</summary>
+    public Interactable CurrentSecondaryTarget => secondary;
+    /// <summary>Com item na mão, o clique esquerdo solta o item (mesmo sem alvo).</summary>
+    public bool LeftClickDrops => holder != null && holder.IsHolding;
 
     private void Awake()
     {

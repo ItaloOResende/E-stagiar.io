@@ -77,6 +77,10 @@ public class PickupInteractable : Interactable
         return b;
     }
 
+    // Mensagem não personalizada no Inspector = "Pegar".
+    public override string PromptText =>
+        string.IsNullOrEmpty(interactionMessage) || interactionMessage == "Interagir" ? "Pegar" : interactionMessage;
+
     public override bool CanInteract(InteractionDetector interactor)
         => base.CanInteract(interactor) && !IsHeld && interactor.Holder != null && !interactor.Holder.IsHolding;
 

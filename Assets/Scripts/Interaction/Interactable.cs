@@ -9,6 +9,11 @@ using UnityEngine;
 public class Interactable : MonoBehaviour
 {
     public string interactionMessage = "Interagir";
+    [Tooltip("Ícone mostrado no prompt do HUD para esta ação. Vazio = ícone padrão do InteractionPrompt.")]
+    public Sprite promptIcon;
+
+    /// <summary>Texto curto da ação mostrado no prompt do HUD (padrão: <see cref="interactionMessage"/>).</summary>
+    public virtual string PromptText => interactionMessage;
 
     /// <summary>O objeto aceita interação agora? (controla a mãozinha e o clique)</summary>
     public virtual bool CanInteract(InteractionDetector interactor) => isActiveAndEnabled;

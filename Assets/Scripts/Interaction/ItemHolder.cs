@@ -7,7 +7,7 @@ public class ItemHolder : MonoBehaviour
 {
     [Tooltip("Ponto de mão (filho da câmera). O item carregado fica preso aqui.")]
     [SerializeField] private Transform holdPoint;
-    [Tooltip("Visual placeholder do braço; opcional.")]
+    [Tooltip("Visual do braço em 1ª pessoa (filho da câmera); opcional.")]
     [SerializeField] private GameObject armVisual;
     [SerializeField] private bool showArmOnlyWhileHolding = false;
 
@@ -61,6 +61,31 @@ public class ItemHolder : MonoBehaviour
 
         item.OnDropped(spot, cam.eulerAngles.y);
         RefreshArm();
+    }
+
+    /// <summary>
+    /// Tira o item da mão e o GUARDA (desativado, sem física) num ponto do mundo — ex.: cabo conectado ao PC,
+    /// peça instalada no gabinete. O objeto não é destruído; <see cref="Retrieve"/> o devolve à mão.
+    /// </summary>
+    public PickupInteractable Stow(Vector3 storePosition)
+    {
+        if (!IsHolding) return null;
+        PickupInteractable item = Current;
+        Current = null;
+        item.OnDropped(storePosition, 0f);
+        item.gameObject.SetActive(false);
+        RefreshArm();
+        return item;
+    }
+
+    /// <summary>Devolve à mão um item guardado por <see cref="Stow"/> (ou recém-criado). Falha com a mão ocupada.</summary>
+    public bool Retrieve(GameObject stored)
+    {
+        if (stored == null || IsHolding) return false;
+        PickupInteractable item = stored.GetComponentInParent<PickupInteractable>(true);
+        if (item == null) return false;
+        item.gameObject.SetActive(true);
+        return Pick(item);
     }
 
     private void RefreshArm()

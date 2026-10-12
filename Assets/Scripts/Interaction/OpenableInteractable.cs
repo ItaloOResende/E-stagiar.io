@@ -48,6 +48,9 @@ public class OpenableInteractable : Interactable
         Apply();
     }
 
+    public override string PromptText =>
+        string.IsNullOrEmpty(interactionMessage) || interactionMessage == "Interagir" ? (IsOpen ? "Fechar" : "Abrir") : interactionMessage;
+
     public override bool CanInteract(InteractionDetector interactor)
         => base.CanInteract(interactor) && !IsMoving
            && (interactor.Holder == null || !interactor.Holder.IsHolding);
