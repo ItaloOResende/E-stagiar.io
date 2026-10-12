@@ -23,19 +23,25 @@ public class ComputerScreenController : MonoBehaviour
     [SerializeField] private GameObject motherboardView;
     [SerializeField] private GameObject ramView;
     [SerializeField] private GameObject hddView;
+    [SerializeField] private GameObject psuView;
+    [SerializeField] private GameObject coolerView;
 
     [Header("Energia e monitor (opcional: exige ComputerPower no gabinete)")]
     [SerializeField] private Button powerButton;
+    [Tooltip("LED aceso do botão Power (sobre o desenho apagado); só aparece com o PC ligado.")]
+    [SerializeField] private GameObject powerLed;
     [Tooltip("Imagem sobre a área da tela do monitor, na vista da frente.")]
     [SerializeField] private Image monitorScreen;
     [SerializeField] private Sprite biosScreen;
     [SerializeField] private Sprite operatingSystemScreen;
+    [Tooltip("Sistema operacional com o cabo de rede ligado. Vazio = usa a tela do sistema.")]
+    [SerializeField] private Sprite onlineScreen;
     [SerializeField] private Color screenOffColor = Color.black;
 
     [Header("Cabos (traseira)")]
     [SerializeField] private List<ComputerPortView> ports = new List<ComputerPortView>();
-    [SerializeField] private CableLineView powerCableLine;
-    [SerializeField] private CableLineView videoCableLine;
+    [Tooltip("Uma faixa por cabo (energia do PC, energia do monitor, VGA, HDMI, rede); cada uma diz o seu cabo.")]
+    [SerializeField] private List<CableLineView> cableLines = new List<CableLineView>();
 
     [Header("Encaixes de peças (interior)")]
     [SerializeField] private List<ComputerSlotView> slots = new List<ComputerSlotView>();
@@ -64,6 +70,8 @@ public class ComputerScreenController : MonoBehaviour
     private ComputerPower boundPower;
     private bool subscribed;
     private ComputerView current = ComputerView.Front;
+    // Cabo cuja 1ª ponta acabou de ser conectada: a ponta livre segue o mouse até a outra porta.
+    private PcLink? carriedLink;
     private readonly List<ScrewView> views = new List<ScrewView>();
 
     public ComputerView CurrentView => current;
@@ -202,12 +210,30 @@ public class ComputerScreenController : MonoBehaviour
         if (motherboardView != null) motherboardView.SetActive(boundCase.HasComponent(PcComponent.Motherboard));
         if (ramView != null) ramView.SetActive(boundCase.HasComponent(PcComponent.Ram));
         if (hddView != null) hddView.SetActive(boundCase.HasComponent(PcComponent.Hdd));
-        foreach (ComputerSlotView v in slots) if (v != null) v.SetInstalled(boundCase.HasComponent(v.Slot));
+        if (psuView != null) psuView.SetActive(boundCase.HasComponent(PcComponent.Psu));
+        if (coolerView != null) coolerView.SetActive(boundCase.HasComponent(PcComponent.CpuCooler));
+        foreach (ComputerSlotView v in slots)
+        {
+            if (v == null) continue;
+            v.SetAvailable(boundCase.IsSlotAvailable(v.Slot) || boundCase.HasComponent(v.Slot));
+            v.SetInstalled(boundCase.HasComponent(v.Slot));
+        }
 
         foreach (ComputerPortView p in ports)
             if (p != null) p.SetPlugged(boundPower != null && boundPower.IsPlugged(p.Port));
-        if (powerCableLine != null) powerCableLine.Show(current == ComputerView.Rear && boundPower != null && boundPower.PowerConnected);
-        if (videoCableLine != null) videoCableLine.Show(current == ComputerView.Rear && boundPower != null && boundPower.VideoConnected);
+        foreach (CableLineView line in cableLines)
+        {
+            if (line == null) continue;
+            bool a = false, b = false;
+            if (boundPower != null)
+            {
+                PcCableView3D.Ports(line.Link, out PcPort pa, out PcPort pb);
+                a = boundPower.IsPlugged(pa);
+                b = boundPower.IsPlugged(pb);
+            }
+            if (a == b && carriedLink == line.Link) carriedLink = null;  // completo ou solto: ninguém está levando
+            line.SetState(current == ComputerView.Rear, a, b, carriedLink == line.Link);
+        }
 
         ShowScreen(boundPower != null ? boundPower.State : PcPowerState.Off);
     }
@@ -216,8 +242,11 @@ public class ComputerScreenController : MonoBehaviour
 
     private void ShowScreen(PcPowerState state)
     {
+        if (powerLed != null && powerLed.activeSelf != (state != PcPowerState.Off)) powerLed.SetActive(state != PcPowerState.Off);
         if (monitorScreen == null) return;
         Sprite s = state == PcPowerState.Bios ? biosScreen : state == PcPowerState.OperatingSystem ? operatingSystemScreen : null;
+        if (state == PcPowerState.OperatingSystem && onlineScreen != null && boundPower != null && boundPower.NetworkConnected)
+            s = onlineScreen;
         monitorScreen.sprite = s;
         monitorScreen.color = s != null ? Color.white : screenOffColor;
     }
@@ -296,6 +325,9 @@ public class ComputerScreenController : MonoBehaviour
         CableItem cable = held != null ? held.GetComponentInParent<CableItem>() : null;
 
         PortResult result = boundPower.UsePort(port, cable, held != null, out GameObject back);
+        if (result == PortResult.PluggedFromHand) carriedLink = ComputerPower.LinkFor(port, out _);
+        else if (result == PortResult.Unplugged) carriedLink = ComputerPower.LinkFor(port, out _); // segue a ponta que soltou
+        RefreshHardware(); // o UsePort já atualizou a tela; de novo, agora sabendo qual cabo segue o mouse
         if (result == PortResult.PluggedFromHand) holder.Stow(boundCase.transform.position);
         else if (result == PortResult.CableReturned && holder != null) holder.Retrieve(back);
     }

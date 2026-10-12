@@ -1,5 +1,5 @@
 """
-Gera as telas do monitor (BIOS e sistema operacional) no mesmo formato da tela_no_signal do legado:
+Gera as telas do monitor (BIOS, sistema operacional sem rede e com rede) no mesmo formato da tela_no_signal do legado:
 640 x 320, pixel art (desenhado em 320 x 160 e ampliado 2x sem filtro).
 
 Criadas para o projeto, sem arte de terceiros. Fonte: DejaVu Sans Mono (licença livre Bitstream Vera/DejaVu,
@@ -41,20 +41,21 @@ def bios(folder):
     d.rectangle([0, 0, W, 13], fill=cinza)
     d.text((6, 1), "E-STAGIAR.IO BIOS  v1.0", font=fb, fill=azul)
     d.text((W - 92, 1), "Configuração", font=fb, fill=azul)
-    d.rectangle([4, 18, W - 5, 112], outline=cinza)
+    d.rectangle([4, 18, W - 5, 115], outline=cinza)
     linhas = [
         ("Processador", "OK", branco),
         ("Placa-mãe", "OK", branco),
+        ("Cooler da CPU", "1200 RPM  OK", branco),
         ("Memória RAM", "4096 MB  OK", branco),
-        ("Saída de vídeo", "VGA  OK", branco),
+        ("Saída de vídeo", "VGA/HDMI  OK", branco),
         ("Disco rígido (HD)", "NÃO ENCONTRADO", vermelho),
     ]
     y = 24
     for nome, valor, cor in linhas:
         d.text((12, y), nome, font=f, fill=cinza)
         d.text((150, y), valor, font=f, fill=cor)
-        y += 15
-    d.text((12, y + 2), "Ordem de inicialização:  1. HD   2. Rede", font=f, fill=cinza)
+        y += 13
+    d.text((12, y + 1), "Ordem de inicialização:  1. HD   2. Rede", font=f, fill=cinza)
     d.rectangle([0, 118, W, H], fill=(0, 0, 120))
     d.text((8, 121), "Nenhum dispositivo de inicialização encontrado.", font=f, fill=amarelo)
     d.text((8, 134), "Instale um HD e reinicie o computador.", font=f, fill=branco)
@@ -62,7 +63,7 @@ def bios(folder):
     save(img, folder, "ui_tela_bios.png")
 
 
-def sistema(folder):
+def sistema(folder, rede=False):
     img, d = canvas((40, 120, 160))
     for y in range(H):  # papel de parede em degradê, em faixas (pixel art)
         t = (y // 8) * 8 / H
@@ -88,7 +89,7 @@ def sistema(folder):
     d.text((x0 + 5, y0 + 1), "EstagiOS", font=fb, fill=(255, 255, 255))
     d.rectangle([x1 - 11, y0 + 2, x1 - 3, y0 + 10], fill=(220, 80, 70))
     d.text((x0 + 8, y0 + 20), "Sistema iniciado com sucesso!", font=font(9), fill=(20, 40, 60))
-    d.text((x0 + 8, y0 + 38), "Placa-mãe, memória, vídeo e HD: OK", font=f, fill=(50, 60, 70))
+    d.text((x0 + 8, y0 + 34), "Placa-mãe, memória, vídeo e HD: OK", font=f, fill=(50, 60, 70))
     d.rectangle([x0 + 85, y0 + 56, x0 + 139, y0 + 70], fill=(40, 90, 170))
     d.text((x0 + 105, y0 + 57), "OK", font=fb, fill=(255, 255, 255))
 
@@ -99,7 +100,19 @@ def sistema(folder):
     d.rectangle([54, H - 12, 110, H - 2], fill=(55, 65, 85))
     d.text((58, H - 11), "EstagiOS", font=f, fill=(220, 225, 235))
     d.text((W - 34, H - 12), "09:00", font=fb, fill=(255, 255, 255))
-    save(img, folder, "ui_tela_sistema.png")
+
+    # ícone de rede na bandeja: conectado (verde) ou sem rede (X vermelho)
+    nx = W - 66
+    d.rectangle([nx, H - 11, nx + 9, H - 5], fill=(200, 205, 215))
+    d.rectangle([nx + 3, H - 5, nx + 6, H - 3], fill=(200, 205, 215))
+    if rede:
+        d.rectangle([nx + 1, H - 10, nx + 8, H - 6], fill=(70, 200, 110))
+        d.text((x0 + 8, y0 + 46), "Rede: conectado", font=f, fill=(30, 130, 70))
+    else:
+        d.line([(nx + 11, H - 12), (nx + 17, H - 6)], fill=(235, 70, 60), width=2)
+        d.line([(nx + 17, H - 12), (nx + 11, H - 6)], fill=(235, 70, 60), width=2)
+        d.text((x0 + 8, y0 + 46), "Rede: sem conexão (cabo desligado)", font=f, fill=(170, 60, 50))
+    save(img, folder, "ui_tela_sistema_rede.png" if rede else "ui_tela_sistema.png")
 
 
 if __name__ == "__main__":
@@ -107,3 +120,4 @@ if __name__ == "__main__":
     os.makedirs(pasta, exist_ok=True)
     bios(pasta)
     sistema(pasta)
+    sistema(pasta, rede=True)

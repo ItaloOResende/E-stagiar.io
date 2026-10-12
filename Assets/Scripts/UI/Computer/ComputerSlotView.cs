@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Apresentação de UM encaixe de peça no interior do PC (placa-mãe, RAM ou HD): área clicável sobre a peça +
+/// Apresentação de UM encaixe de peça no interior do PC (placa-mãe, RAM, HD, fonte ou cooler): área clicável sobre a peça +
 /// contorno "vazio" quando a peça não está instalada. A peça em si é a imagem já existente da vista do interior
 /// (mostrada/escondida pelo <see cref="ComputerScreenController"/>). Sem lógica de jogo.
 /// </summary>
@@ -27,5 +27,11 @@ public class ComputerSlotView : MonoBehaviour
     public void SetInstalled(bool installed)
     {
         if (emptyGhost != null) emptyGhost.gameObject.SetActive(!installed);
+    }
+
+    /// <summary>Encaixe montado sobre outra peça (RAM e cooler na placa-mãe): some quando a base não está instalada.</summary>
+    public void SetAvailable(bool available)
+    {
+        if (gameObject.activeSelf != available) gameObject.SetActive(available);
     }
 }
