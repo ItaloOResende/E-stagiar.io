@@ -26,6 +26,79 @@ public static class GaveteirosSetup
         new Vector3(0f, (Floor + WallTop) / 2f, TrayZ0 + Wall + (TrayD - Wall) / 2f),
         new Vector3(TrayW - 2 * Wall, WallTop - Floor, TrayD - Wall));
 
+    /// <summary>
+    /// Gatilho "AreaGuardar" da gaveta: o espaço interno (fundo até um pouco acima das paredes), onde o jogador guarda
+    /// itens de volta (DrawerContents.storageArea). Só gatilho: não colide com nada nem atrapalha a mira.
+    /// </summary>
+    public static BoxCollider StorageArea(Transform drawer)
+    {
+        Transform t = drawer.Find("AreaGuardar");
+        if (t == null) { t = new GameObject("AreaGuardar").transform; t.SetParent(drawer, false); }
+        t.localPosition = Vector3.zero; t.localRotation = Quaternion.identity; t.localScale = Vector3.one;
+        BoxCollider box = t.GetComponent<BoxCollider>();
+        if (box == null) box = t.gameObject.AddComponent<BoxCollider>();
+        box.isTrigger = true;
+        float h = WallTop - Floor + 0.10f;
+        box.size = new Vector3(Inner.size.x, h, Inner.size.z);
+        box.center = new Vector3(Inner.center.x, Floor + h / 2f, Inner.center.z);
+        return box;
+    }
+
+    // Estoque inicial do protótipo (unidades FÍSICAS, finitas). Posições no espaço local da gaveta, dentro de Inner
+    // (0,576 x 0,488): placa-mãe = 2 (cada uma tem 25 x 25 cm; 3 não cabem lado a lado nem empilhadas no fundo).
+    private static readonly (string label, Item[] items)[] HardwareDrawers =
+    {
+        ("ram_cooler", new[] { new Item("Pickup_MemoriaRAM", 3, -0.15f, 0.19f, 0f, -0.07f), new Item("Pickup_Cooler", 2, 0.10f, 0.12f, 0.11f) }),
+        ("placa_mae", new[] { new Item("Pickup_PlacaMae", 2, -0.135f, 0.016f, 0.27f) }),
+        ("hd_fonte", new[] { new Item("Pickup_HD", 2, -0.22f, 0.10f, 0.12f), new Item("Pickup_Fonte", 2, 0.05f, 0.10f, 0.16f) }),
+        ("ferramentas", new[] { new Item("Pickup_Ferramenta", 2, -0.14f, 0.09f, 0.28f), new Item("Pickup_Pendrive", 1, 0f, 0.09f) }),
+    };
+    private static readonly (string label, Item[] items)[] CableDrawers =
+    {
+        ("energia", new[] { new Item("Pickup_CaboEnergia", 2, -0.14f, 0.13f, 0.28f) }),
+        ("vga", new[] { new Item("Pickup_CaboVideo", 2, -0.14f, 0.12f, 0.28f) }),
+        ("hdmi", new[] { new Item("Pickup_CaboHDMI", 2, -0.14f, 0.13f, 0.28f) }),
+        ("rede", new[] { new Item("Pickup_CaboRede", 2, -0.14f, 0.13f, 0.28f) }),
+    };
+
+    /// <summary>
+    /// Só reescreve o estoque (lista de itens de cada gaveta) dos prefabs já montados, sem remontar malhas, cena
+    /// ou gaveteiros. Menu: Tools > E-stagiar.io > Atualizar estoque das gavetas.
+    /// </summary>
+    [MenuItem("Tools/E-stagiar.io/Atualizar estoque das gavetas")]
+    public static void UpdateStock()
+    {
+        foreach (var (name, drawers) in new[] { ("Gaveteiro_Hardware", HardwareDrawers), ("Gaveteiro_Cabos", CableDrawers) })
+        {
+            string path = Gameplay + name + ".prefab";
+            GameObject root = PrefabUtility.LoadPrefabContents(path);
+            for (int d = 0; d < drawers.Length; d++)
+                WriteEntries(root.transform.Find("Gaveta_" + (d + 1)).GetComponent<DrawerContents>(), drawers[d].items);
+            PrefabUtility.SaveAsPrefabAsset(root, path);
+            PrefabUtility.UnloadPrefabContents(root);
+        }
+        AssetDatabase.SaveAssets();
+    }
+
+    private static void WriteEntries(DrawerContents contents, Item[] items)
+    {
+        var cso = new SerializedObject(contents);
+        SerializedProperty list = cso.FindProperty("entries");
+        list.arraySize = items.Length;
+        for (int i = 0; i < items.Length; i++)
+        {
+            SerializedProperty e = list.GetArrayElementAtIndex(i);
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Gameplay + items[i].prefab + ".prefab");
+            e.FindPropertyRelative("prefab").objectReferenceValue = prefab.GetComponent<PickupInteractable>();
+            e.FindPropertyRelative("quantity").intValue = items[i].qty;
+            e.FindPropertyRelative("delivery").intValue = (int)DrawerContents.Delivery.PhysicalInDrawer;
+            e.FindPropertyRelative("localPosition").vector3Value = items[i].pos;
+            e.FindPropertyRelative("localEuler").vector3Value = new Vector3(0, items[i].yaw, 0);
+            e.FindPropertyRelative("step").vector3Value = items[i].step;
+        }
+        cso.ApplyModifiedPropertiesWithoutUndo();
+    }
+
     private const string Meshes = "Assets/Art/Meshes/";
     private const string Mats = "Assets/Art/Materials/";
     private const string Labels = "Assets/Art/Textures/Plaquinhas/";
@@ -51,20 +124,8 @@ public static class GaveteirosSetup
         Mesh plate = SaveMesh(BuildPlate(), "Gaveteiro_Plaquinha");
         FitCables();
 
-        var hardware = BuildCabinet("Gaveteiro_Hardware", "hardware", body, drawer, handle, plate, new[]
-        {
-            ("ram_cooler", new[] { new Item("Pickup_MemoriaRAM", 3, -0.15f, 0.19f, 0f, -0.07f), new Item("Pickup_Cooler", 1, 0.15f, 0.12f) }),
-            ("placa_mae", new[] { new Item("Pickup_PlacaMae", 1, 0f, 0.08f) }),
-            ("hd_fonte", new[] { new Item("Pickup_HD", 1, -0.14f, 0.10f), new Item("Pickup_Fonte", 1, 0.13f, 0.10f) }),
-            ("ferramentas", new[] { new Item("Pickup_Ferramenta", 2, -0.14f, 0.09f, 0.28f) }),
-        });
-        var cables = BuildCabinet("Gaveteiro_Cabos", "cabos", body, drawer, handle, plate, new[]
-        {
-            ("energia", new[] { new Item("Pickup_CaboEnergia", 2, -0.14f, 0.13f, 0.28f) }),
-            ("vga", new[] { new Item("Pickup_CaboVideo", 1, 0f, 0.12f) }),
-            ("hdmi", new[] { new Item("Pickup_CaboHDMI", 1, 0f, 0.13f) }),
-            ("rede", new[] { new Item("Pickup_CaboRede", 2, -0.14f, 0.13f, 0.28f) }),
-        });
+        var hardware = BuildCabinet("Gaveteiro_Hardware", "hardware", body, drawer, handle, plate, HardwareDrawers);
+        var cables = BuildCabinet("Gaveteiro_Cabos", "cabos", body, drawer, handle, plate, CableDrawers);
         ConfigureScene(hardware, cables);
         AssetDatabase.SaveAssets();
         Debug.Log("GaveteirosSetup: concluído.");
@@ -254,7 +315,7 @@ public static class GaveteirosSetup
     }
 
     // ------------------------------------------------------------------ cabos (cabem na gaveta)
-    /// <summary>Os modelos dos cabos (placeholders) tinham ~1,2 m: o Visual é reduzido para um rolo de ~13,5 cm.</summary>
+    /// <summary>Os modelos dos cabos (placeholders) tinham ~1,2 m: o Visual é reduzido para um rolo de até ~15 cm (os rolos atuais, de cabos.fbx, já cabem e não mudam).</summary>
     private static void FitCables()
     {
         foreach (string name in new[] { "Pickup_CaboEnergia", "Pickup_CaboVideo", "Pickup_CaboHDMI", "Pickup_CaboRede" })
@@ -263,7 +324,7 @@ public static class GaveteirosSetup
             GameObject root = PrefabUtility.LoadPrefabContents(path);
             Transform visual = root.transform.Find("Visual");
             Bounds b = LocalBounds(root.transform, visual);
-            float k = Mathf.Min(0.135f / Mathf.Max(b.size.x, b.size.z), 0.10f / b.size.y);
+            float k = Mathf.Min(0.15f / Mathf.Max(b.size.x, b.size.z), 0.10f / b.size.y);
             if (k < 0.98f)
             {
                 visual.localScale *= k;
@@ -347,21 +408,11 @@ public static class GaveteirosSetup
 
             var contents = g.AddComponent<DrawerContents>();
             var cso = new SerializedObject(contents);
-            SerializedProperty list = cso.FindProperty("entries");
-            Item[] items = drawers[d].items;
-            list.arraySize = items.Length;
-            for (int i = 0; i < items.Length; i++)
-            {
-                SerializedProperty e = list.GetArrayElementAtIndex(i);
-                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Gameplay + items[i].prefab + ".prefab");
-                e.FindPropertyRelative("prefab").objectReferenceValue = prefab.GetComponent<PickupInteractable>();
-                e.FindPropertyRelative("quantity").intValue = items[i].qty;
-                e.FindPropertyRelative("delivery").intValue = (int)DrawerContents.Delivery.PhysicalInDrawer;
-                e.FindPropertyRelative("localPosition").vector3Value = items[i].pos;
-                e.FindPropertyRelative("localEuler").vector3Value = new Vector3(0, items[i].yaw, 0);
-                e.FindPropertyRelative("step").vector3Value = items[i].step;
-            }
+            cso.ApplyModifiedPropertiesWithoutUndo();
+            WriteEntries(contents, drawers[d].items);
+            cso.Update();
             cso.FindProperty("hideContentsWhenClosed").boolValue = true;
+            cso.FindProperty("storageArea").objectReferenceValue = StorageArea(g.transform);
             cso.ApplyModifiedPropertiesWithoutUndo();
         }
 

@@ -1,5 +1,58 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &543285885955347632
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4124132759574394751}
+  - component: {fileID: 4231710680133591554}
+  m_Layer: 0
+  m_Name: AreaGuardar
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4124132759574394751
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 543285885955347632}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2236400265939723536}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &4231710680133591554
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 543285885955347632}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.57600003, y: 0.238, z: 0.488}
+  m_Center: {x: 0, y: 0.046000004, z: 0.016000003}
 --- !u!1 &935296721820766430
 GameObject:
   m_ObjectHideFlags: 0
@@ -365,6 +418,7 @@ Transform:
   - {fileID: 8655140681490584092}
   - {fileID: 2291579318564243582}
   - {fileID: 580335887262392372}
+  - {fileID: 4124132759574394751}
   m_Father: {fileID: 1687755206346303347}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!65 &8562470732621326150
@@ -457,7 +511,14 @@ MonoBehaviour:
     localPosition: {x: -0.14, y: -0.071, z: 0.09}
     localEuler: {x: 0, y: 0, z: 0}
     step: {x: 0.28, y: 0, z: 0}
+  - prefab: {fileID: 2176237405103854348, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+    quantity: 1
+    delivery: 0
+    localPosition: {x: 0, y: -0.071, z: 0.09}
+    localEuler: {x: 0, y: 0, z: 0}
+    step: {x: 0, y: 0, z: 0}
   hideContentsWhenClosed: 1
+  storageArea: {fileID: 4231710680133591554}
   onEmptied:
     m_PersistentCalls:
       m_Calls: []
@@ -677,6 +738,7 @@ Transform:
   - {fileID: 891996219830912393}
   - {fileID: 312746503130081714}
   - {fileID: 311471877409211360}
+  - {fileID: 1022420518130532594}
   m_Father: {fileID: 1687755206346303347}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!65 &5886257041863974064
@@ -770,12 +832,13 @@ MonoBehaviour:
     localEuler: {x: 0, y: 0, z: 0}
     step: {x: 0, y: 0, z: -0.07}
   - prefab: {fileID: 3514500410686463147, guid: 46a1f35976c0c7c4286b12d4a23adadb, type: 3}
-    quantity: 1
+    quantity: 2
     delivery: 0
-    localPosition: {x: 0.15, y: -0.071, z: 0.12}
+    localPosition: {x: 0.1, y: -0.071, z: 0.12}
     localEuler: {x: 0, y: 0, z: 0}
-    step: {x: 0, y: 0, z: 0}
+    step: {x: 0.11, y: 0, z: 0}
   hideContentsWhenClosed: 1
+  storageArea: {fileID: 8085845016897759625}
   onEmptied:
     m_PersistentCalls:
       m_Calls: []
@@ -1050,6 +1113,112 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &5314660038038979775
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3476106067464956514}
+  - component: {fileID: 6516161115142064908}
+  m_Layer: 0
+  m_Name: AreaGuardar
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3476106067464956514
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5314660038038979775}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8990376944251111624}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &6516161115142064908
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5314660038038979775}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.57600003, y: 0.238, z: 0.488}
+  m_Center: {x: 0, y: 0.046000004, z: 0.016000003}
+--- !u!1 &5458556388902835261
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6361926553219691408}
+  - component: {fileID: 956702298998526405}
+  m_Layer: 0
+  m_Name: AreaGuardar
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6361926553219691408
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5458556388902835261}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8191429503927763424}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &956702298998526405
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5458556388902835261}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.57600003, y: 0.238, z: 0.488}
+  m_Center: {x: 0, y: 0.046000004, z: 0.016000003}
 --- !u!1 &5595208809146892114
 GameObject:
   m_ObjectHideFlags: 0
@@ -1140,6 +1309,59 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &6755384961786689572
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1022420518130532594}
+  - component: {fileID: 8085845016897759625}
+  m_Layer: 0
+  m_Name: AreaGuardar
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1022420518130532594
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6755384961786689572}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5684444680554919084}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &8085845016897759625
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6755384961786689572}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.57600003, y: 0.238, z: 0.488}
+  m_Center: {x: 0, y: 0.046000004, z: 0.016000003}
 --- !u!1 &7150537546137804520
 GameObject:
   m_ObjectHideFlags: 0
@@ -1265,6 +1487,7 @@ Transform:
   - {fileID: 6158310785756143533}
   - {fileID: 6084451238071727370}
   - {fileID: 8887461223009171132}
+  - {fileID: 6361926553219691408}
   m_Father: {fileID: 1687755206346303347}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!65 &7129194054544053960
@@ -1352,18 +1575,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DrawerContents
   entries:
   - prefab: {fileID: 3514500410686463147, guid: 815cfbed6bfc21a4ca00a5379c802cad, type: 3}
-    quantity: 1
+    quantity: 2
     delivery: 0
-    localPosition: {x: -0.14, y: -0.071, z: 0.1}
+    localPosition: {x: -0.22, y: -0.071, z: 0.1}
     localEuler: {x: 0, y: 0, z: 0}
-    step: {x: 0, y: 0, z: 0}
+    step: {x: 0.12, y: 0, z: 0}
   - prefab: {fileID: 3514500410686463147, guid: ba8651c63bed64a44bfa61c5a7a1f80f, type: 3}
-    quantity: 1
+    quantity: 2
     delivery: 0
-    localPosition: {x: 0.13, y: -0.071, z: 0.1}
+    localPosition: {x: 0.05, y: -0.071, z: 0.1}
     localEuler: {x: 0, y: 0, z: 0}
-    step: {x: 0, y: 0, z: 0}
+    step: {x: 0.16, y: 0, z: 0}
   hideContentsWhenClosed: 1
+  storageArea: {fileID: 956702298998526405}
   onEmptied:
     m_PersistentCalls:
       m_Calls: []
@@ -1402,6 +1626,7 @@ Transform:
   - {fileID: 2966414699763841252}
   - {fileID: 6997906337793987360}
   - {fileID: 5863299721255969176}
+  - {fileID: 3476106067464956514}
   m_Father: {fileID: 1687755206346303347}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!65 &4609087044494965129
@@ -1489,12 +1714,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DrawerContents
   entries:
   - prefab: {fileID: 5685848229411537940, guid: f51d0a7c463b55a47bfc12a3f86efcef, type: 3}
-    quantity: 1
+    quantity: 2
     delivery: 0
-    localPosition: {x: 0, y: -0.071, z: 0.08}
+    localPosition: {x: -0.135, y: -0.071, z: 0.016}
     localEuler: {x: 0, y: 0, z: 0}
-    step: {x: 0, y: 0, z: 0}
+    step: {x: 0.27, y: 0, z: 0}
   hideContentsWhenClosed: 1
+  storageArea: {fileID: 6516161115142064908}
   onEmptied:
     m_PersistentCalls:
       m_Calls: []

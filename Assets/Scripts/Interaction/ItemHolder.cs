@@ -11,11 +11,16 @@ public class ItemHolder : MonoBehaviour
     [SerializeField] private GameObject armVisual;
     [SerializeField] private bool showArmOnlyWhileHolding = false;
 
-    [Header("Soltar")]
-    [SerializeField] private float dropDistance = 1.5f;
-    [SerializeField] private float minDropDistance = 0.6f;
-    [SerializeField] private float maxGroundSearch = 6f;
+    [Header("Soltar (clique esquerdo com item na mão)")]
+    [Tooltip("Alcance (m) da mira para guardar numa gaveta ou colocar numa superfície.")]
+    [SerializeField] private float placeReach = 2.5f;
+    [Tooltip("Inclinação mínima da superfície mirada (normal.y) para colocar o item nela (1 = plana).")]
+    [Range(0f, 1f)] [SerializeField] private float minSurfaceUp = 0.6f;
     [SerializeField] private LayerMask placementMask = ~0;
+    [Tooltip("Soltar sem destino: distância horizontal (m) à frente dos olhos onde o item começa a cair (+ o raio do item).")]
+    [SerializeField] private float releaseAhead = 0.6f;
+    [Tooltip("Soltar sem destino: quanto abaixo dos olhos (m) o item começa a cair.")]
+    [SerializeField] private float releaseBelowEyes = 0.3f;
 
     public PickupInteractable Current { get; private set; }
     public bool IsHolding => Current != null;
@@ -32,35 +37,83 @@ public class ItemHolder : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// Clique esquerdo com item na mão, conforme a MIRA (centro da câmera):
+    ///  - gaveta aberta e compatível → guarda dentro dela (<see cref="DrawerContents.TryStore"/>); gaveta cheia ou
+    ///    de outro tipo de item → não solta (o item continua na mão);
+    ///  - superfície horizontal ao alcance (mesa, chão...) → coloca ali;
+    ///  - nada disso → o item sai da mão e cai pela física (sem ir parar num lugar arbitrário).
+    /// </summary>
     public void Drop()
     {
         if (!IsHolding) return;
         PickupInteractable item = Current;
-        Current = null;
-
         Transform cam = holdPoint.parent != null ? holdPoint.parent : holdPoint;
-        Vector3 forward = Vector3.ProjectOnPlane(cam.forward, Vector3.up).normalized;
-        if (forward.sqrMagnitude < 0.01f) forward = Vector3.ProjectOnPlane(cam.up, Vector3.up).normalized;
 
-        // Distância à frente, sem atravessar paredes.
-        Vector3 origin = cam.position;
-        float radius = item.HorizontalRadius;
-        float distance = dropDistance;
-        if (Physics.Raycast(origin, forward, out RaycastHit wall, dropDistance + radius, placementMask,
-                QueryTriggerInteraction.Ignore))
-            distance = Mathf.Clamp(wall.distance - radius, minDropDistance, dropDistance);
-
-        Vector3 spot = origin + forward * distance;
-
-        // Apoia no chão/superfície abaixo.
-        float groundY = spot.y - maxGroundSearch;
-        if (Physics.Raycast(spot, Vector3.down, out RaycastHit ground, maxGroundSearch, placementMask,
-                QueryTriggerInteraction.Ignore))
-            groundY = ground.point.y;
-        spot.y = groundY;
-
-        item.OnDropped(spot, cam.eulerAngles.y);
+        Target target = Aim(cam, out RaycastHit hit, out DrawerContents drawer);
+        if (target == Target.Drawer)
+        {
+            if (!drawer.TryStore(item, hit.point)) return;   // incompatível ou sem espaço: continua na mão
+            Current = null;
+        }
+        else if (target == Target.Surface)
+        {
+            Current = null;
+            item.OnPlaced(hit.point, cam.eulerAngles.y, PlayerColliders);
+        }
+        else
+        {
+            Current = null;
+            item.OnReleased(cam.position, PlayerColliders, ReleasePoint(cam, item));
+        }
         RefreshArm();
+    }
+
+    private enum Target { None, Drawer, Surface }
+
+    /// <summary>
+    /// Onde o item solto sem destino começa a cair: à frente do jogador na horizontal (fora da cápsula, mais longe
+    /// para peças grandes), um pouco abaixo dos olhos. Obstáculos no caminho são tratados por OnReleased (recua).
+    /// </summary>
+    private Vector3 ReleasePoint(Transform cam, PickupInteractable item)
+    {
+        Vector3 flat = Vector3.ProjectOnPlane(cam.forward, Vector3.up);
+        if (flat.sqrMagnitude < 0.01f) flat = Vector3.ProjectOnPlane(cam.up, Vector3.up);
+        float ahead = releaseAhead + item.HorizontalRadius;
+        return cam.position + flat.normalized * ahead + Vector3.down * releaseBelowEyes;
+    }
+
+    // Colliders do próprio jogador (CharacterController...): o item solto não colide com eles até se afastar.
+    private Collider[] PlayerColliders =>
+        System.Array.FindAll(GetComponentsInChildren<Collider>(), c => !c.transform.IsChildOf(holdPoint));
+
+    /// <summary>O que está na mira: área de guardar de uma gaveta aberta, uma superfície horizontal, ou nada.</summary>
+    private Target Aim(Transform cam, out RaycastHit hit, out DrawerContents drawer)
+    {
+        drawer = null;
+        hit = default;
+        RaycastHit[] hits = Physics.RaycastAll(cam.position, cam.forward, placeReach, placementMask, QueryTriggerInteraction.Collide);
+        System.Array.Sort(hits, (x, y) => x.distance.CompareTo(y.distance));
+        foreach (RaycastHit h in hits)
+        {
+            if (h.collider.transform.IsChildOf(transform)) continue;                 // o próprio jogador
+            DrawerContents d = h.collider.GetComponentInParent<DrawerContents>();
+            if (h.collider.isTrigger)
+            {
+                if (d == null || d.StorageArea != h.collider || !d.IsOpenForStorage) continue;  // outros gatilhos não contam
+                hit = h; drawer = d;
+                return Target.Drawer;
+            }
+            // mirando um item que já está dentro de uma gaveta aberta = a gaveta
+            if (d != null && d.IsOpenForStorage && d.StorageContains(h.point))
+            {
+                hit = h; drawer = d;
+                return Target.Drawer;
+            }
+            if (h.normal.y >= minSurfaceUp) { hit = h; return Target.Surface; }
+            return Target.None;                                                      // parede/lado de móvel: cai
+        }
+        return Target.None;
     }
 
     /// <summary>
@@ -73,6 +126,7 @@ public class ItemHolder : MonoBehaviour
         PickupInteractable item = Current;
         Current = null;
         item.OnDropped(storePosition, 0f);
+        item.MarkInEquipment();
         item.gameObject.SetActive(false);
         RefreshArm();
         return item;

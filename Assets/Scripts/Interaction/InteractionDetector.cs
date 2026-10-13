@@ -97,7 +97,7 @@ public class InteractionDetector : MonoBehaviour
 
         Transform cam = playerCamera.transform;
         var ray = new Ray(cam.position, cam.forward);
-        bool hitSomething = Physics.Raycast(ray, out RaycastHit hit, interactionDistance, interactionMask, QueryTriggerInteraction.Ignore);
+        bool hitSomething = RaycastIgnoringSelf(ray, out RaycastHit hit);
         if (hitSomething) Collect(hit.collider, holding);
 
         // Ajuda de mira: só se o raio exato não achou nada, e sem ir além do que ele atingiu (paredes bloqueiam).
@@ -110,6 +110,7 @@ public class InteractionDetector : MonoBehaviour
             {
                 RaycastHit h = sphereHits[i];
                 if (h.distance <= 0f || h.distance >= best) continue; // distância 0 = começou dentro do collider
+                if (IsSelf(h.collider)) continue;
                 if (h.collider.GetComponentInParent<Interactable>() == null) continue;
                 best = h.distance;
                 primary = secondary = null;
@@ -131,6 +132,26 @@ public class InteractionDetector : MonoBehaviour
             if (!holding && lastPrimary != null && lastPrimary.CanInteract(this)) primary = lastPrimary;
             if (lastSecondary != null && lastSecondary.CanInteractSecondary(this)) secondary = lastSecondary;
         }
+    }
+
+    private readonly RaycastHit[] rayHits = new RaycastHit[16];
+
+    // O próprio jogador (CharacterController, cápsula) não bloqueia a mira: a câmera fica na borda do topo da cápsula
+    // e, olhando para baixo, o raio saía por ela e parava a poucos centímetros do olho.
+    private bool IsSelf(Collider c) => c.transform.IsChildOf(transform);
+
+    private bool RaycastIgnoringSelf(Ray ray, out RaycastHit hit)
+    {
+        hit = default;
+        int n = Physics.RaycastNonAlloc(ray, rayHits, interactionDistance, interactionMask, QueryTriggerInteraction.Ignore);
+        float best = float.PositiveInfinity;
+        for (int i = 0; i < n; i++)
+        {
+            if (rayHits[i].distance >= best || IsSelf(rayHits[i].collider)) continue;
+            best = rayHits[i].distance;
+            hit = rayHits[i];
+        }
+        return best < float.PositiveInfinity;
     }
 
     private void Collect(Collider collider, bool holding)
