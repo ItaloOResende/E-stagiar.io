@@ -303,4 +303,5 @@ def main():
     print("EXPORTADO", out_fbx)
 
 
-main()
+if __name__ == "__main__":   # importável (render dos plugues reaproveitado por componentes_build)
+    main()

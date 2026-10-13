@@ -18,6 +18,13 @@ public class UIScreenManager : MonoBehaviour
     [SerializeField] private Transform screenRoot;
     [Tooltip("Componentes desligados enquanto uma tela está aberta (ex.: PlayerLook, PlayerMovement).")]
     [SerializeField] private Behaviour[] disableWhileOpen;
+    [Header("Cursor das telas")]
+    [Tooltip("Cursor padrão (mãozinha) em TODAS as telas abertas. Uma tela pode trocá-lo enquanto aberta " +
+             "(ex.: chave de fenda na traseira do PC) e voltar a ele com ApplyDefaultCursor.")]
+    [SerializeField] private Texture2D defaultCursor;
+    [Tooltip("Ponta do cursor, em pixels da textura (origem no canto superior esquerdo).")]
+    [SerializeField] private Vector2 defaultCursorHotspot;
+    [SerializeField] private int defaultCursorHeight = 48;
     [Tooltip("Mãozinha do HUD: escondida enquanto a tela está aberta.")]
     [SerializeField] private GameObject handCursor;
     [SerializeField] private bool closeWithEscape = true;
@@ -54,6 +61,7 @@ public class UIScreenManager : MonoBehaviour
         if (handCursor != null) handCursor.SetActive(false);
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
+        ApplyDefaultCursor();   // antes de mostrar: a tela pode trocar o cursor ao abrir
         instance.transform.SetAsLastSibling();
         instance.Show(this);
         return true;
@@ -66,9 +74,17 @@ public class UIScreenManager : MonoBehaviour
         current = null;
         closedFrame = Time.frameCount;
         closing.Hide();
+        UICursor.Reset();       // fora das telas, nenhum cursor personalizado fica ativo
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
         StartCoroutine(RestorePlayerNextFrame());
+    }
+
+    /// <summary>Volta ao cursor padrão das telas (mãozinha); sem textura configurada, o do sistema.</summary>
+    public void ApplyDefaultCursor()
+    {
+        if (defaultCursor != null) UICursor.Set(defaultCursor, defaultCursorHotspot, defaultCursorHeight);
+        else UICursor.Reset();
     }
 
     private void Update()

@@ -11,7 +11,12 @@ public class MonitorDisplay : MonoBehaviour
     [SerializeField] private ComputerPower source;
     [Tooltip("Renderer da tela. Vazio = o deste objeto.")]
     [SerializeField] private Renderer screenRenderer;
+    [Tooltip("BIOS sem nenhum HD.")]
     [SerializeField] private Texture biosTexture;
+    [Tooltip("BIOS com HD sem sistema ('No bootable device'). Vazio = usa a BIOS.")]
+    [SerializeField] private Texture noBootableTexture;
+    [Tooltip("Instalação pelo pendrive: uma textura por etapa. Vazio = usa a BIOS.")]
+    [SerializeField] private Texture[] installTextures = new Texture[0];
     [SerializeField] private Texture operatingSystemTexture;
     [Tooltip("Sistema com o cabo de rede ligado. Vazio = usa a textura do sistema.")]
     [SerializeField] private Texture onlineTexture;
@@ -35,6 +40,7 @@ public class MonitorDisplay : MonoBehaviour
         {
             source.PowerStateChanged += Show;
             source.ConnectionsChanged += Refresh;
+            source.DisplayChanged += Refresh;
         }
         Refresh();
     }
@@ -44,6 +50,7 @@ public class MonitorDisplay : MonoBehaviour
         if (source == null) return;
         source.PowerStateChanged -= Show;
         source.ConnectionsChanged -= Refresh;
+        source.DisplayChanged -= Refresh;
     }
 
     private void Refresh() => Show(source != null ? source.State : PcPowerState.Off);
@@ -57,6 +64,12 @@ public class MonitorDisplay : MonoBehaviour
 
         Texture tex = state == PcPowerState.Bios ? biosTexture : state == PcPowerState.OperatingSystem ? operatingSystemTexture : null;
         if (state == PcPowerState.OperatingSystem && onlineTexture != null && source != null && source.NetworkConnected) tex = onlineTexture;
+        if (state == PcPowerState.Bios && source != null)
+        {
+            if (source.Screen == PcScreen.NoBootableDevice && noBootableTexture != null) tex = noBootableTexture;
+            else if (source.Screen == PcScreen.Installing && installTextures.Length > 0)
+                tex = installTextures[Mathf.Clamp(source.InstallStage, 0, installTextures.Length - 1)];
+        }
         block.SetTexture(BaseMapId, tex != null ? tex : Texture2D.whiteTexture);
         block.SetColor(BaseColorId, tex != null ? Color.white : offColor);
         screenRenderer.SetPropertyBlock(block);

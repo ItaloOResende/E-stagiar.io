@@ -29,7 +29,9 @@ public enum PartSlotResult
     MissingBase,
     /// <summary>Há peças montadas sobre esta (tire a RAM e o cooler antes da placa-mãe).</summary>
     BlockedByParts,
-    Invalid
+    Invalid,
+    /// <summary>A peça da mão está quebrada (caiu demais): não é instalada. Valor novo no fim (prefabs guardam o número).</summary>
+    BrokenPart
 }
 
 /// <summary>Componentes internos que um gabinete pode ter (cada um presente ou ausente de forma independente).</summary>
@@ -86,6 +88,9 @@ public class ComputerCase : MonoBehaviour
     [SerializeField] private int componentSeed;
     [Tooltip("Componentes usados quando o sorteio está desligado.")]
     [SerializeField] private PcComponent fixedComponents = AllComponents;
+    [Tooltip("O HD que já vem no gabinete (sorteado/fixo) tem o sistema operacional instalado. Ligado = PC pronto para usar; " +
+             "desligado = o jogador precisa instalar o sistema pelo pendrive. HDs novos (gaveta) sempre vêm vazios.")]
+    [SerializeField] private bool startingHddHasOperatingSystem = true;
 
     [Header("Itens devolvidos ao retirar peças que já vieram no gabinete")]
     [Tooltip("Prefab (Pickup + ComputerPartItem) criado UMA vez quando o jogador retira a placa-mãe sorteada/fixa. Vazio = não dá para retirar.")]
@@ -103,6 +108,9 @@ public class ComputerCase : MonoBehaviour
     private bool componentsResolved;
     // Objeto físico de cada peça instalada pelo jogador (desativado enquanto está no gabinete).
     private readonly Dictionary<PcComponent, GameObject> installedItems = new Dictionary<PcComponent, GameObject>();
+    // Sistema no HD que veio no gabinete (sem objeto até ser retirado).
+    private bool builtInHddHasOs;
+    private bool builtInHddResolved;
 
     /// <summary>Disparado com o índice do parafuso removido.</summary>
     public event Action<int> ScrewRemoved;
@@ -155,6 +163,44 @@ public class ComputerCase : MonoBehaviour
 
     public bool HasComponent(PcComponent component) => component != PcComponent.None && (Components & component) == component;
 
+    /// <summary>Há um HD instalado e o sistema operacional está gravado nele.</summary>
+    public bool HddHasOperatingSystem
+    {
+        get
+        {
+            if (!HasComponent(PcComponent.Hdd)) return false;
+            if (installedItems.TryGetValue(PcComponent.Hdd, out GameObject item) && item != null)
+                return item.TryGetComponent(out ComputerPartItem part) && part.HasOperatingSystem && !part.IsBroken;  // HD quebrado não dá boot
+            return BuiltInHddHasOs;
+        }
+    }
+
+    private bool BuiltInHddHasOs
+    {
+        get
+        {
+            if (!builtInHddResolved) { builtInHddHasOs = startingHddHasOperatingSystem; builtInHddResolved = true; }
+            return builtInHddHasOs;
+        }
+    }
+
+    /// <summary>Grava o sistema operacional no HD instalado. Falso se não houver HD.</summary>
+    public bool InstallOperatingSystem()
+    {
+        if (!HasComponent(PcComponent.Hdd)) return false;
+        if (installedItems.TryGetValue(PcComponent.Hdd, out GameObject item) && item != null)
+        {
+            if (!item.TryGetComponent(out ComputerPartItem part)) return false;
+            part.HasOperatingSystem = true;
+        }
+        else
+        {
+            builtInHddHasOs = true;
+            builtInHddResolved = true;
+        }
+        return true;
+    }
+
     /// <summary>Um único componente instalável (não None nem combinação).</summary>
     public static bool IsSingleComponent(PcComponent c) =>
         c != PcComponent.None && (c & AllComponents) == c && (c & (c - 1)) == 0;
@@ -190,8 +236,13 @@ public class ComputerCase : MonoBehaviour
     }
 
     /// <summary>Fixa os componentes desta instância (ex.: configuração de um chamado), sem sorteio.</summary>
-    public void SetComponents(PcComponent value)
+    public void SetComponents(PcComponent value) => SetComponents(value, startingHddHasOperatingSystem);
+
+    /// <summary>Fixa os componentes e se o HD que vem no gabinete já tem o sistema operacional (cenário/chamado).</summary>
+    public void SetComponents(PcComponent value, bool hddHasOperatingSystem)
     {
+        builtInHddHasOs = hddHasOperatingSystem;
+        builtInHddResolved = true;
         components = Sanitize(value);
         componentsResolved = true;
         installedItems.Clear();
@@ -221,6 +272,9 @@ public class ComputerCase : MonoBehaviour
                 GameObject prefab = ItemPrefabFor(slot);
                 if (prefab == null) return PartSlotResult.NoItemToReturn;
                 item = Instantiate(prefab, transform.position, Quaternion.identity);
+                // O HD que veio no gabinete leva o sistema com ele (o sistema é da unidade, não do PC).
+                if (slot == PcComponent.Hdd && item.TryGetComponent(out ComputerPartItem part))
+                    part.HasOperatingSystem = BuiltInHddHasOs;
             }
             installedItems.Remove(slot);
             components &= ~slot;
@@ -231,6 +285,7 @@ public class ComputerCase : MonoBehaviour
 
         if (heldPart == null) return PartSlotResult.NeedsPart;
         if (heldPart.Component != slot) return PartSlotResult.WrongPart;
+        if (heldPart.IsBroken) return PartSlotResult.BrokenPart;
         if (!IsSlotAvailable(slot)) return PartSlotResult.MissingBase;
 
         components |= slot;

@@ -32,7 +32,12 @@ public class ComputerScreenController : MonoBehaviour
     [SerializeField] private GameObject powerLed;
     [Tooltip("Imagem sobre a área da tela do monitor, na vista da frente.")]
     [SerializeField] private Image monitorScreen;
+    [Tooltip("BIOS sem nenhum HD (nenhum dispositivo de armazenamento).")]
     [SerializeField] private Sprite biosScreen;
+    [Tooltip("BIOS com HD detectado mas sem sistema ('No bootable device found'). Vazio = usa a BIOS.")]
+    [SerializeField] private Sprite noBootableScreen;
+    [Tooltip("Instalação do sistema pelo pendrive: uma imagem por etapa (ComputerPower.InstallStages).")]
+    [SerializeField] private Sprite[] installScreens = new Sprite[0];
     [SerializeField] private Sprite operatingSystemScreen;
     [Tooltip("Sistema operacional com o cabo de rede ligado. Vazio = usa a tela do sistema.")]
     [SerializeField] private Sprite onlineScreen;
@@ -42,6 +47,8 @@ public class ComputerScreenController : MonoBehaviour
     [SerializeField] private List<ComputerPortView> ports = new List<ComputerPortView>();
     [Tooltip("Uma faixa por cabo (energia do PC, energia do monitor, VGA, HDMI, rede); cada uma diz o seu cabo.")]
     [SerializeField] private List<CableLineView> cableLines = new List<CableLineView>();
+    [Tooltip("Portas USB da Traseira (pendrive).")]
+    [SerializeField] private List<UsbPortView> usbPorts = new List<UsbPortView>();
 
     [Header("Encaixes de peças (interior)")]
     [SerializeField] private List<ComputerSlotView> slots = new List<ComputerSlotView>();
@@ -50,20 +57,18 @@ public class ComputerScreenController : MonoBehaviour
     [SerializeField] private Button backButton;
     [SerializeField] private Button nextButton;
 
-    [Header("Configuração de Cursores")]
-    [Tooltip("Cursor de mão para as telas de Frente e Interior.")]
+    [Header("Cursores")]
+    [Tooltip("Mãozinha, usada só se a tela não tiver UIScreenManager com cursor padrão (o normal é o do gerenciador).")]
     [SerializeField] private Texture2D handCursor;
     [SerializeField] private Vector2 handCursorHotspot;
+    [SerializeField] private int handCursorHeight = 48;
 
-    [Tooltip("Cursor de chave de fenda para a tela Traseira.")]
+    [Tooltip("Cursor de chave de fenda: só na Traseira e só com a chave de fenda na mão do jogador.")]
     [SerializeField] private Texture2D rearCursor;
+    [Tooltip("Ponta da chave, em pixels da textura (origem no canto superior esquerdo).")]
     [SerializeField] private Vector2 rearCursorHotspot;
-
-    [Header("Tamanho dos Cursores")]
-    [Tooltip("Deseja redimensionar os cursores por script para deixá-los maiores?")]
-    [SerializeField] private bool enableCustomCursorSize = true;
-    [SerializeField] private int cursorWidth = 64;
-    [SerializeField] private int cursorHeight = 64;
+    [Tooltip("Altura do cursor de chave de fenda em relação ao parafuso na tela (ex.: 4 = 4x o diâmetro do parafuso).")]
+    [SerializeField] private float screwdriverToScrewRatio = 4f;
 
     private UIScreen screen;
     private ComputerCase boundCase;
@@ -73,6 +78,8 @@ public class ComputerScreenController : MonoBehaviour
     // Cabo cuja 1ª ponta acabou de ser conectada: a ponta livre segue o mouse até a outra porta.
     private PcLink? carriedLink;
     private readonly List<ScrewView> views = new List<ScrewView>();
+    // Última vista de cada gabinete: ao reabrir a tela, volta onde o jogador parou (só durante a execução).
+    private readonly Dictionary<ComputerCase, ComputerView> lastViews = new Dictionary<ComputerCase, ComputerView>();
 
     public ComputerView CurrentView => current;
 
@@ -84,6 +91,7 @@ public class ComputerScreenController : MonoBehaviour
         if (powerButton != null) powerButton.onClick.AddListener(PressPower);
         foreach (ComputerPortView p in ports) if (p != null) p.Init(OnPortClicked);
         foreach (ComputerSlotView v in slots) if (v != null) v.Init(OnSlotClicked);
+        foreach (UsbPortView u in usbPorts) if (u != null) u.Init(OnUsbClicked);
     }
 
     private void OnEnable()
@@ -103,13 +111,15 @@ public class ComputerScreenController : MonoBehaviour
             BuildScrewViews();
         }
         Subscribe();
-        ShowView(ComputerView.Front);
+        // Interior só se a tampa ainda estiver aberta (ShowView cai para a Traseira se não estiver).
+        ShowView(lastViews.TryGetValue(found, out ComputerView last) ? last : ComputerView.Front);
     }
 
     private void OnDisable()
     {
+        if (boundPower != null) boundPower.InstallPaused = false;   // tela fechada: segue no monitor 3D
         Unsubscribe();
-        Cursor.SetCursor(null, Vector2.zero, CursorMode.Auto);
+        UICursor.Reset();
     }
 
     private void Subscribe()
@@ -121,6 +131,7 @@ public class ComputerScreenController : MonoBehaviour
         {
             boundPower.PowerStateChanged += HandlePowerState;
             boundPower.ConnectionsChanged += RefreshHardware;
+            boundPower.DisplayChanged += RefreshScreen;
         }
         subscribed = true;
     }
@@ -134,6 +145,7 @@ public class ComputerScreenController : MonoBehaviour
         {
             boundPower.PowerStateChanged -= HandlePowerState;
             boundPower.ConnectionsChanged -= RefreshHardware;
+            boundPower.DisplayChanged -= RefreshScreen;
         }
         subscribed = false;
     }
@@ -188,6 +200,8 @@ public class ComputerScreenController : MonoBehaviour
     {
         if (view == ComputerView.Interior && boundCase.State != CaseState.Open) view = ComputerView.Rear;
         current = view;
+        lastViews[boundCase] = view;
+        if (boundPower != null) boundPower.InstallPaused = view != ComputerView.Front;
 
         if (frontView != null) frontView.SetActive(view == ComputerView.Front);
         if (rearView != null) rearView.SetActive(view == ComputerView.Rear);
@@ -219,6 +233,8 @@ public class ComputerScreenController : MonoBehaviour
             v.SetInstalled(boundCase.HasComponent(v.Slot));
         }
 
+        foreach (UsbPortView u in usbPorts)
+            if (u != null) u.SetPlugged(boundPower != null && boundPower.PendrivePort == u.Index);
         foreach (ComputerPortView p in ports)
             if (p != null) p.SetPlugged(boundPower != null && boundPower.IsPlugged(p.Port));
         foreach (CableLineView line in cableLines)
@@ -236,69 +252,64 @@ public class ComputerScreenController : MonoBehaviour
         }
 
         ShowScreen(boundPower != null ? boundPower.State : PcPowerState.Off);
+        if (isActiveAndEnabled) ApplyViewCursor(current);   // item na mão mudou (guardou/pegou algo)
     }
 
     private void HandlePowerState(PcPowerState state) => ShowScreen(state);
+
+    private void RefreshScreen() => ShowScreen(boundPower != null ? boundPower.State : PcPowerState.Off);
 
     private void ShowScreen(PcPowerState state)
     {
         if (powerLed != null && powerLed.activeSelf != (state != PcPowerState.Off)) powerLed.SetActive(state != PcPowerState.Off);
         if (monitorScreen == null) return;
-        Sprite s = state == PcPowerState.Bios ? biosScreen : state == PcPowerState.OperatingSystem ? operatingSystemScreen : null;
-        if (state == PcPowerState.OperatingSystem && onlineScreen != null && boundPower != null && boundPower.NetworkConnected)
-            s = onlineScreen;
+        Sprite s = null;
+        switch (boundPower != null ? boundPower.Screen : PcScreen.Off)
+        {
+            case PcScreen.NoStorage: s = biosScreen; break;
+            case PcScreen.NoBootableDevice: s = noBootableScreen != null ? noBootableScreen : biosScreen; break;
+            case PcScreen.Installing:
+                int i = boundPower.InstallStage;
+                s = installScreens.Length > 0 ? installScreens[Mathf.Clamp(i, 0, installScreens.Length - 1)] : biosScreen;
+                break;
+            case PcScreen.OperatingSystem:
+                s = onlineScreen != null && boundPower.NetworkConnected ? onlineScreen : operatingSystemScreen;
+                break;
+        }
         monitorScreen.sprite = s;
         monitorScreen.color = s != null ? Color.white : screenOffColor;
     }
 
+    /// <summary>
+    /// Mãozinha (padrão das telas) em todas as vistas; a chave de fenda só na Traseira e só se o jogador estiver
+    /// segurando a chave de fenda, no tamanho proporcional aos parafusos na tela.
+    /// </summary>
     private void ApplyViewCursor(ComputerView view)
     {
-        Texture2D targetTexture = null;
-        Vector2 targetHotspot = Vector2.zero;
-
-        // Traseira usa chave de fenda; Frente e Interior usam a mão
-        if (view == ComputerView.Rear)
-        {
-            targetTexture = rearCursor;
-            targetHotspot = rearCursorHotspot;
-        }
-        else
-        {
-            targetTexture = handCursor;
-            targetHotspot = handCursorHotspot;
-        }
-
-        if (targetTexture != null)
-        {
-            if (enableCustomCursorSize)
-            {
-                Texture2D resized = ResizeTexture(targetTexture, cursorWidth, cursorHeight);
-                Cursor.SetCursor(resized, targetHotspot, CursorMode.Auto);
-            }
-            else
-            {
-                Cursor.SetCursor(targetTexture, targetHotspot, CursorMode.Auto);
-            }
-        }
-        else
-        {
-            Cursor.SetCursor(null, Vector2.zero, CursorMode.Auto);
-        }
+        ToolItem tool = GetHeldToolItem();
+        bool screwdriver = view == ComputerView.Rear && rearCursor != null && tool != null && tool.Type == ToolType.Screwdriver;
+        if (screwdriver) UICursor.Set(rearCursor, rearCursorHotspot, ScrewdriverCursorHeight());
+        else if (screen != null && screen.Owner != null) screen.Owner.ApplyDefaultCursor();
+        else if (handCursor != null) UICursor.Set(handCursor, handCursorHotspot, handCursorHeight);
+        else UICursor.Reset();
     }
 
-    private Texture2D ResizeTexture(Texture2D source, int targetWidth, int targetHeight)
+    /// <summary>Altura (px) do cursor de chave de fenda: proporcional ao parafuso como aparece na tela agora.</summary>
+    public int ScrewdriverCursorHeight()
     {
-        RenderTexture rt = RenderTexture.GetTemporary(targetWidth, targetHeight);
-        RenderTexture.active = rt;
-        Graphics.Blit(source, rt);
-
-        Texture2D result = new Texture2D(targetWidth, targetHeight, TextureFormat.RGBA32, false);
-        result.ReadPixels(new Rect(0, 0, targetWidth, targetHeight), 0, 0);
-        result.Apply();
-
-        RenderTexture.active = null;
-        RenderTexture.ReleaseTemporary(rt);
-        return result;
+        float screwPx = 24f;
+        ScrewView v = views.Count > 0 ? views[0] : null;
+        if (v != null)
+        {
+            Canvas.ForceUpdateCanvases();
+            var corners = new Vector3[4];
+            ((RectTransform)v.transform).GetWorldCorners(corners);
+            Canvas canvas = v.GetComponentInParent<Canvas>();
+            Camera cam = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
+            float h = (RectTransformUtility.WorldToScreenPoint(cam, corners[1]) - RectTransformUtility.WorldToScreenPoint(cam, corners[0])).magnitude;
+            if (h > 1f) screwPx = h;
+        }
+        return Mathf.Clamp(Mathf.RoundToInt(screwPx * screwdriverToScrewRatio), 48, 320);
     }
 
     private ToolItem GetHeldToolItem()
@@ -328,6 +339,18 @@ public class ComputerScreenController : MonoBehaviour
         if (result == PortResult.PluggedFromHand) carriedLink = ComputerPower.LinkFor(port, out _);
         else if (result == PortResult.Unplugged) carriedLink = ComputerPower.LinkFor(port, out _); // segue a ponta que soltou
         RefreshHardware(); // o UsePort já atualizou a tela; de novo, agora sabendo qual cabo segue o mouse
+        if (result == PortResult.PluggedFromHand) holder.Stow(boundCase.transform.position);
+        else if (result == PortResult.CableReturned && holder != null) holder.Retrieve(back);
+    }
+
+    private void OnUsbClicked(int index)
+    {
+        if (boundPower == null) return;
+        ItemHolder holder = Holder;
+        PickupInteractable held = holder != null ? holder.Current : null;
+        PendriveItem pendrive = held != null ? held.GetComponentInParent<PendriveItem>() : null;
+
+        PortResult result = boundPower.UseUsbPort(index, pendrive, held != null, out GameObject back);
         if (result == PortResult.PluggedFromHand) holder.Stow(boundCase.transform.position);
         else if (result == PortResult.CableReturned && holder != null) holder.Retrieve(back);
     }

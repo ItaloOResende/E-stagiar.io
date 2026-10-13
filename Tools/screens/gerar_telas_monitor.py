@@ -1,5 +1,7 @@
 """
-Gera as telas do monitor (BIOS, sistema operacional sem rede e com rede) no mesmo formato da tela_no_signal do legado:
+Gera as telas do monitor no mesmo formato da tela_no_signal do legado:
+BIOS sem armazenamento (PH_ui_tela_bios), BIOS com HD sem sistema (PH_ui_tela_bios_sem_sistema), instalação do
+sistema pelo pendrive em etapas (PH_ui_tela_instalando_0..4) e sistema sem rede / com rede (PH_ui_tela_sistema[_rede]),
 640 x 320, pixel art (desenhado em 320 x 160 e ampliado 2x sem filtro).
 
 Criadas para o projeto, sem arte de terceiros. Fonte: DejaVu Sans Mono (licença livre Bitstream Vera/DejaVu,
@@ -34,8 +36,10 @@ def save(img, folder, name):
     print("gerado", name)
 
 
-def bios(folder):
+def bios(folder, hd_detectado=False):
+    """Sem HD: 'nenhum dispositivo de armazenamento'. HD vazio: detectado, mas 'No bootable device found'."""
     azul, cinza, branco, amarelo, vermelho = (0, 0, 170), (170, 170, 170), (255, 255, 255), (255, 255, 85), (255, 85, 85)
+    verde = (85, 255, 85)
     img, d = canvas(azul)
     f, fb = font(9), font(10)
     d.rectangle([0, 0, W, 13], fill=cinza)
@@ -48,7 +52,7 @@ def bios(folder):
         ("Cooler da CPU", "1200 RPM  OK", branco),
         ("Memória RAM", "4096 MB  OK", branco),
         ("Saída de vídeo", "VGA/HDMI  OK", branco),
-        ("Disco rígido (HD)", "NÃO ENCONTRADO", vermelho),
+        ("Disco rígido (HD)", "DETECTADO  500 GB" if hd_detectado else "NÃO ENCONTRADO", verde if hd_detectado else vermelho),
     ]
     y = 24
     for nome, valor, cor in linhas:
@@ -57,10 +61,44 @@ def bios(folder):
         y += 13
     d.text((12, y + 1), "Ordem de inicialização:  1. HD   2. Rede", font=f, fill=cinza)
     d.rectangle([0, 118, W, H], fill=(0, 0, 120))
-    d.text((8, 121), "Nenhum dispositivo de inicialização encontrado.", font=f, fill=amarelo)
-    d.text((8, 134), "Instale um HD e reinicie o computador.", font=f, fill=branco)
-    d.text((8, 147), "F10: Salvar e sair    Esc: Sair", font=f, fill=cinza)
-    save(img, folder, "PH_ui_tela_bios.png")
+    if hd_detectado:
+        d.text((8, 121), "No bootable device found.", font=f, fill=amarelo)
+        d.text((8, 134), "HD detectado, mas sem sistema operacional.", font=f, fill=branco)
+        d.text((8, 147), "Conecte o pendrive de instalação e reinicie.", font=f, fill=cinza)
+        save(img, folder, "PH_ui_tela_bios_sem_sistema.png")
+    else:
+        d.text((8, 121), "Nenhum dispositivo de armazenamento detectado.", font=f, fill=amarelo)
+        d.text((8, 134), "Instale um HD e reinicie o computador.", font=f, fill=branco)
+        d.text((8, 147), "F10: Salvar e sair    Esc: Sair", font=f, fill=cinza)
+        save(img, folder, "PH_ui_tela_bios.png")
+
+
+ETAPAS = ["Preparando a instalação...", "Copiando arquivos para o HD...", "Instalando recursos...",
+          "Configurando o sistema...", "Concluindo a instalação..."]
+
+
+def instalando(folder, etapa):
+    """Instalação do EstagiOS pelo pendrive: mesma janela, barra e texto da etapa mudam (uma imagem por etapa)."""
+    img, d = canvas((20, 60, 110))
+    f, fb = font(9), font(10)
+    x0, y0, x1, y1 = 30, 26, W - 30, H - 30
+    d.rectangle([x0 + 3, y0 + 3, x1 + 3, y1 + 3], fill=(10, 30, 60))
+    d.rectangle([x0, y0, x1, y1], fill=(235, 238, 242), outline=(20, 30, 40))
+    d.rectangle([x0, y0, x1, y0 + 13], fill=(40, 90, 170))
+    d.text((x0 + 5, y0 + 1), "Instalação do EstagiOS", font=fb, fill=(255, 255, 255))
+    d.text((x0 + 10, y0 + 22), "Instalando o sistema operacional...", font=fb, fill=(20, 40, 60))
+    d.text((x0 + 10, y0 + 38), "Origem: pendrive (USB)   Destino: HD 500 GB", font=f, fill=(70, 80, 90))
+    n = len(ETAPAS)
+    pct = int(round((etapa + 1) * 100 / n))
+    bx0, by0, bx1, by1 = x0 + 10, y0 + 58, x1 - 10, y0 + 70
+    d.rectangle([bx0, by0, bx1, by1], fill=(200, 205, 215), outline=(60, 70, 90))
+    fill_w = int((bx1 - bx0 - 2) * (etapa + 1) / n)
+    for i in range(0, fill_w, 6):                       # barra em blocos (pixel art)
+        d.rectangle([bx0 + 2 + i, by0 + 2, min(bx0 + 2 + i + 4, bx0 + 1 + fill_w), by1 - 2], fill=(60, 160, 90))
+    d.text((bx1 - 22, by1 + 3), f"{pct}%", font=f, fill=(20, 40, 60))
+    d.text((x0 + 10, by1 + 3), ETAPAS[etapa], font=f, fill=(50, 60, 70))
+    d.text((x0 + 10, y1 - 13), "Não retire o pendrive nem desligue o computador.", font=font(8), fill=(170, 60, 50))
+    save(img, folder, f"PH_ui_tela_instalando_{etapa}.png")
 
 
 def sistema(folder, rede=False):
@@ -119,5 +157,8 @@ if __name__ == "__main__":
     pasta = sys.argv[1] if len(sys.argv) > 1 else "."
     os.makedirs(pasta, exist_ok=True)
     bios(pasta)
+    bios(pasta, hd_detectado=True)
+    for i in range(len(ETAPAS)):
+        instalando(pasta, i)
     sistema(pasta)
     sistema(pasta, rede=True)

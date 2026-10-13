@@ -28,6 +28,8 @@ public class UIScreen : MonoBehaviour
     public InteractionDetector Interactor { get; private set; }
 
     private UIScreenManager owner;
+    /// <summary>Gerenciador que abriu a tela (null se fechada).</summary>
+    public UIScreenManager Owner => owner;
 
     /// <summary>Chamado pelo manager, antes de <see cref="Show"/>.</summary>
     public void Bind(GameObject source, InteractionDetector interactor)

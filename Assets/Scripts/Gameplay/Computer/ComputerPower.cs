@@ -33,6 +33,12 @@ public enum PcLink { Power, MonitorPower, Vga, Hdmi, Network }
 /// <summary>O que o monitor mostra. Desligado = tela preta.</summary>
 public enum PcPowerState { Off, Bios, OperatingSystem }
 
+/// <summary>
+/// Tela exata do monitor (detalha a BIOS): sem armazenamento (nenhum HD), HD sem sistema ("No bootable device"),
+/// instalando o sistema pelo pendrive, ou o sistema (com/sem rede: ver <see cref="ComputerPower.Online"/>).
+/// </summary>
+public enum PcScreen { Off, NoStorage, NoBootableDevice, Installing, OperatingSystem }
+
 /// <summary>Resultado de clicar numa porta (<see cref="ComputerPower.UsePort"/>).</summary>
 public enum PortResult
 {
@@ -63,7 +69,11 @@ public enum PowerButtonResult { TurnedOn, TurnedOff, MissingRequirements }
 ///  - Desligado ou sem requisitos → tela preta.
 ///  - Power com energia do PC e do monitor (cada cabo nas duas pontas) + vídeo (VGA ou HDMI) nas duas pontas
 ///    + fonte + placa-mãe + memória RAM + cooler → liga na BIOS.
-///  - Os mesmos requisitos + HD → liga no sistema operacional.
+///  - Os mesmos requisitos + HD COM SISTEMA (gravado na unidade, ver <see cref="ComputerCase.HddHasOperatingSystem"/>)
+///    → liga no sistema operacional.
+///  - HD sem sistema + pendrive numa USB da traseira: ao ligar, dá boot pelo pendrive (tela da BIOS por
+///    <see cref="installDuration"/> s), grava o sistema no HD e vai para o sistema. Sem HD: fica na BIOS, sem instalar.
+///    Tirar o pendrive, o HD ou um requisito durante a instalação a cancela.
 ///  - Sem os requisitos o botão não liga o PC. Se um requisito some com o PC ligado (cabo solto, peça retirada),
 ///    o PC desliga: nunca fica num estado incompatível com a configuração. Instalar o HD com o PC na BIOS
 ///    só tem efeito depois de reiniciar (desligar e ligar).
@@ -86,15 +96,27 @@ public class ComputerPower : MonoBehaviour
 
     [Tooltip("Somente leitura em jogo: o que o monitor mostra agora.")]
     [SerializeField] private PcPowerState state = PcPowerState.Off;
+    [Tooltip("Tempo (s) da instalação do sistema pelo pendrive (tela de progresso). 0 = instantâneo.")]
+    [Min(0f)] [SerializeField] private float installDuration = 6f;
+    [Tooltip("Quantas etapas visuais a instalação tem (uma imagem de progresso por etapa).")]
+    [Min(1)] [SerializeField] private int installStages = 5;
+
+    /// <summary>Portas USB da traseira do gabinete (qualquer uma aceita o pendrive).</summary>
+    public const int UsbPortCount = 3;
 
     private readonly Dictionary<PcLink, Cable> cables = new Dictionary<PcLink, Cable>();
     private ComputerCase pcCase;
     private bool subscribed;
+    private GameObject pendriveItem;
+    private int pendrivePort = -1;
+    private float installRemaining = -1f;
 
     /// <summary>Disparado quando o PC liga, desliga ou muda de tela.</summary>
     public event Action<PcPowerState> PowerStateChanged;
     /// <summary>Disparado quando qualquer ponta de cabo é conectada ou desconectada.</summary>
     public event Action ConnectionsChanged;
+    /// <summary>Disparado quando o que o monitor deve mostrar muda (<see cref="Screen"/>, etapa da instalação, rede).</summary>
+    public event Action DisplayChanged;
 
     public PcPowerState State => state;
     public ComputerCase Case
@@ -123,8 +145,39 @@ public class ComputerPower : MonoBehaviour
         PowerConnected && MonitorPowerConnected && VideoConnected && Case.HasComponent(PcComponent.Psu) &&
         Case.HasComponent(PcComponent.Motherboard) && Case.HasComponent(PcComponent.Ram) && Case.HasComponent(PcComponent.CpuCooler);
 
-    /// <summary>Requisitos para ligar e chegar ao sistema operacional.</summary>
-    public bool CanReachOperatingSystem => CanReachBios && Case.HasComponent(PcComponent.Hdd);
+    /// <summary>Requisitos para ligar e chegar ao sistema operacional (HD com o sistema gravado).</summary>
+    public bool CanReachOperatingSystem => CanReachBios && Case.HddHasOperatingSystem;
+
+    /// <summary>Há um pendrive conectado numa das USB.</summary>
+    public bool PendriveConnected => pendrivePort >= 0;
+    /// <summary>USB onde o pendrive está (-1 = nenhuma).</summary>
+    public int PendrivePort => pendrivePort;
+    /// <summary>Ligado instalando o sistema pelo pendrive (tela de progresso).</summary>
+    public bool IsInstallingOperatingSystem => installRemaining >= 0f;
+    /// <summary>Progresso da instalação (0 a 1); 0 fora dela.</summary>
+    public float InstallProgress => IsInstallingOperatingSystem && installDuration > 0f
+        ? Mathf.Clamp01(1f - installRemaining / installDuration) : 0f;
+    /// <summary>Etapa visual da instalação (0 a <see cref="InstallStages"/> - 1).</summary>
+    public int InstallStage => Mathf.Min(installStages - 1, Mathf.FloorToInt(InstallProgress * installStages));
+    public int InstallStages => installStages;
+
+    /// <summary>
+    /// Pausa a instalação sem cancelá-la (apresentação): a tela 2D liga isto enquanto o jogador está em outra vista
+    /// que não a da frente, para a sequência não correr escondida. Volta a andar de onde parou.
+    /// </summary>
+    public bool InstallPaused { get; set; }
+
+    /// <summary>Tela exata do monitor agora. A detecção do HD na BIOS é ao vivo (instalar/retirar o HD muda a mensagem).</summary>
+    public PcScreen Screen
+    {
+        get
+        {
+            if (state == PcPowerState.Off) return PcScreen.Off;
+            if (state == PcPowerState.OperatingSystem) return PcScreen.OperatingSystem;
+            if (IsInstallingOperatingSystem) return PcScreen.Installing;
+            return Case.HasComponent(PcComponent.Hdd) ? PcScreen.NoBootableDevice : PcScreen.NoStorage;
+        }
+    }
 
     private void OnEnable() => _ = Case;
     private void OnDisable()
@@ -234,25 +287,96 @@ public class ComputerPower : MonoBehaviour
         else cable.endB = value;
     }
 
+    /// <summary>
+    /// Clique numa USB (<paramref name="index"/> de 0 a <see cref="UsbPortCount"/> - 1). Livre + pendrive na mão:
+    /// conecta (o chamador tira o item da mão e o guarda). Com o pendrive + mão livre: desconecta e devolve o MESMO
+    /// objeto em <paramref name="itemForHand"/>. Só um pendrive por vez.
+    /// </summary>
+    public PortResult UseUsbPort(int index, PendriveItem heldPendrive, bool holdingSomething, out GameObject itemForHand)
+    {
+        itemForHand = null;
+        if (index < 0 || index >= UsbPortCount) return PortResult.Invalid;
+        PortResult result;
+        if (pendrivePort == index)
+        {
+            if (holdingSomething) return PortResult.HandsFull;
+            itemForHand = pendriveItem;
+            pendriveItem = null;
+            pendrivePort = -1;
+            result = PortResult.CableReturned;
+        }
+        else if (PendriveConnected) return PortResult.Invalid;
+        else
+        {
+            if (heldPendrive == null) return holdingSomething ? PortResult.WrongCable : PortResult.NeedsCable;
+            pendriveItem = heldPendrive.gameObject;
+            pendrivePort = index;
+            result = PortResult.PluggedFromHand;
+        }
+        ConnectionsChanged?.Invoke();
+        Revalidate();
+        DisplayChanged?.Invoke();
+        return result;
+    }
+
     /// <summary>Botão Power do gabinete: liga (se os requisitos forem atendidos) ou desliga.</summary>
     public PowerButtonResult PressPower()
     {
         if (state != PcPowerState.Off)
         {
+            installRemaining = -1f;
             SetState(PcPowerState.Off);
             return PowerButtonResult.TurnedOff;
         }
         if (!CanReachBios) return PowerButtonResult.MissingRequirements;
-        SetState(CanReachOperatingSystem ? PcPowerState.OperatingSystem : PcPowerState.Bios);
+        if (CanReachOperatingSystem) SetState(PcPowerState.OperatingSystem);
+        else
+        {
+            // Boot pelo pendrive: só instala se houver HD (sem HD a instalação nem começa).
+            bool install = PendriveConnected && Case.HasComponent(PcComponent.Hdd);
+            if (install) installRemaining = installDuration;
+            SetState(PcPowerState.Bios);
+            if (install && installDuration <= 0f) AdvanceInstall(0f);
+        }
         return PowerButtonResult.TurnedOn;
+    }
+
+    private void Update()
+    {
+        if (IsInstallingOperatingSystem && !InstallPaused) AdvanceInstall(Time.deltaTime);
+    }
+
+    /// <summary>Avança a instalação em andamento (chamado pelo Update quando não está pausada; público para testes).</summary>
+    public void AdvanceInstall(float deltaTime)
+    {
+        if (!IsInstallingOperatingSystem) return;
+        int stage = InstallStage;
+        installRemaining -= deltaTime;
+        if (installRemaining > 0f)
+        {
+            if (InstallStage != stage) DisplayChanged?.Invoke();
+            return;
+        }
+        installRemaining = -1f;
+        // Só grava no HD se tudo ainda estiver de pé (o Revalidate já cancelaria antes; checagem defensiva).
+        if (state == PcPowerState.Bios && PendriveConnected && Case.InstallOperatingSystem()) SetState(PcPowerState.OperatingSystem);
+        else DisplayChanged?.Invoke();
     }
 
     /// <summary>Desliga o PC se a configuração atual não sustenta mais o estado em que ele está.</summary>
     public void Revalidate()
     {
         if (state == PcPowerState.Off) return;
-        if (!CanReachBios || (state == PcPowerState.OperatingSystem && !Case.HasComponent(PcComponent.Hdd)))
+        if (!CanReachBios || (state == PcPowerState.OperatingSystem && !Case.HddHasOperatingSystem))
+        {
+            installRemaining = -1f;
             SetState(PcPowerState.Off);
+            return;
+        }
+        // Instalação interrompida (pendrive ou HD retirado): fica na BIOS, sem sistema.
+        if (IsInstallingOperatingSystem && (!PendriveConnected || !Case.HasComponent(PcComponent.Hdd)))
+            installRemaining = -1f;
+        DisplayChanged?.Invoke();   // ex.: HD instalado/retirado na BIOS muda a mensagem
     }
 
     private void SetState(PcPowerState value)
@@ -260,6 +384,7 @@ public class ComputerPower : MonoBehaviour
         if (state == value) return;
         state = value;
         PowerStateChanged?.Invoke(state);
+        DisplayChanged?.Invoke();
     }
 
     /// <summary>O que falta para ligar (nomes em português, na ordem de montagem). Vazio = pode ligar.</summary>

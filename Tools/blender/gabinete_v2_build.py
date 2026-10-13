@@ -20,6 +20,7 @@ W, D, H = 0.2982, 0.6226, 0.5194          # largura (X), profundidade (Y), altur
 LID_T = 0.006                              # espessura da tampa
 BEZEL_D = 0.022                            # profundidade do painel frontal
 BACK_T = 0.004                             # espessura da chapa traseira
+USB_XN, USB_YN = (0.23, 0.32, 0.41), 0.47  # USB do I/O traseiro (normalizado como pc_back)
 FLANGE_W = 0.026                           # aba da tampa dobrada sobre a traseira
 
 SCREWS = [  # id, x/710, y/1580, obrigatório  (cópia de ComputerCase.CreateDefaultTowerBackScrews)
@@ -255,8 +256,10 @@ def build():
     # I/O da placa-mãe
     x0, z0 = back_xz(0.17, 0.42); x1, z1 = back_xz(0.47, 0.645)
     tras.append(box("io_shield", (abs(x0 - x1), 0.002, abs(z0 - z1)), ((x0 + x1) / 2, YB + 0.001, (z0 + z1) / 2), MAT["chapa"], bevel=0.001))
-    for xn in (0.23, 0.32, 0.41):
-        x, z = back_xz(xn, 0.615)
+    # 3 USB elevadas (yn 0,615 -> USB_YN) para os cabos de vídeo/rede, que descem das placas de expansão,
+    # não passarem na frente do pendrive conectado. Posições usadas também pelo Canvas (Porta_USB_*).
+    for xn in USB_XN:
+        x, z = back_xz(xn, USB_YN)
         tras.append(box("usb_t", (0.009, 0.003, 0.016), (x, YB + 0.0025, z), MAT["preto"], bevel=0.001))
     for xn, yn in ((0.25, 0.55), (0.40, 0.55)):
         x, z = back_xz(xn, yn)
