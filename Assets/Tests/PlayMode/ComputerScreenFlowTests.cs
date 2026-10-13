@@ -445,7 +445,7 @@ public class ComputerScreenFlowTests
         Click(screen, "BotaoVoltar"); Click(screen, "BotaoVoltar"); yield return null;
         Click(screen, "BotaoPower");
         Assert.AreEqual(PcPowerState.Bios, power.State);
-        Assert.AreEqual("ui_tela_bios", monitor.sprite.name);
+        Assert.AreEqual("PH_ui_tela_bios", monitor.sprite.name);
         Assert.IsTrue(Active(screen, led), "ligado: LED do Power aceso");
 
         // HD instalado: só depois de reiniciar vai para o sistema.
@@ -458,7 +458,7 @@ public class ComputerScreenFlowTests
         Assert.IsNull(monitor.sprite);
         Click(screen, "BotaoPower");
         Assert.AreEqual(PcPowerState.OperatingSystem, power.State);
-        Assert.AreEqual("ui_tela_sistema", monitor.sprite.name);
+        Assert.AreEqual("PH_ui_tela_sistema", monitor.sprite.name);
 
         // Cabo de rede: gabinete ↔ ponto de rede → sistema "conectado".
         CloseScreen(); yield return null;
@@ -469,7 +469,7 @@ public class ComputerScreenFlowTests
         Click(screen, "Porta_RedeGabinete");
         Click(screen, "Porta_Rede");
         Assert.IsTrue(power.Online);
-        Assert.AreEqual("ui_tela_sistema_rede", monitor.sprite.name);
+        Assert.AreEqual("PH_ui_tela_sistema_rede", monitor.sprite.name);
         Click(screen, "BotaoVoltar"); yield return null;
 
         // Soltar a tomada com o PC ligado desliga (estado incompatível não é permitido).

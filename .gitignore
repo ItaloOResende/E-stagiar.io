@@ -112,3 +112,19 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# Resultados de testes em batch (Unity grava na raiz)
+/TestResults*.xml
+
+# Arte local fora de Assets: backups, quarentena e saídas regeneráveis por Tools/blender
+# (os .blend de Art/Source/Blender continuam versionáveis: são o arquivo de trabalho dos modelos)
+/Art/_Backup/
+/Art/_Removidos*/
+/Art/Source/Blender/canvas/
+/Art/Source/Blender/interior/
+/Art/Source/Blender/cabos_renders/
+/Art/Source/Blender/export/
+/Art/Source/Blender/review/
+
+# Preferências locais do Unity AI Assistant, caso alguém instale
+/ProjectSettings/Packages/com.unity.ai.assistant/

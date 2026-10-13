@@ -26,9 +26,9 @@ public static class GaveteirosSetup
         new Vector3(0f, (Floor + WallTop) / 2f, TrayZ0 + Wall + (TrayD - Wall) / 2f),
         new Vector3(TrayW - 2 * Wall, WallTop - Floor, TrayD - Wall));
 
-    private const string Meshes = "Assets/Art/Official/Meshes/";
-    private const string Mats = "Assets/Art/Official/Materials/";
-    private const string Labels = "Assets/Art/Official/Textures/Plaquinhas/";
+    private const string Meshes = "Assets/Art/Meshes/";
+    private const string Mats = "Assets/Art/Materials/";
+    private const string Labels = "Assets/Art/Textures/Plaquinhas/";
     private const string Gameplay = "Assets/Prefabs/Gameplay/";
     private const string ScenePath = "Assets/Scenes/Office_Placeholder.unity";
     private const string Claro = Mats + "M_Escritorio_Claro.mat", Escuro = Mats + "M_Escritorio_Escuro.mat", Metal = Mats + "M_PC_Chapa.mat";
@@ -160,7 +160,7 @@ public static class GaveteirosSetup
     /// </summary>
     private static Mesh BuildHandleFromMatheus()
     {
-        var model = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Official/Models/gaveta.fbx");
+        var model = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Models/gaveta.fbx");
         MeshFilter mf = model.GetComponentInChildren<MeshFilter>();
         Mesh src = mf.sharedMesh;
         Matrix4x4 toModel = model.transform.worldToLocalMatrix * mf.transform.localToWorldMatrix;

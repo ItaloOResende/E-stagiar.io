@@ -106,10 +106,10 @@ for x, y in ((2, 2), (37, 2), (2, 37), (37, 37)):
 g.save("ui_cooler.png", 24)
 
 # ---------------- HD deitado e RAM vertical (reaproveitam os sprites existentes) ----------------
-hd = Image.open(os.path.join(ph_sprites, "hd.png")).convert("RGBA")
+hd = Image.open(os.path.join(ph_sprites, "PH_hd.png")).convert("RGBA")
 hd = hd.crop(hd.getbbox()).rotate(90, expand=True)
 hd.save(os.path.join(out, "ui_hd_deitado.png")); print("SPRITE ui_hd_deitado.png", hd.size)
-ram = Image.open(os.path.join(ph_sprites, "memoria_ram.png")).convert("RGBA")
+ram = Image.open(os.path.join(ph_sprites, "PH_memoria_ram.png")).convert("RGBA")
 ram = ram.crop(ram.getbbox()).rotate(90, expand=True)
 ram.save(os.path.join(out, "ui_memoria_ram_vertical.png")); print("SPRITE ui_memoria_ram_vertical.png", ram.size)
 

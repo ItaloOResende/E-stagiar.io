@@ -31,17 +31,17 @@ Todos são malha estática: sem rig, sem animação e sem avatar, incluindo o `c
 - Material 0 = o do Matheus (`M_Escritorio_Escuro`); as peças novas usam `M_PC_Porta`, `M_PC_Painel`, `M_PC_Chapa`, `M_PC_Parafuso`, `M_PC_VGA`, `M_PC_Pino`, `M_PC_LED` e `M_PC_HDMI` (URP/Lit, criados no projeto), remapeados no `.meta` dos FBX.
 - Cada conector modelado tem a porta correspondente na lógica (`ComputerPower`): energia, VGA, HDMI e Ethernet do gabinete; energia, VGA e HDMI do monitor.
 
-### Imagens do Canvas de manutenção (`Sprites/ui_render_*`, 2026-10-12)
+### Imagens do Canvas de manutenção (`UI/ui_render_*`, 2026-10-12)
 
 - `ui_render_pc_frente`, `ui_render_pc_traseira`, `ui_render_pc_aberto`, `ui_render_monitor_frente` e `ui_render_monitor_traseira` são renders dos próprios `gabinete.fbx`/`monitor.fbx` atualizados, com câmeras ortográficas fixas (sem segunda versão desenhada à mão). Gerados por `Tools/blender/pc_canvas_renders.py` (Blender Workbench).
 - O quadro de cada câmera é exatamente a caixa do equipamento, então as coordenadas normalizadas do Canvas (parafusos do `ComputerCase`, portas, botão Power, tela) batem com a imagem.
 - O interior (`ui_render_pc_aberto`) é montado só na cena de render, dentro do contorno do gabinete: o modelo do Matheus é maciço. Os encaixes ficam nas posições dos `Encaixe_*` do Canvas.
-- Substituem no `UI_Screen_Gabinete` os placeholders `pc_front`, `pc_back`, `monitor_frente`, `ui_monitor_traseira` e `gabinete_aberto` (que continuam em `Placeholders/`).
+- Substituem no `UI_Screen_Gabinete` os placeholders `pc_front`, `pc_back`, `monitor_frente`, `ui_monitor_traseira` e `gabinete_aberto` (removidos na reorganização de 2026-10-12).
 
-### Sprites em pixel art da manutenção (`Sprites/`, 2026-10-12)
+### Sprites em pixel art da manutenção (`UI/`, 2026-10-12)
 
 - `ui_fonte`, `ui_cooler`, `ui_plugue_energia`, `ui_plugue_vga`, `ui_plugue_hdmi`, `ui_plugue_rj45`, `ui_plugue_tomada`, `ui_tomada_energia` e `ui_ponto_rede`: desenhados por código (`Tools/sprites/gerar_sprites_pc.py`, PIL), autoria própria do projeto, no estilo dos sprites existentes (grade pequena ampliada sem suavização; *Filter Mode* Point).
-- `ui_hd_deitado` e `ui_memoria_ram_vertical`: os sprites `hd` e `memoria_ram` de `Placeholders/Sprites` recortados ao desenho e girados 90° (mesma autoria/licença deles).
+- `ui_hd_deitado` e `ui_memoria_ram_vertical`: os sprites `hd` e `memoria_ram` `PH_hd`/`PH_memoria_ram` recortados ao desenho e girados 90° (mesma autoria/licença deles).
 
 ### Gaveteiros (`Meshes/Gaveteiro_*`, `Textures/Plaquinhas/`, `Materials/Plaquinhas/`, 2026-10-12)
 
@@ -50,20 +50,20 @@ Todos são malha estática: sem rig, sem animação e sem avatar, incluindo o `c
 - O `gaveta.fbx` inteiro (criado-mudo com uma gaveta e nicho) não foi usado como gaveteiro: é uma malha única, a gaveta não desliza separada nem tem caixa interna, e só cabe uma gaveta.
 - `Textures/Plaquinhas/plaquinha_*.png`: geradas por `Tools/sprites/gerar_plaquinhas.py` (PIL, pixel art ampliada 4x, fonte DejaVu Sans Mono livre que acompanha o Blender). Materiais `M_Plaquinha_*` (URP/Lit).
 
-### Cabos e conectores 3D (`Models/cabos.fbx`, `Materials/Cabos/`, `Sprites/ui_render_plugue_*`, 2026-10-12)
+### Cabos e conectores 3D (`Models/cabos.fbx`, `Materials/Cabos/`, `UI/ui_render_plugue_*`, 2026-10-12)
 
 - `cabos.fbx`: plugues (tomada NBR 14136, IEC C13, VGA, HDMI, RJ45), rolos dos 4 tipos de cabo e o espelho de parede `PontoEletrico` (2 tomadas + ponto de rede). Autoria própria do projeto, gerados por `Tools/blender/cabos_build.py` (Blender 5.2), na mesma escala "cartoon" (x1,35) dos conectores do gabinete/monitor, para encaixar nas portas modeladas lá; reaproveitam os materiais `M_PC_*` (metal, latão, azul VGA, parafusos).
-- Substituem os placeholders `PH_CaboEnergia`/`PH_CaboVideo`/`PH_CaboRede` no `Visual` dos `Pickup_Cabo*` (os placeholders continuam em `Placeholders/`).
+- Substituem os placeholders `PH_CaboEnergia`/`PH_CaboVideo`/`PH_CaboRede` no `Visual` dos `Pickup_Cabo*` (removidos na reorganização de 2026-10-12).
 - Materiais novos `M_Cabo_Preto/Cinza/Azul`, `M_Plug_Preto`, `M_Plug_Translucido` (URP/Lit transparente), `M_Tomada_Branco/Interior/Rebaixo` em `Materials/Cabos/`; `M_Gaveta_Forro` (forro claro das gavetas).
-- `Sprites/ui_render_plugue_*`, `ui_render_tomada`, `ui_render_ponto_rede`: renders fixos desses modelos (Workbench) para o Canvas.
+- `UI/ui_render_plugue_*`, `ui_render_tomada`, `ui_render_ponto_rede`: renders fixos desses modelos (Workbench) para o Canvas.
 
-### Componentes 3D e gabinete aberto (`Models/componentes.fbx`, `Materials/Componentes/`, `Sprites/ui_render_peca_*`, 2026-10-12)
+### Componentes 3D e gabinete aberto (`Models/componentes.fbx`, `Materials/Componentes/`, `UI/ui_render_peca_*`, 2026-10-12)
 
 - `componentes.fbx`: placa-mãe (layout do sprite `placa_mae`), memória RAM, HD 3,5", fonte ATX e cooler. São modelos 3D simples de autoria própria do projeto, gerados por `Tools/blender/componentes_build.py`, que reaproveitam os materiais `M_PC_*`. Usados nos itens `Pickup_PlacaMae/MemoriaRAM/HD/Fonte/Cooler` no lugar das ilustrações 2D.
 - `ui_render_pc_aberto` e `ui_render_peca_*`: render do gabinete **oficial do Matheus** aberto por boolean (lado da tampa), com estrutura interna e esses componentes (`Tools/blender/pc_interior_renders.py`), recortado em camadas por `pc_interior_camadas.py`.
 - `ui_render_pc_frente` agora tem o botão Power apagado; `ui_render_pc_frente_led` é o LED aceso recortado. `ui_hover_anel` foi gerado por `Tools/sprites/gerar_sprites_pc.py`. `M_PC_LED_Off` é o LED apagado no 3D.
 
-### Prefabs visuais (`Prefabs/`, criados na integração)
+### Prefabs visuais (`Assets/Prefabs/Props/`, criados na integração)
 
 Seguem o padrão dos `PH_*`:
 - **Raiz:** origem na base, sem rotação nem escala, com `BoxCollider` ajustado à malha.
@@ -127,3 +127,91 @@ Originalmente usavam o **Unity Toon Shader** (modo Built-in), que não está no 
 A emissão estava ligada, mas com cor preta, então não fez diferença. Recuperar esse visual exige instalar o pacote Unity Toon Shader (URP) ou criar um shader/Renderer Feature próprio.
 
 **PENDENTE:** `M_NewMaterial6_PENDENTE` e `M_CeilingTileStack_PENDENTE` referenciam a textura de GUID `1c8ec3f9c33df2646af67198e495e1e3`, que não foi enviada ao repositório (não existe em nenhum commit). Por isso aparecem brancos. A referência foi mantida no `.mat` para religar automaticamente quando a textura chegar com o `.meta` original.
+
+---
+
+## Assets PLACEHOLDER — origem e status
+
+**Todo arquivo com prefixo `PH_` é temporário** (antes ficavam em `Art/Placeholders/`; na reorganização de 2026-10-12 foram movidos para as pastas por tipo e ganharam o prefixo `PH_`, mantendo os GUIDs). Veio do projeto legado (branch `master`, Unity 2021.3.7, autoria do Ítalo) apenas para permitir desenvolver e testar a gameplay antes da chegada da arte oficial (Matheus, sem prefixo). Nas tabelas abaixo, o arquivo atual é `PH_` + o nome listado (materiais: `PH_M_*`), na pasta do seu tipo (`Models/`, `Textures/`, `Materials/`, `UI/`; prefabs em `Assets/Prefabs/Props/`).
+
+- **Não referenciar** estes assets a partir de scripts.
+- **Licença/autoria: desconhecida** (Regulamento 14.2 — a equipe responde por todo asset). **Não entregar** no build final sem confirmar a origem ou substituir pelo oficial.
+- Materiais do legado (Standard/Built-in) **não** foram copiados; os materiais daqui são recriados em URP/Lit.
+
+## Modelos (`Models/`)
+
+| Arquivo aqui | Origem (`master:`) |
+|---|---|
+| `pc.fbx` | `Assets/blender/PC.fbx` |
+| `bancada.fbx` | `Assets/blender/bancada.fbx` |
+| `gaveta.fbx` | `Assets/blender/gaveta.fbx` |
+| `rack_internet.fbx` | `Assets/blender/rackInternet.fbx` |
+| `cabo_energia.fbx` | `Assets/blender/cabo de energia.fbx` |
+| `cabo_rede.fbx` | `Assets/blender/cabo de rede.fbx` |
+| `cabo_video.fbx` | `Assets/blender/cabo de video.fbx` |
+| `janela.fbx` | `Assets/janela.fbx` |
+| `porta.fbx` | `Assets/porta.fbx` |
+
+## Texturas (`Textures/`)
+
+| Arquivo aqui | Origem (`master:`) |
+|---|---|
+| `pc_atlas.png` | `Assets/texturas/PC 3D/PC_atlas.png` |
+| `pc_front.png` | `Assets/texturas/PC 3D/pc_front GameObject.png` |
+| `pc_back.png` | `Assets/texturas/PC 3D/pc_back GameObject.png` |
+| `tela_no_signal.png` | `Assets/texturas/objetos/tela no signal.png` |
+| `cabo_rede.png` | `Assets/texturas/objetos/cabo de rede.png` |
+| `energia.png` | `Assets/texturas/objetos/energia.png` |
+| `tomada_energia.png` | `Assets/texturas/objetos/tomada de energia.png` |
+| `tomada_rede.png` | `Assets/texturas/objetos/tomada de rede.png` |
+| `vga.png` | `Assets/texturas/objetos/vga.png` |
+| `ui_mao.png` | `Assets/texturas/mao.png` (mãozinha de interação, sprite de UI) |
+| `bancada.png` | `Assets/texturas/bancada.png` |
+| `mesa_branca.png` | `Assets/texturas/mesa branca.png` |
+| `mesa_preta.png` | `Assets/texturas/mesa preta.png` |
+
+## Ilustrações 2D (`UI/`)
+
+Pixel art 2D do legado, copiadas **byte a byte** (idênticas ao `master`), só renomeadas para ASCII. Autoria/licença **desconhecidas** (como todo o legado). Importadas como Sprite (PPU 100, filtro Point, sem compressão, sem mipmap, Alpha Is Transparency). No legado eram importadas como textura padrão e usadas em cubos finos/UI.
+
+| Arquivo aqui | Origem (`master:`) | Uso atual |
+|---|---|---|
+| `placa_mae.png` (1280×1280) | `Assets/texturas/objetos/placa mae.png` | `Pickup_PlacaMae` (0,30×0,30 m) |
+| `memoria_ram.png` (1160×260) | `Assets/texturas/objetos/memoria ram.png` | `Pickup_MemoriaRAM` (0,14×0,031 m) |
+| `hd.png` (738×1120) | `Assets/texturas/objetos/hd.png` | `Pickup_HD` (0,10×0,152 m) |
+| `hd_virado.png` (1088×233) | `Assets/texturas/hd virado.png` | importada, **sem uso ainda** (vista lateral/conectores; minigame) |
+| `chave_de_fenda.png` (576×576) | `Assets/texturas/objetos/chave de fenda.png` | `Pickup_Ferramenta` (0,22×0,22 m) |
+
+Cabos: `cabo de rede`, `energia`, `vga` e as tomadas **não são ilustrações**; são texturas de UV dos modelos 3D de cabo e já estão em `Textures/` (ver acima). Importada para a tela 2D do gabinete: `gabinete_aberto.png` (930×1000, byte-idêntica a `master:Assets/texturas/PC 3D/gabinete aberto.png`; origem e licença desconhecidas; usada em `Prefabs/UI/UI_Screen_Gabinete`). Também importada: `pc_back.png` (710×1580, byte-idêntica a `master:Assets/texturas/PC 3D/pc_back UI.png`; **mesma arte** da textura `pc_back GameObject.png` do modelo `pc.fbx`; origem e licença desconhecidas) — vista traseira do gabinete com os **8 parafusos reais** (centros medidos por análise de pixels; ver `ComputerCase.CreateDefaultTowerBackScrews`), usada em `Prefabs/UI/UI_Screen_Gabinete`. Também importadas para a tela de manutenção, byte-idênticas ao legado, com origem e licença desconhecidas:
+- `pc_front.png` (710×1600), de `master:Assets/texturas/PC 3D/pc_front UI.png`: frente do gabinete (vista Frente);
+- `monitor_frente.png` (678×577), de `master:Assets/texturas/PC 2D/monitor frente.png`: frente do monitor (vista Frente).
+
+Usadas também no interior da tela (vista Interior): `placa_mae`, `memoria_ram` e `hd`.
+
+**Criados para o projeto (sem terceiros), por script próprio:**
+- `ui_monitor_traseira.png` (678×577): traseira simples do monitor, com entrada de energia e de vídeo (VGA).
+- `ui_cursor_chave_de_fenda.png` (64×64): cursor da vista Traseira. Importado como **Texture Type = Cursor**, com hotspot (0, 62) na ponta. É **derivado** de `chave_de_fenda.png` (legado, licença desconhecida), por recorte e redução sem filtro; segue a licença dessa origem.
+
+**Telas do monitor criadas para o projeto (sem terceiros):** `ui_tela_bios.png` e `ui_tela_sistema.png` (640×320, pixel art, mesmo formato da `tela_no_signal`), geradas por `Tools/screens/gerar_telas_monitor.py`. Texto rasterizado com DejaVu Sans Mono (licença livre Bitstream Vera/DejaVu; cópia que acompanha o Blender). Marcas fictícias ("E-STAGIAR.IO BIOS", "EstagiOS"). Usadas na tela 2D do gabinete e no monitor 3D (`M_Tela_Monitor`, URP/Unlit, criado para o projeto).
+
+**`Textures/tomada_energia.png`** passou a ser importada como **Sprite** (mesmo arquivo e GUID; não era usada por nenhum material) para a tomada da Traseira da tela do gabinete.
+
+**Sprites de feedback criados para o projeto (sem terceiros):** gerados por script próprio durante o desenvolvimento, livres de licença externa. `ui_parafuso_furo.png` (disco escuro com borda metálica; cobre o parafuso removido), `ui_parafuso_anel.png` (anel branco: destaque ao passar o mouse e clarão ao remover), `ui_branco.png` (quadrado branco 8×8; preenchimento da barra de progresso). Usados em `Prefabs/UI/ScrewView` e `UI_Screen_Gabinete`. Substituíveis pela arte oficial.
+
+Materiais correspondentes (URP/Lit, Alpha Clipping 0,5): `M_Item2D_PlacaMae/MemoriaRAM/HD/ChaveDeFenda`.
+
+## Referência de comportamento (nada copiado)
+
+O legado simulava o braço com um cubo (`braco`, escala ~0.07×0.06×0.5, filho da câmera em ~(0.3,-0.12,0.18)) e o ponto de mão (`mao Fisica`) na ponta. `Arm_Placeholder`/`HoldPoint` na `Office_Placeholder` recriam essa ideia com um cubo primitivo e `M_Braco_Placeholder` (URP/Lit).
+
+## Deliberadamente NÃO migrados
+
+Scripts, prefabs com scripts quebrados (`Gabinete`, `gaveteiro*`), cenas legadas (`FUNEC Riacho`, `Tela Inicial`, `testes`), TextMesh Pro antigo, `ProjectSettings`, Input Manager, tags, build antigo, ~125 materiais `parede bege N`, texturas de cenário escolar e a textura 8K `Fence007A_8K_Displacement.jpg`.
+
+
+### Manutenção do PC: telas e materiais (2026-10-12)
+
+- `UI/ui_tela_sistema_rede.png`: variante da `ui_tela_sistema` com "Rede: conectado", gerada pelo mesmo `Tools/screens/gerar_telas_monitor.py` (que também atualizou a BIOS com a linha do cooler e "VGA/HDMI", e a tela do sistema com o aviso "sem conexão").
+- `Materials/M_Item2D_Fonte` e `M_Item2D_Cooler`: cópias do `M_Item2D_HD` com os sprites `ui_fonte`/`ui_cooler` (itens `Pickup_Fonte`/`Pickup_Cooler`).
+- `Materials/M_CaboHDMI`: cópia do material do cabo de vídeo, cinza-escuro, para o `Pickup_CaboHDMI`.
+- Criados por `Assets/Editor/PcManutencaoSetup.cs` (menu *Tools > E-stagiar.io > Configurar manutenção do PC*).

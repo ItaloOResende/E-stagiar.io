@@ -14,9 +14,9 @@ using UnityEngine.UI;
 /// </summary>
 public static class ManutencaoVisualSetup
 {
-    private const string Sprites = "Assets/Art/Official/Sprites/";
-    private const string Fbx = "Assets/Art/Official/Models/componentes.fbx";
-    private const string Mats = "Assets/Art/Official/Materials/";
+    private const string Sprites = "Assets/Art/UI/";
+    private const string Fbx = "Assets/Art/Models/componentes.fbx";
+    private const string Mats = "Assets/Art/Materials/";
     private const string Gameplay = "Assets/Prefabs/Gameplay/";
     private const string ScreenPath = "Assets/Prefabs/UI/UI_Screen_Gabinete.prefab";
 
@@ -64,7 +64,7 @@ public static class ManutencaoVisualSetup
             files.Add((f, Path.GetFileName(f)));
         string tmp = System.Environment.GetEnvironmentVariable("SPRITES_DIR");
         if (!string.IsNullOrEmpty(tmp)) files.Add((Path.Combine(tmp, "ui_hover_anel.png"), "ui_hover_anel.png"));
-        string template = File.ReadAllText("Assets/Art/Placeholders/Sprites/pc_back.png.meta");
+        string template = File.ReadAllText("Assets/Art/UI/PH_pc_back.png.meta");
         foreach (var (src, dst) in files)
         {
             string path = Sprites + dst;

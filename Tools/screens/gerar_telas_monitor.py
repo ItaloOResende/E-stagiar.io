@@ -5,7 +5,7 @@ Gera as telas do monitor (BIOS, sistema operacional sem rede e com rede) no mesm
 Criadas para o projeto, sem arte de terceiros. Fonte: DejaVu Sans Mono (licença livre Bitstream Vera/DejaVu,
 permite uso e redistribuição), a cópia que acompanha o Blender; só os pixels do texto vão para a imagem. Marcas e nomes são fictícios (sem logotipos reais de BIOS ou sistema operacional).
 
-Uso:  python Tools/screens/gerar_telas_monitor.py Assets/Art/Placeholders/Sprites
+Uso:  python Tools/screens/gerar_telas_monitor.py Assets/Art/UI
 """
 import os
 import sys
@@ -60,7 +60,7 @@ def bios(folder):
     d.text((8, 121), "Nenhum dispositivo de inicialização encontrado.", font=f, fill=amarelo)
     d.text((8, 134), "Instale um HD e reinicie o computador.", font=f, fill=branco)
     d.text((8, 147), "F10: Salvar e sair    Esc: Sair", font=f, fill=cinza)
-    save(img, folder, "ui_tela_bios.png")
+    save(img, folder, "PH_ui_tela_bios.png")
 
 
 def sistema(folder, rede=False):
@@ -112,7 +112,7 @@ def sistema(folder, rede=False):
         d.line([(nx + 11, H - 12), (nx + 17, H - 6)], fill=(235, 70, 60), width=2)
         d.line([(nx + 17, H - 12), (nx + 11, H - 6)], fill=(235, 70, 60), width=2)
         d.text((x0 + 8, y0 + 46), "Rede: sem conexão (cabo desligado)", font=f, fill=(170, 60, 50))
-    save(img, folder, "ui_tela_sistema_rede.png" if rede else "ui_tela_sistema.png")
+    save(img, folder, "PH_ui_tela_sistema_rede.png" if rede else "PH_ui_tela_sistema.png")
 
 
 if __name__ == "__main__":

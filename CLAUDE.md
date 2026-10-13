@@ -50,8 +50,9 @@ Separar claramente:
 | Testes | `Assets/Tests/EditMode`, `Assets/Tests/PlayMode` | testes automáticos (NUnit/Test Framework): lógica do `ComputerCase` e fluxo da tela com os prefabs reais. Rodar em batchmode com o Editor fechado: `-runTests -testPlatform EditMode\|PlayMode` |
 | Núcleo | `Assets/Scripts/Core` | bootstrap, eventos, serviços compartilhados |
 | Documentação | `../docs/GUIA_DE_MECANICAS.md` | guia prático (Inspector/prefabs) das mecânicas; guia prático externo ao repositório, atualizado junto com as mudanças de código |
-| Arte | `Assets/Art` | `Placeholders/` (temporário) e `Official/` (Matheus) |
+| Arte | `Assets/Art` | por tipo: `Models/`, `Meshes/`, `Textures/`, `Materials/`, `UI/`; placeholders com prefixo `PH_` (ver `Assets/Art/README.md`) |
 | Prefabs lógicos | `Assets/Prefabs/Gameplay` | prefabs de gameplay estáveis |
+| Prefabs de cenário | `Assets/Prefabs/Props` | `OF_*` (oficiais) e `PH_*` (placeholders), raiz com collider + modelo filho |
 
 **Regra de desacoplamento lógica × arte:** componentes e responsabilidades de gameplay (colliders, `Interactable`, `Pickable`, `Socket`, dados) ficam num **root lógico**; o mesh/material fica num filho **`Visual`** substituível. Substituir PC/monitor/mesa/gaveta placeholder pelo oficial do Matheus = trocar o `Visual` (ou usar Prefab Variant), sem reescrever sistemas. Código de gameplay **nunca** deve depender de nome, tag ou hierarquia do modelo 3D.
 
@@ -61,17 +62,16 @@ Separar claramente:
 Assets/
   Scripts/{Core,Gameplay,Data,NPC,UI,Minigames,Player,Interaction}
   Data/{Tickets,Items}
-  Art/Placeholders/{Models,Textures,Sprites,Materials,Prefabs}   <- temporário, vem do master (Sprites = ilustrações 2D)
-  Art/Official/                                          <- assets do Matheus
-  Prefabs/Gameplay/
-  Scenes/{Prototype,SampleScene,Office_Placeholder}
+  Art/{Models,Meshes,Textures,Materials,UI}              <- um lugar por tipo; PH_* = placeholder
+  Prefabs/{Gameplay,Props,UI}
+  Scenes/{Office_Placeholder,Prototype,SampleScene}
   Settings/                                              <- URP
 ```
 
 ## 8. Política de assets: placeholder × oficial
 
-- Tudo em `Assets/Art/Placeholders/` é **PLACEHOLDER temporário** vindo do projeto legado, para desenvolver e testar a gameplay. **Origem e licença desconhecidas** → rastreado em `Assets/Art/Placeholders/ORIGEM.md`. Não deve ir para a entrega final sem confirmação/substituição.
-- Os assets **oficiais** (estilo 3D cartunizado: escritório, personagem, gavetas, paredes, mesas, PCs…) são produzidos por **Matheus** e serão subidos para o repositório e atualizados por ele. Vão em `Assets/Art/Official/`.
+- Todo asset com prefixo `PH_` (em `Assets/Art/*` e `Assets/Prefabs/Props`) é **PLACEHOLDER temporário** vindo do projeto legado, para desenvolver e testar a gameplay. **Origem e licença desconhecidas** → rastreado em `Assets/Art/ORIGEM.md`. Não deve ir para a entrega final sem confirmação/substituição.
+- Os assets **oficiais** (estilo 3D cartunizado: escritório, personagem, gavetas, paredes, mesas, PCs…) são produzidos por **Matheus** e serão subidos para o repositório e atualizados por ele. Vão nas pastas por tipo de `Assets/Art/`, sem prefixo.
 - Não preservar visual/layout do legado. Não referenciar placeholders de dentro de scripts.
 - Materiais do legado (Built-in/Standard) **não** são copiados; são recriados em URP/Lit.
 - Lixo/duplicatas do legado (ex.: ~125 materiais `parede bege N`) não entram.
@@ -106,7 +106,7 @@ Assets/
 - Projeto importa e compila no Unity 6000.3.25f1 em batchmode, sem erros.
 - Interação (aguardando teste visual do usuário): mira estável no `InteractionDetector` (ajuda de mira por esfera de 3,5 cm, tolerância de 0,15 s ao alvo anterior, roda depois do `PlayerLook`). Clique esquerdo (Input System), mãozinha 2D (`ui_mao.png`) quando há `Interactable` ao alcance (3 m), `PickupInteractable` (pega/carrega/solta), `OpenableInteractable` (gaveta desliza; eixo/distância configuráveis). Prefabs lógicos em `Assets/Prefabs/Gameplay` (root lógico + `Visual` aninhado). Braço placeholder = cubo na câmera (ref. legado). Gaveta e cabos da `Office_Placeholder` configurados para teste. `PickupInteractable` preserva escala/rotação mundiais e usa bounds dos renderers, então funciona até em nós de FBX; ainda assim preferir root lógico de escala 1 + `Visual` (prefabs `Pickup_*`).
 - Gaveteiros: `DrawerContents` (ao lado do `OpenableInteractable`) lista entradas {prefab `PickupInteractable`, quantidade, `PhysicalInDrawer` ou `DirectToHand`, posição/step locais}. Físicos são criados 1x no Awake, ocultos com a gaveta fechada, e saem do conteúdo ao serem pegos (sem cópias ao reabrir); entrega direta consome estoque (1 por abertura, mão livre). Na `Office_Placeholder`: `Gaveteiro_Hardware` (RAM+cooler, placa-mãe, HD+fonte, ferramentas) e `Gaveteiro_Cabos` (2 energia, VGA, HDMI, 2 rede), com gavetas ocas, puxador do `gaveta.fbx` do Matheus e plaquinhas; gerados por `Assets/Editor/GaveteirosSetup.cs` (recria prefabs e instâncias). Os itens soltos da cena foram guardados neles. Cabos com `Visual` reduzido (~11 cm) para caber. `Gaveteiro_Teste` saiu da cena. Teste: `GaveteirosTests` (Play Mode).
-- Ilustrações 2D (pixel art do legado) integradas em `Art/Placeholders/Sprites` e usadas como itens no 3D (`Pickup_PlacaMae/MemoriaRAM/HD/Ferramenta`): dois quads (frente/verso) com material URP/Lit Alpha Clip, deitados; segurados inclinados (`Hold Euler Offset` -60,0,0). Aguardando teste visual.
+- Ilustrações 2D (pixel art do legado) integradas em `Art/UI` (`PH_*`) e usadas como itens no 3D (`Pickup_PlacaMae/MemoriaRAM/HD/Ferramenta`): dois quads (frente/verso) com material URP/Lit Alpha Clip, deitados; segurados inclinados (`Hold Euler Offset` -60,0,0). Aguardando teste visual.
 - Telas 2D (Canvas): clique direito num objeto com `UIScreenInteractable` abre um prefab de tela (`Assets/Prefabs/UI`) sobre a primeira pessoa; o `UIScreenManager` (no Player) libera o cursor, desliga `PlayerLook`/`PlayerMovement` e bloqueia o `InteractionDetector` até fechar (Esc ou botão). Primeira tela: `UI_Screen_Gabinete`. Cena tem `ScreenCanvas` e `EventSystem` (ações UI do `InputSystem_Actions`). Texto em `Text` legado (TMP sem Essential Resources). Com item na mão o clique direito continua abrindo telas (o esquerdo só solta).
 - **Manutenção do PC (tela do gabinete, implementada):**
   - **Gabinete:** `Gabinete.prefab` = root lógico escala 1 (`ComputerCase`, `UIScreenInteractable`, `PickupInteractable`, Rigidbody, BoxCollider) + filho `Visual`.
@@ -137,9 +137,9 @@ Assets/
   - Cabos 3D: `PcCableView3D` no `Gabinete` desenha cada cabo conectado (tubo curvo + plugues; uma ponta = pendente) entre âncoras `Porta3D_<PcPort>` (Z para fora) do gabinete, do monitor da cena e do `PontoEletrico` (parede). Itens `Pickup_Cabo*` = rolos de `cabos.fbx` (`Tools/blender/cabos_build.py`). Na tela 2D: cabos curvos (`UICableCurve`), plugues/tomadas renderizados, ponta solta segue o mouse. Configurado por `Assets/Editor/Cabos3DSetup.cs`.
   - Visual (etapa 3): fundo `#DDE5E8`, proporções naturais (mesma escala px/m), LED do Power só aceso com o PC ligado (Canvas `powerLed` e 3D `PcPowerLed3D`), hover em anel branco, gabinete aberto = render 3D do gabinete oficial com camadas das peças 3D (`componentes.fbx`, também nos itens do mundo). Configurado por `Assets/Editor/ManutencaoVisualSetup.cs`. Reverter: `Art/_Backup/2026-10-12_etapa3/RESTAURAR.md`.
   - Validado: 38 testes Edit Mode + 15 Play Mode (inclui `GaveteirosTests`, `MiraECabos3DTests`) + capturas. Guia: `../docs/GUIA_DE_MECANICAS.md` §4.4.
-- **Assets oficiais do Matheus (1ª leva, aguardando conferência no Editor):** 15 FBX de escritório em `Art/Official/Models`, 6 texturas e 10 materiais convertidos de Unity Toon Shader para URP/Lit (o contorno/toon foi perdido; 2 materiais pendentes por textura ausente). Vieram por engano da `master` e foram integrados por cópia seletiva com GUIDs preservados; cenas/Player/ProjectSettings do commit dele não entraram. Detalhes: `Art/Official/ORIGEM.md`.
+- **Assets oficiais do Matheus (1ª leva, aguardando conferência no Editor):** 15 FBX de escritório em `Art/Models`, 6 texturas e 10 materiais convertidos de Unity Toon Shader para URP/Lit (o contorno/toon foi perdido; 2 materiais pendentes por textura ausente). Vieram por engano da `master` e foram integrados por cópia seletiva com GUIDs preservados; cenas/Player/ProjectSettings do commit dele não entraram. Detalhes: `Art/ORIGEM.md`.
 - **Uso dos oficiais na `Office_Placeholder` (aguardando conferência visual):**
-  - Prefabs visuais `Art/Official/Prefabs/OF_*` (root lógico + `Visual`, escala única k=0,364).
+  - Prefabs visuais `Prefabs/Props/OF_*` (root lógico + `Visual`, escala única k=0,364).
   - As 2 mesas usam `OF_Mesa`. Os primitivos `Top`/`Side_*` foram desativados, não apagados.
   - `PC_2` (PH_Pc) foi desativado e substituído por `OF_Monitor`/`OF_Teclado`/`OF_Mouse`. Também entraram 2 `OF_Cadeira`, `OF_Vaso` e `OF_Xicara`.
   - `Gabinete.prefab` trocou só o `Visual` (malha oficial) e o tamanho do `BoxCollider`.
@@ -168,7 +168,7 @@ Se o prazo apertar: manter fundação, CH-01, armário, chefe simplificado + bui
 3. Fazer mudanças pequenas e commits coerentes; validar que o projeto abre no Unity 6000.3.25f1 sem erros no Console (batchmode com o Editor fechado).
 4. Não usar `UnityEngine.Input`, nem tags/nomes como mecanismo de gameplay, nem `FindObjectsOfType`/`FindGameObjectsWithTag` por frame.
 5. Não colocar lógica de gameplay dentro de prefabs de arte; manter o desacoplamento Visual × lógica (seção 6).
-6. Qualquer asset novo precisa de origem/licença conhecida (Regulamento 14.2). Placeholders ficam em `Art/Placeholders` e são documentados em `ORIGEM.md`.
+6. Qualquer asset novo precisa de origem/licença conhecida (Regulamento 14.2). Placeholders levam o prefixo `PH_` e são documentados em `Assets/Art/ORIGEM.md`.
 7. Não implementar sistemas fora do escopo pedido na etapa atual.
 8. **Documentação obrigatória de mecânicas:** toda mecânica reutilizável nova ou alterada deve ser acompanhada, no mesmo trabalho, de atualização de `../docs/GUIA_DE_MECANICAS.md` (uma seção por mecânica, não por objeto): componentes e em qual GameObject ficam (raiz lógica × `Visual` × FBX), componentes nativos (Collider/Rigidbody), campos do Inspector com exemplos, criação de prefab e de novas instâncias, como configurar um objeto novo sem código, como testar, erros comuns, limitações e dependências. Baseado em código/prefabs reais; marcar o status (implementado / testado manualmente / planejado) e nunca documentar o que não existe. O objetivo é que a equipe configure novos objetos sozinha; se um objeto exigir comportamento realmente novo, explicar por que os componentes existentes não bastam. Não basta compilar nem funcionar só nos objetos configurados pelo agente.
 9. Texto de jogo e conteúdo educativo em português; conteúdo técnico de TI deve ser revisado antes da entrega.

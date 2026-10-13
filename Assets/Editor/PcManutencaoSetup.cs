@@ -15,8 +15,8 @@ public static class PcManutencaoSetup
     private const string Gameplay = "Assets/Prefabs/Gameplay/";
     private const string ScreenPath = "Assets/Prefabs/UI/UI_Screen_Gabinete.prefab";
     private const string ScenePath = "Assets/Scenes/Office_Placeholder.unity";
-    private const string Sprites = "Assets/Art/Official/Sprites/";
-    private const string Mats = "Assets/Art/Placeholders/Materials/";
+    private const string Sprites = "Assets/Art/UI/";
+    private const string Mats = "Assets/Art/Materials/PH_";
 
     [MenuItem("Tools/E-stagiar.io/Configurar manutenção do PC")]
     public static void Run()
@@ -79,7 +79,7 @@ public static class PcManutencaoSetup
         so.ApplyModifiedPropertiesWithoutUndo();
 
         // Cor própria (preto com ponta prateada não aparece de longe: cinza-escuro azulado), para não confundir com o VGA.
-        const string matPath = "Assets/Art/Placeholders/Materials/M_CaboHDMI.mat";
+        const string matPath = "Assets/Art/Materials/PH_M_CaboHDMI.mat";
         Renderer r = root.GetComponentInChildren<Renderer>(true);
         if (r != null && r.sharedMaterial != null)
         {
@@ -116,7 +116,7 @@ public static class PcManutencaoSetup
     // ---------------------------------------------------------------- tela de manutenção
     private static Sprite S(string name) =>
         AssetDatabase.LoadAssetAtPath<Sprite>(Sprites + name + ".png") ??
-        AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/Placeholders/Sprites/" + name + ".png");
+        AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/UI/PH_" + name + ".png");
 
     private static RectTransform Find(Transform root, string path) => (RectTransform)root.Find(path);
 
@@ -302,7 +302,7 @@ public static class PcManutencaoSetup
         {
             var so = new SerializedObject(d);
             so.FindProperty("onlineTexture").objectReferenceValue =
-                AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Placeholders/Sprites/ui_tela_sistema_rede.png");
+                AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/UI/PH_ui_tela_sistema_rede.png");
             so.ApplyModifiedPropertiesWithoutUndo();
         }
         EditorSceneManager.MarkSceneDirty(scene);

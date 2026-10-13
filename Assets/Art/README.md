@@ -1,0 +1,63 @@
+# Art — onde fica cada asset
+
+Cada tipo de asset tem **uma única pasta**. Os oficiais (Matheus e os gerados pelo projeto) e os placeholders ficam juntos, e os placeholders são identificados pelo prefixo **`PH_`**. Origem e licença de cada arquivo: `ORIGEM.md`.
+
+| O quê | Onde |
+|---|---|
+| Modelos 3D (`.fbx`) | `Assets/Art/Models/` |
+| Malhas geradas no Unity (`.asset`) | `Assets/Art/Meshes/` |
+| Texturas dos modelos | `Assets/Art/Textures/` (`Plaquinhas/` = etiquetas dos gaveteiros) |
+| Materiais (URP/Lit) | `Assets/Art/Materials/` (`Cabos/`, `Componentes/`, `Plaquinhas/` agrupam famílias) |
+| UI e minigames: sprites do Canvas, renders do PC, telas BIOS/sistema, cursores, ícones dos itens | `Assets/Art/UI/` |
+| Prefabs de cenário (sem lógica) | `Assets/Prefabs/Props/` (`OF_*` oficiais, `PH_*` placeholders) |
+| Prefabs de gameplay | `Assets/Prefabs/Gameplay/` |
+| Prefabs de tela (Canvas) | `Assets/Prefabs/UI/` |
+| Cenas | `Assets/Scenes/` (jogo: `Office_Placeholder`) |
+
+**Shaders:** o projeto não tem shaders próprios. Todos os materiais usam `Universal Render Pipeline/Lit`, que vem do pacote URP instalado pelo Package Manager (`Packages/manifest.json`). Os assets do pipeline ficam em `Assets/Settings/`. Os FBX do Matheus vieram com o Unity Toon Shader, mas os materiais foram convertidos para URP/Lit, então não é preciso instalar nada.
+
+## Regras rápidas
+
+- Asset novo vai para a pasta do seu tipo. Não crie uma pasta por objeto nem por minigame.
+- Um placeholder recebe o nome `PH_<nome>`. Quando chegar o oficial, ele entra sem prefixo e o `PH_` é removido.
+- Sempre mova e renomeie **dentro do Unity** (ou com o `.meta` junto). O GUID fica no `.meta`, e é ele que mantém as referências.
+- Os scripts de configuração em `Assets/Editor/*Setup.cs` usam caminhos fixos destas pastas. Se mover algo que eles usam, atualize a constante no topo do script.
+
+## Como trocar um placeholder pelo modelo final
+
+Os prefabs de cenário (`Prefabs/Props/PH_*`) e de gameplay (`Prefabs/Gameplay/*`) seguem o mesmo padrão:
+- **raiz lógica:** `BoxCollider`, scripts, `Rigidbody`, sem escala;
+- **filho com o modelo:** `Visual` nos prefabs de gameplay e nos `OF_*`, o próprio FBX nos `PH_*`.
+
+A cena guarda só a instância do prefab. Por isso, quando o prefab é alterado, a cena se atualiza sozinha e nada precisa ser religado.
+
+1. Importe o FBX final em `Art/Models/`, e os materiais e texturas nas suas pastas.
+2. Abra o prefab do placeholder (por exemplo, `PH_Porta`).
+3. Arraste o FBX novo **como filho da raiz**, ajuste a posição, a rotação e a escala desse filho, e apague o filho antigo. Não mexa na raiz, nos componentes nem no `BoxCollider` (só no tamanho, se necessário).
+4. Opcional: renomeie o prefab de `PH_Porta` para `OF_Porta` pelo Unity. O GUID continua o mesmo, e a cena segue apontando para ele.
+5. Quando o placeholder não tiver mais uso, apague o `PH_*.fbx` e o material dele. Antes, confira em *Find References In Scene*/*Select Dependencies*.
+
+**Exceções (pedem atenção manual):**
+- **`PC_1` na `Office_Placeholder`:** é uma instância do `PH_Pc` com pickups de teste presos nos nós do FBX. Trocar o modelo apaga esses nós. Mova os pickups para a raiz antes.
+- **`Openable_Gaveta`:** tem o `PH_Gaveta` aninhado e o `OpenableInteractable` move a raiz (`movingPart` vazio). Por isso, trocar o modelo filho funciona como nos outros prefabs. Mas o `gaveta.fbx` oficial é uma malha única (sem gaveta separada), então os gaveteiros oficiais (`Gaveteiro_Hardware`/`Cabos`) foram montados à parte por `GaveteirosSetup.cs`.
+- **Piso, paredes, teto e tela do monitor da cena:** são primitivos da cena com materiais `PH_M_*`. Para trocar, basta mudar o material no `MeshRenderer`.
+- **Materiais `PH_M_Item2D_*`, `PH_M_CaboHDMI` e sprites `PH_*` de UI:** o `PcManutencaoSetup.cs` os procura pelo nome. Se forem renomeados, atualize o script.
+
+## Placeholders ainda em uso (2026-10-12)
+
+- **Cena `Office_Placeholder`:**
+  - os prefabs `PH_Bancada`, `PH_Janela`, `PH_Pc`, `PH_Porta` e `PH_RackInternet`;
+  - os materiais `PH_M_Piso/Parede/Mesa_Placeholder`, `PH_M_Tela_Monitor` e `PH_M_Braco_Placeholder`.
+- **`Openable_Gaveta`:** o `PH_Gaveta`.
+- **Tela de manutenção (`UI_Screen_Gabinete`, `ScrewView`):**
+  - os sprites `PH_ui_tela_bios/sistema/sistema_rede`, `PH_ui_mao`, `PH_ui_branco`, `PH_ui_cursor_chave_de_fenda`, `PH_ui_parafuso_anel/furo` e `PH_chave_de_fenda`.
+- **Itens:** `Pickup_Ferramenta` (`PH_M_Item2D_ChaveDeFenda`) e `Pickup_CaixaTeste` (`PH_M_Metal_Cinza`).
+
+**Sem uso, mas mantidos de propósito:**
+- `PH_hd_virado`: previsto para um minigame.
+- `PH_pc_back`: o `.meta` serve de modelo de importação para os scripts de Editor.
+- `PH_hd`, `PH_memoria_ram` e `PH_placa_mae`: fonte do `gerar_sprites_pc.py` e dos `PH_M_Item2D_*`.
+- Texturas legadas `PH_tela_no_signal`, `PH_tomada_*`, `PH_vga`, `PH_cabo_rede`, `PH_energia` e `PH_mesa_*`: possíveis telas e ícones de minigame.
+- Sprites pixel art `ui_plugue_*`, `ui_tomada_energia`, `ui_ponto_rede`, `ui_hd_deitado` e `ui_memoria_ram_vertical`: o `PcManutencaoSetup.cs` usa.
+- Modelos do Matheus ainda não integrados: `divisa`, `mesa_2`, `mesa_3`, `mesa_grande`, `tela_projetor` e `gaveta`.
+- Materiais `M_Of`, `M_Ceiling` e `*_PENDENTE`.

@@ -10,7 +10,7 @@ Princípios:
     (mesmo objeto/nome: 'Cube.001' no gabinete, 'Cube' no monitor), num único modelo por equipamento.
     Assim o fileID da malha no Unity não muda e os prefabs/cenas continuam apontando para ela.
   - O material 0 continua sendo o do Matheus (no Unity: M_Escritorio_Escuro); as peças novas usam
-    materiais extras 'MAT_PC_*' (no Unity: remapeados para Assets/Art/Official/Materials/M_PC_*).
+    materiais extras 'MAT_PC_*' (no Unity: remapeados para Assets/Art/Materials/M_PC_*).
   - As peças são modeladas em metros REAIS (escala do Visual nos prefabs = 0,36387107) e depois levadas
     ao espaço do original (x 1/0,36387107). Frente em -Y, traseira em +Y, topo em +Z (como os originais).
   - Gabinete: reaproveita a traseira, os conectores, os parafusos e o botão do gabinete v2 e acrescenta a saída HDMI

@@ -14,10 +14,10 @@ using UnityEngine.UI;
 /// </summary>
 public static class Cabos3DSetup
 {
-    private const string Fbx = "Assets/Art/Official/Models/cabos.fbx";
-    private const string Mats = "Assets/Art/Official/Materials/";
+    private const string Fbx = "Assets/Art/Models/cabos.fbx";
+    private const string Mats = "Assets/Art/Materials/";
     private const string CabMats = Mats + "Cabos/";
-    private const string Sprites = "Assets/Art/Official/Sprites/";
+    private const string Sprites = "Assets/Art/UI/";
     private const string Gameplay = "Assets/Prefabs/Gameplay/";
     private const string ScreenPath = "Assets/Prefabs/UI/UI_Screen_Gabinete.prefab";
     private const string ScenePath = "Assets/Scenes/Office_Placeholder.unity";
@@ -102,7 +102,7 @@ public static class Cabos3DSetup
     private static void ImportSprites()
     {
         const string src = "Art/Source/Blender/cabos_renders/";
-        string template = File.ReadAllText("Assets/Art/Placeholders/Sprites/pc_back.png.meta");
+        string template = File.ReadAllText("Assets/Art/UI/PH_pc_back.png.meta");
         foreach (string f in Directory.GetFiles(src, "*.png"))
         {
             string dst = Sprites + Path.GetFileName(f);
