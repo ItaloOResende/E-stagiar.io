@@ -29,9 +29,9 @@ public class GaveteirosTests
     private static Type T(string name) => Type.GetType(name + ", Assembly-CSharp", true);
 
     [TestCase("Assets/Prefabs/Gameplay/Gaveteiro_Hardware.prefab",
-        "MemoriaRAM,MemoriaRAM,MemoriaRAM,Cooler|PlacaMae|HD,Fonte|Ferramenta,Ferramenta", ExpectedResult = null)]
+        "MemoriaRAM,MemoriaRAM,MemoriaRAM,Cooler,Cooler|PlacaMae,PlacaMae|HD,HD,Fonte,Fonte|Ferramenta,Ferramenta,Pendrive", ExpectedResult = null)]
     [TestCase("Assets/Prefabs/Gameplay/Gaveteiro_Cabos.prefab",
-        "CaboEnergia,CaboEnergia|CaboVideo|CaboHDMI|CaboRede,CaboRede", ExpectedResult = null)]
+        "CaboEnergia,CaboEnergia|CaboVideo,CaboVideo|CaboHDMI,CaboHDMI|CaboRede,CaboRede", ExpectedResult = null)]
     public IEnumerator TodasAsPecas_FicamDentroDaGaveta_ComAGavetaAberta(string path, string expected)
     {
         GameObject cab = Object.Instantiate(LoadPrefab(path), new Vector3(10f, 0f, 0f), Quaternion.Euler(0f, 180f, 0f));

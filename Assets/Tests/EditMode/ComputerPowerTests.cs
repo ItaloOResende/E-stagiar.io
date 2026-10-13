@@ -7,7 +7,8 @@ public class ComputerPowerTests
     private ComputerCase pcCase;
     private ComputerPower power;
     private CableItem powerCable, monitorPowerCable, videoCable, hdmiCable, networkCable;
-    private ComputerPartItem mobo, ram, hdd, psu, cooler;
+    private ComputerPartItem mobo, ram, hdd, psu, cooler, blankHdd;
+    private PendriveItem pendrive;
     private readonly System.Collections.Generic.List<GameObject> created = new System.Collections.Generic.List<GameObject>();
 
     [SetUp]
@@ -31,6 +32,22 @@ public class ComputerPowerTests
         hdd = Item<ComputerPartItem>("HD", c => Set(c, "component", (int)PcComponent.Hdd));
         psu = Item<ComputerPartItem>("Fonte", c => Set(c, "component", (int)PcComponent.Psu));
         cooler = Item<ComputerPartItem>("Cooler", c => Set(c, "component", (int)PcComponent.CpuCooler));
+        // 'hdd' = unidade que já tem o sistema (como a dos PCs prontos); 'blankHdd' = HD novo da gaveta (vazio).
+        hdd.HasOperatingSystem = true;
+        blankHdd = Item<ComputerPartItem>("HD_Vazio", c => Set(c, "component", (int)PcComponent.Hdd));
+        pendrive = Item<PendriveItem>("Pendrive", _ => { });
+        SetFloat(power, "installDuration", 2f);
+    }
+
+    private static void SetFloat(Object target, string field, float value) =>
+        target.GetType().GetField(field, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+            .SetValue(target, value);
+
+    private void ReadyForBios()
+    {
+        OpenCase();
+        ConnectAllCables();
+        InstallBiosParts();
     }
 
     [TearDown]
@@ -322,5 +339,236 @@ public class ComputerPowerTests
         Assert.AreEqual(PartSlotResult.NoItemToReturn, pcCase.UsePartSlot(PcComponent.Hdd, null, false, out _));
         Assert.AreEqual(PartSlotResult.NoItemToReturn, pcCase.UsePartSlot(PcComponent.Psu, null, false, out _));
         Assert.IsTrue(pcCase.HasComponent(PcComponent.Hdd) && pcCase.HasComponent(PcComponent.Psu));
+    }
+    // ---- sistema operacional (gravado no HD) e pendrive --------------------------------------------------------
+
+    [Test]
+    public void BlankHdd_WithoutPendrive_StaysInBios()
+    {
+        ReadyForBios();
+        Install(blankHdd);
+        Assert.IsFalse(blankHdd.HasOperatingSystem);
+        Assert.IsFalse(power.CanReachOperatingSystem);
+        power.PressPower();
+        Assert.AreEqual(PcPowerState.Bios, power.State);
+        Assert.IsFalse(power.IsInstallingOperatingSystem);
+    }
+
+    [Test]
+    public void Pendrive_InstallsOnTheHdd_ThenBootsTheSystem_AndShowsTheNetworkState()
+    {
+        ReadyForBios();
+        Install(blankHdd);
+        Assert.AreEqual(PortResult.PluggedFromHand, power.UseUsbPort(1, pendrive, true, out _));
+        power.PressPower();
+        Assert.AreEqual(PcPowerState.Bios, power.State, "instalando: tela da BIOS");
+        Assert.IsTrue(power.IsInstallingOperatingSystem);
+        power.AdvanceInstall(1f);
+        Assert.AreEqual(PcPowerState.Bios, power.State);
+        power.AdvanceInstall(1.1f);
+        Assert.AreEqual(PcPowerState.OperatingSystem, power.State);
+        Assert.IsTrue(blankHdd.HasOperatingSystem, "o sistema fica gravado no HD");
+        Assert.IsFalse(power.Online, "sem cabo de rede: tela de sistema sem conexão");
+        Connect(networkCable, PcPort.CaseNetwork, PcPort.NetworkJack);
+        Assert.IsTrue(power.Online, "com cabo de rede: tela de conectado");
+
+        // desliga, tira o pendrive e liga: o sistema continua no HD
+        power.PressPower();
+        Assert.AreEqual(PortResult.CableReturned, power.UseUsbPort(1, null, false, out GameObject back));
+        Assert.AreSame(pendrive.gameObject, back);
+        power.PressPower();
+        Assert.AreEqual(PcPowerState.OperatingSystem, power.State);
+    }
+
+    [Test]
+    public void Pendrive_WithoutHdd_DoesNotInstall()
+    {
+        ReadyForBios();
+        power.UseUsbPort(0, pendrive, true, out _);
+        power.PressPower();
+        Assert.AreEqual(PcPowerState.Bios, power.State);
+        Assert.IsFalse(power.IsInstallingOperatingSystem);
+        power.AdvanceInstall(10f);
+        Assert.AreEqual(PcPowerState.Bios, power.State);
+        Assert.IsFalse(pcCase.HddHasOperatingSystem);
+    }
+
+    [Test]
+    public void RemovingThePendriveOrTheHdd_CancelsTheInstall()
+    {
+        ReadyForBios();
+        Install(blankHdd);
+        power.UseUsbPort(2, pendrive, true, out _);
+        power.PressPower();
+        power.UseUsbPort(2, null, false, out _);
+        Assert.IsFalse(power.IsInstallingOperatingSystem);
+        power.AdvanceInstall(10f);
+        Assert.AreEqual(PcPowerState.Bios, power.State);
+        Assert.IsFalse(blankHdd.HasOperatingSystem);
+
+        power.PressPower(); // desliga
+        power.UseUsbPort(2, pendrive, true, out _);
+        power.PressPower();
+        Assert.AreEqual(PartSlotResult.Removed, pcCase.UsePartSlot(PcComponent.Hdd, null, false, out _));
+        Assert.IsFalse(power.IsInstallingOperatingSystem);
+        Assert.IsFalse(blankHdd.HasOperatingSystem);
+    }
+
+    [Test]
+    public void SwappingToABlankHdd_TheSystemStaysWithTheOldDrive()
+    {
+        ReadyForBios();
+        Install(hdd);
+        power.PressPower();
+        Assert.AreEqual(PcPowerState.OperatingSystem, power.State);
+        Assert.AreEqual(PartSlotResult.Removed, pcCase.UsePartSlot(PcComponent.Hdd, null, false, out _));
+        Assert.AreEqual(PcPowerState.Off, power.State);
+        Install(blankHdd);
+        power.PressPower();
+        Assert.AreEqual(PcPowerState.Bios, power.State, "HD vazio: não inicia o sistema");
+        Assert.IsTrue(hdd.HasOperatingSystem);
+    }
+
+    [Test]
+    public void FactoryHdd_KeepsItsSystemWhenRemoved_AsConfiguredByTheScenario()
+    {
+        var prefab = Item<ComputerPartItem>("HD_Prefab", c => Set(c, "component", (int)PcComponent.Hdd));
+        typeof(ComputerCase).GetField("hddItemPrefab", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+            .SetValue(pcCase, prefab.gameObject);
+        OpenCase();
+
+        pcCase.SetComponents(ComputerCase.AllComponents);           // padrão: HD de fábrica com sistema
+        Assert.IsTrue(pcCase.HddHasOperatingSystem);
+        pcCase.UsePartSlot(PcComponent.Hdd, null, false, out GameObject withOs);
+        created.Add(withOs);
+        Assert.IsTrue(withOs.GetComponent<ComputerPartItem>().HasOperatingSystem);
+        Assert.IsFalse(prefab.HasOperatingSystem, "HD novo (prefab/gaveta) vem vazio");
+
+        pcCase.SetComponents(ComputerCase.AllComponents, false);    // cenário: HD de fábrica sem sistema
+        Assert.IsFalse(pcCase.HddHasOperatingSystem);
+        Assert.IsTrue(pcCase.InstallOperatingSystem());
+        Assert.IsTrue(pcCase.HddHasOperatingSystem);
+        pcCase.UsePartSlot(PcComponent.Hdd, null, false, out GameObject installed);
+        created.Add(installed);
+        Assert.IsTrue(installed.GetComponent<ComputerPartItem>().HasOperatingSystem);
+        Assert.IsFalse(pcCase.InstallOperatingSystem(), "sem HD não há onde instalar");
+    }
+
+    [Test]
+    public void UsbPorts_TakeOnePendrive_AndGiveTheSameObjectBack()
+    {
+        Assert.AreEqual(PortResult.NeedsCable, power.UseUsbPort(0, null, false, out _));
+        Assert.AreEqual(PortResult.WrongCable, power.UseUsbPort(0, null, true, out _), "outro item na mão");
+        Assert.AreEqual(PortResult.Invalid, power.UseUsbPort(3, pendrive, true, out _));
+        Assert.AreEqual(PortResult.PluggedFromHand, power.UseUsbPort(0, pendrive, true, out _));
+        Assert.IsTrue(power.PendriveConnected);
+        Assert.AreEqual(0, power.PendrivePort);
+        Assert.AreEqual(PortResult.Invalid, power.UseUsbPort(1, pendrive, true, out _), "um pendrive por vez");
+        Assert.AreEqual(PortResult.HandsFull, power.UseUsbPort(0, null, true, out _));
+        Assert.AreEqual(PortResult.CableReturned, power.UseUsbPort(0, null, false, out GameObject back));
+        Assert.AreSame(pendrive.gameObject, back);
+        Assert.IsFalse(power.PendriveConnected);
+    }
+    // ---- telas de boot: sem HD x HD sem sistema x instalando x sistema ------------------------------------------
+
+    [Test]
+    public void BootScreens_DistinguishNoDriveFromDriveWithoutSystem()
+    {
+        ReadyForBios();
+        Assert.AreEqual(PcScreen.Off, power.Screen);
+        power.PressPower();
+        Assert.AreEqual(PcScreen.NoStorage, power.Screen, "sem HD: nenhum dispositivo de armazenamento");
+        int changes = 0;
+        power.DisplayChanged += () => changes++;
+        Install(blankHdd);
+        Assert.AreEqual(PcScreen.NoBootableDevice, power.Screen, "HD vazio detectado: no bootable device");
+        Assert.Greater(changes, 0, "instalar o HD atualiza a tela");
+        power.PressPower(); power.PressPower();                       // reinicia
+        Assert.AreEqual(PcScreen.NoBootableDevice, power.Screen, "continua sem sistema depois de reiniciar");
+        Assert.AreEqual(PartSlotResult.Removed, pcCase.UsePartSlot(PcComponent.Hdd, null, false, out _));
+        Assert.AreEqual(PcScreen.NoStorage, power.Screen);
+        Install(hdd);                                                // HD com sistema: só depois de reiniciar
+        power.PressPower(); power.PressPower();
+        Assert.AreEqual(PcScreen.OperatingSystem, power.Screen);
+    }
+
+    [Test]
+    public void Install_GoesThroughStages_AndOnlyFinishesAtTheEnd()
+    {
+        ReadyForBios();
+        Install(blankHdd);
+        power.UseUsbPort(0, pendrive, true, out _);
+        int changes = 0;
+        power.DisplayChanged += () => changes++;
+        power.PressPower();
+        Assert.AreEqual(PcScreen.Installing, power.Screen, "a primeira imagem já é a da instalação");
+        Assert.AreEqual(0, power.InstallStage);
+        int lastStage = 0;
+        for (int i = 0; i < 19; i++)
+        {
+            power.AdvanceInstall(0.1f);                               // installDuration = 2 s
+            Assert.GreaterOrEqual(power.InstallStage, lastStage);
+            lastStage = power.InstallStage;
+            Assert.IsFalse(blankHdd.HasOperatingSystem, "não grava antes do fim");
+        }
+        Assert.AreEqual(power.InstallStages - 1, lastStage, "passou por todas as etapas");
+        Assert.GreaterOrEqual(changes, power.InstallStages, "cada etapa avisa a tela");
+        power.AdvanceInstall(0.2f);
+        Assert.AreEqual(PcScreen.OperatingSystem, power.Screen);
+        Assert.IsTrue(blankHdd.HasOperatingSystem);
+    }
+
+    [Test]
+    public void LosingARequirementDuringInstall_CancelsWithoutWritingTheSystem()
+    {
+        ReadyForBios();
+        Install(blankHdd);
+        power.UseUsbPort(0, pendrive, true, out _);
+        power.PressPower();
+        power.AdvanceInstall(1f);
+        Assert.AreEqual(PortResult.Unplugged, power.UsePort(PcPort.MonitorOutlet, null, false, out _));
+        Assert.AreEqual(PcPowerState.Off, power.State, "sem energia no monitor: desliga");
+        Assert.IsFalse(power.IsInstallingOperatingSystem);
+        power.AdvanceInstall(10f);
+        Assert.IsFalse(blankHdd.HasOperatingSystem);
+    }
+    // ---- quedas e dano das peças -------------------------------------------------------------------------------
+
+    [Test]
+    public void FragilePart_BreaksOnTheFirstDrop_AndBrokenCannotBeInstalled()
+    {
+        int events = 0;
+        mobo.ConditionChanged += _ => events++;
+        Assert.AreEqual(PartCondition.Intact, mobo.Condition);
+        mobo.RegisterDrop(1);
+        Assert.AreEqual(PartCondition.Broken, mobo.Condition, "placa-mãe: quebra na 1ª queda");
+        Assert.AreEqual(1, mobo.DropCount);
+        mobo.RegisterDrop(1);
+        Assert.AreEqual(1, mobo.DropCount, "quebrada não muda mais");
+        Assert.AreEqual(1, events);
+        ram.RegisterDrop(1);
+        Assert.IsTrue(ram.IsBroken, "RAM: quebra na 1ª queda");
+
+        OpenCase();
+        Assert.AreEqual(PartSlotResult.BrokenPart, pcCase.UsePartSlot(PcComponent.Motherboard, mobo, true, out _));
+        Assert.IsFalse(pcCase.HasComponent(PcComponent.Motherboard));
+    }
+
+    [Test]
+    public void ResistantPart_FirstDropIsRecorded_SecondBreaks_HddKeepsItsSystemWhileWorking()
+    {
+        hdd.RegisterDrop(2);
+        Assert.AreEqual(1, hdd.DropCount);
+        Assert.AreEqual(PartCondition.Damaged, hdd.Condition, "1ª queda: registrada, ainda funciona");
+        Assert.IsTrue(hdd.HasOperatingSystem, "queda não mexe no sistema gravado no HD");
+        ReadyForBios();
+        Install(hdd);
+        power.PressPower();
+        Assert.AreEqual(PcScreen.OperatingSystem, power.Screen, "HD que caiu uma vez continua funcionando, com o sistema");
+
+        foreach (var p in new[] { psu, cooler }) { p.RegisterDrop(2); Assert.AreEqual(PartCondition.Damaged, p.Condition); }
+        foreach (var p in new[] { psu, cooler, blankHdd }) { p.RegisterDrop(2); p.RegisterDrop(2); Assert.IsTrue(p.IsBroken, p.name + ": quebra na 2ª queda"); }
+        Assert.AreEqual(PartSlotResult.Removed, pcCase.UsePartSlot(PcComponent.Hdd, null, false, out _));
+        Assert.AreEqual(PartSlotResult.BrokenPart, pcCase.UsePartSlot(PcComponent.Hdd, blankHdd, true, out _), "HD quebrado não é instalado");
     }
 }

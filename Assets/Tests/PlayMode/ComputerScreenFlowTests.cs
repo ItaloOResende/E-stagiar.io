@@ -153,9 +153,20 @@ public class ComputerScreenFlowTests
             Assert.AreEqual(Vector2.zero, vr.offsetMin, v); Assert.AreEqual(Vector2.zero, vr.offsetMax, v);
         }
         var nav = (RectTransform)screen.transform.Find("Navegacao");
-        Assert.AreEqual(new Vector2(1f, 0f), nav.anchorMin, "canto inferior direito");
         CollectionAssert.AreEqual(new[] { "BotaoVoltar", "BotaoAvancar", "BotaoFechar" },
             nav.GetComponentsInChildren<Button>(true).Select(b => b.name).ToArray());
+        // Setas nas extremidades de baixo; X no canto superior direito (com margem, não centralizados).
+        var voltar = (RectTransform)ButtonNamed(screen, "BotaoVoltar").transform;
+        var avancar = (RectTransform)ButtonNamed(screen, "BotaoAvancar").transform;
+        var fechar = (RectTransform)ButtonNamed(screen, "BotaoFechar").transform;
+        Assert.AreEqual(Vector2.zero, voltar.anchorMin, "Voltar no canto inferior esquerdo");
+        Assert.AreEqual(new Vector2(1f, 0f), avancar.anchorMin, "Avançar no canto inferior direito");
+        Assert.AreEqual(Vector2.one, fechar.anchorMin, "Fechar no canto superior direito");
+        Assert.AreEqual("X", fechar.GetComponentInChildren<Text>(true).text);
+        // margem para dentro (não colado na borda nem centralizado)
+        Assert.IsTrue(voltar.anchoredPosition.x > 0 && voltar.anchoredPosition.y > 0, "Voltar com margem");
+        Assert.IsTrue(avancar.anchoredPosition.x < 0 && avancar.anchoredPosition.y > 0, "Avançar com margem");
+        Assert.IsTrue(fechar.anchoredPosition.x < 0 && fechar.anchoredPosition.y < 0, "Fechar com margem");
         Assert.IsFalse(screen.GetComponentsInChildren<Text>(true).Any(t => t.name == "Progresso"));
         Assert.IsNull(screen.transform.Find("BarraFundo"));
         Assert.IsFalse(screen.GetComponentsInChildren<Transform>(true).Any(t => t.name == "BarraFundo" || t.name == "BotaoAbrir"));
@@ -228,6 +239,151 @@ public class ComputerScreenFlowTests
         ButtonNamed(screen, "BotaoFechar").onClick.Invoke(); yield return null;
         Assert.IsFalse((bool)Get(manager, "IsOpen"));
         Assert.IsFalse(screen.activeSelf);
+    }
+
+    [UnityTest]
+    public IEnumerator FecharEReabrir_VoltaNaUltimaVista()
+    {
+        GameObject g = SpawnCase(Vector3.zero);
+        GiveScrewdriverToPlayer();
+        yield return null;
+        GameObject screen = OpenScreen(g);
+        yield return null;
+        AssertOnly(screen, "Frente");
+
+        // Frente: fecha e reabre na Frente.
+        CloseScreen(); yield return null;
+        screen = OpenScreen(g); yield return null;
+        AssertOnly(screen, "Frente");
+
+        // Traseira: reabre na Traseira, e a navegação continua funcionando.
+        Click(screen, "BotaoAvancar"); yield return null;
+        ButtonNamed(screen, "BotaoFechar").onClick.Invoke(); yield return null;
+        screen = OpenScreen(g); yield return null;
+        AssertOnly(screen, "Traseira");
+        Assert.IsTrue(ButtonNamed(screen, "BotaoVoltar").interactable);
+
+        // Interior (desbloqueado): reabre no Interior, com a tampa ainda aberta.
+        Component[] views = Views(screen);
+        foreach (int i in new[] { 3, 5, 7 }) { views[i].GetComponent<Button>().onClick.Invoke(); yield return null; }
+        Click(screen, "BotaoAvancar"); yield return null;
+        AssertOnly(screen, "Interior");
+        CloseScreen(); yield return null;
+        screen = OpenScreen(g); yield return null;
+        AssertOnly(screen, "Interior");
+        Assert.AreEqual(CaseState.Open, g.GetComponent<ComputerCase>().State);
+        Assert.IsFalse(ButtonNamed(screen, "BotaoAvancar").interactable);
+        Click(screen, "BotaoVoltar"); yield return null;
+        AssertOnly(screen, "Traseira");
+
+        // Outro gabinete não herda a vista do primeiro.
+        CloseScreen(); yield return null;
+        GameObject g2 = SpawnCase(new Vector3(3f, 0f, 0f));
+        yield return null;
+        screen = OpenScreen(g2); yield return null;
+        AssertOnly(screen, "Frente");
+    }
+
+    private static object CursorNow => T("UICursor").GetProperty("Current").GetValue(null);
+
+    [UnityTest]
+    public IEnumerator Cursor_MaozinhaPadrao_ChaveDeFendaSoNaTraseiraComAFerramenta()
+    {
+        GameObject g = SpawnCase(Vector3.zero);
+        yield return null;
+        var hand = new Texture2D(8, 8);
+        Set(manager, "defaultCursor", hand);
+
+        // sem a ferramenta: mãozinha em todas as vistas, inclusive na Traseira
+        GameObject screen = OpenScreen(g); yield return null;
+        Component ctrl = screen.GetComponent(T("ComputerScreenController"));
+        var rear = (Texture2D)ctrl.GetType().GetField("rearCursor", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(ctrl);
+        Assert.IsNotNull(rear, "cursor de chave de fenda configurado");
+        Assert.AreSame(hand, CursorNow, "Frente: mãozinha");
+        Click(screen, "BotaoAvancar"); yield return null;
+        Assert.AreSame(hand, CursorNow, "Traseira sem a chave na mão: mãozinha");
+        CloseScreen(); yield return null;
+        Assert.IsNull(CursorNow, "fora das telas, nenhum cursor personalizado");
+
+        // com a chave de fenda na mão: chave só na Traseira, proporcional aos parafusos
+        GiveScrewdriverToPlayer();
+        screen = OpenScreen(g); yield return null;
+        Assert.AreEqual("Rear", CurrentView(screen), "reabre onde parou");
+        Assert.AreSame(rear, CursorNow, "Traseira com a chave: chave de fenda");
+        int h = (int)Call(ctrl, "ScrewdriverCursorHeight");
+        Assert.GreaterOrEqual(h, 48, "cursor grande o bastante");
+        Click(screen, "BotaoVoltar"); yield return null;
+        Assert.AreSame(hand, CursorNow, "Frente: volta a mãozinha");
+        Click(screen, "BotaoAvancar"); yield return null;
+        Assert.AreSame(rear, CursorNow);
+        CloseScreen(); yield return null;
+        Assert.IsNull(CursorNow, "sair da manutenção não deixa a chave de fenda ativa");
+        Object.Destroy(hand);
+    }
+
+    [UnityTest]
+    public IEnumerator Instalacao_MostraEtapas_ESoAndaComOJogadorNaFrente()
+    {
+        GameObject g = SpawnCase(Vector3.zero);
+        var pcCase = g.GetComponent<ComputerCase>();
+        var power = g.GetComponent<ComputerPower>();
+        pcCase.SetComponents(ComputerCase.AllComponents, false);      // PC completo, HD de fábrica sem sistema
+        yield return null;
+        foreach (var (prefab, a, b) in new[] { ("Pickup_CaboEnergia", PcPort.CasePower, PcPort.Outlet),
+                                               ("Pickup_CaboEnergia", PcPort.MonitorPower, PcPort.MonitorOutlet),
+                                               ("Pickup_CaboVideo", PcPort.CaseVideo, PcPort.MonitorVideo) })
+        {
+            var cable = Object.Instantiate(LoadPrefab("Assets/Prefabs/Gameplay/" + prefab + ".prefab")).GetComponent<CableItem>();
+            Assert.AreEqual(PortResult.PluggedFromHand, power.UsePort(a, cable, true, out _));
+            Assert.AreEqual(PortResult.PluggedOtherEnd, power.UsePort(b, null, false, out _));
+        }
+        GameObject screen = OpenScreen(g); yield return null;
+        Image monitor = MonitorScreen(screen);
+
+        Click(screen, "BotaoPower");
+        Assert.AreEqual(PcScreen.NoBootableDevice, power.Screen, "HD sem sistema e sem pendrive");
+        Assert.AreEqual("PH_ui_tela_bios_sem_sistema", monitor.sprite.name);
+        Click(screen, "BotaoPower");
+
+        var pendrive = Object.Instantiate(LoadPrefab("Assets/Prefabs/Gameplay/Pickup_Pendrive.prefab")).GetComponent<PendriveItem>();
+        power.UseUsbPort(0, pendrive, true, out _);
+        Click(screen, "BotaoPower");
+        Assert.AreEqual(PcScreen.Installing, power.Screen);
+        Assert.AreEqual("PH_ui_tela_instalando_0", monitor.sprite.name);
+        yield return new WaitForSeconds(0.5f);
+        float onFront = power.InstallProgress;
+        Assert.Greater(onFront, 0f, "na Frente a instalação anda");
+
+        // Traseira: pausa (não cancela, não conclui)
+        Click(screen, "BotaoAvancar"); yield return null;
+        Assert.IsTrue(power.InstallPaused);
+        float paused = power.InstallProgress;
+        yield return new WaitForSeconds(0.5f);
+        Assert.AreEqual(paused, power.InstallProgress, 1e-4f, "parada fora da Frente");
+        Assert.IsTrue(power.IsInstallingOperatingSystem);
+
+        // de volta à Frente: continua de onde parou
+        Click(screen, "BotaoVoltar"); yield return null;
+        Assert.IsFalse(power.InstallPaused);
+        yield return new WaitForSeconds(0.3f);
+        Assert.Greater(power.InstallProgress, paused);
+        StringAssert.StartsWith("PH_ui_tela_instalando_", monitor.sprite.name);
+        power.AdvanceInstall(100f);
+        yield return null;
+        Assert.AreEqual(PcScreen.OperatingSystem, power.Screen);
+        Assert.AreEqual("PH_ui_tela_sistema", monitor.sprite.name, "sem cabo de rede");
+        Assert.IsTrue(pcCase.HddHasOperatingSystem);
+        CloseScreen();
+        Assert.IsFalse(power.InstallPaused);
+    }
+
+    [Test]
+    public void Traseira_TomadaDoMonitorDesenhadaAntesDosCabos()
+    {
+        Transform rear = LoadPrefab(ScreenPrefab).transform.Find("Traseira");
+        Assert.Less(rear.Find("Tomada_Monitor").GetSiblingIndex(), rear.Find("Cabos").GetSiblingIndex(),
+            "cabo da tomada do monitor desenhado na frente do plugue");
+        Assert.Less(rear.Find("Tomada").GetSiblingIndex(), rear.Find("Cabos").GetSiblingIndex());
     }
 
     [UnityTest]
@@ -412,7 +568,7 @@ public class ComputerScreenFlowTests
         CloseScreen(); yield return null;
         GiveToPlayer("Assets/Prefabs/Gameplay/Pickup_CaboEnergia.prefab");
         screen = OpenScreen(g); yield return null;
-        Click(screen, "BotaoAvancar"); yield return null;
+        Assert.AreEqual("Rear", CurrentView(screen), "reabre na Traseira, onde parou");
         Click(screen, "Porta_EnergiaMonitor");
         Click(screen, "Porta_TomadaMonitor");
         Assert.IsTrue(power.MonitorPowerConnected);
@@ -422,7 +578,7 @@ public class ComputerScreenFlowTests
         CloseScreen(); yield return null;
         GiveToPlayer("Assets/Prefabs/Gameplay/Pickup_CaboHDMI.prefab");
         screen = OpenScreen(g); yield return null;
-        Click(screen, "BotaoAvancar"); yield return null;
+        Assert.AreEqual("Rear", CurrentView(screen), "reabre na Traseira, onde parou");
         Click(screen, "Porta_VGAGabinete");
         Assert.IsTrue(Holding, "HDMI não entra na VGA");
         Click(screen, "Porta_HDMIGabinete");
@@ -448,7 +604,7 @@ public class ComputerScreenFlowTests
         Assert.AreEqual("PH_ui_tela_bios", monitor.sprite.name);
         Assert.IsTrue(Active(screen, led), "ligado: LED do Power aceso");
 
-        // HD instalado: só depois de reiniciar vai para o sistema.
+        // HD novo (da gaveta) vem vazio: mesmo reiniciando, fica na BIOS.
         Click(screen, "BotaoAvancar"); Click(screen, "BotaoAvancar"); yield return null;
         GiveToPlayer("Assets/Prefabs/Gameplay/Pickup_HD.prefab");
         Click(screen, "Encaixe_HD");
@@ -457,8 +613,39 @@ public class ComputerScreenFlowTests
         Assert.AreEqual(PcPowerState.Off, power.State);
         Assert.IsNull(monitor.sprite);
         Click(screen, "BotaoPower");
+        Assert.AreEqual(PcPowerState.Bios, power.State, "HD sem sistema");
+        Click(screen, "BotaoPower");
+
+        // Pendrive numa USB da traseira: some da mão, aparece na porta (2D e 3D).
+        Click(screen, "BotaoAvancar"); yield return null;
+        GiveToPlayer("Assets/Prefabs/Gameplay/Pickup_Pendrive.prefab");
+        Click(screen, "Porta_USB_1");
+        Assert.IsFalse(Holding, "pendrive conectado sai da mão");
+        Assert.AreEqual(1, power.PendrivePort);
+        Assert.IsTrue(Active(screen, "Traseira/ContainerTraseira_Area/ContainerTraseira/Portas/Porta_USB_1/Plugue"));
+        Assert.IsTrue(g.transform.Find("Pendrive3D").gameObject.activeSelf, "pendrive encaixado no gabinete 3D");
+
+        // Liga: boot pelo pendrive (BIOS) → instala no HD → sistema.
+        Click(screen, "BotaoVoltar"); yield return null;
+        Click(screen, "BotaoPower");
+        Assert.AreEqual(PcPowerState.Bios, power.State);
+        Assert.IsTrue(power.IsInstallingOperatingSystem);
+        power.AdvanceInstall(10f);
+        yield return null;
         Assert.AreEqual(PcPowerState.OperatingSystem, power.State);
         Assert.AreEqual("PH_ui_tela_sistema", monitor.sprite.name);
+        Assert.IsTrue(pcCase.HddHasOperatingSystem);
+
+        // Desconecta o pendrive (mão livre): volta o MESMO objeto para a mão; o sistema continua no HD.
+        Click(screen, "BotaoAvancar"); yield return null;
+        Click(screen, "Porta_USB_1");
+        Assert.IsTrue(Holding);
+        Assert.IsNotNull(((Component)Get(holder, "Current")).GetComponent<PendriveItem>());
+        Assert.IsFalse(g.transform.Find("Pendrive3D").gameObject.activeSelf);
+        Assert.AreEqual(PcPowerState.OperatingSystem, power.State);
+        Click(screen, "Porta_USB_1");                 // conecta de novo: mão livre para o resto do teste
+        Assert.IsFalse(Holding);
+        Click(screen, "BotaoVoltar"); yield return null;
 
         // Cabo de rede: gabinete ↔ ponto de rede → sistema "conectado".
         CloseScreen(); yield return null;
