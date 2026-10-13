@@ -90,6 +90,55 @@ def merge_into(base, parts, body_mats):
             m.name = m.name.replace("MAT_Gabinete_", "MAT_PC_")
 
 
+def box_uv(parts, uv_name):
+    """
+    UV por projeção em caixa (eixo dominante da normal de cada face) nas peças acrescentadas. Sem UV, as peças
+    entravam na malha juntada com UV (0,0) e o Unity calculava tangentes paralelas à normal em alguns vértices:
+    o Unity Toon Shader monta o espaço tangente com elas e gerava NaN, que o bloom espalhava como um brilho enorme
+    nas laterais do monitor. A UV não muda a aparência (os materiais das peças não têm textura).
+    """
+    import bmesh
+    for o in parts:
+        bm = bmesh.new(); bm.from_mesh(o.data)
+        uv = bm.loops.layers.uv.get(uv_name) or bm.loops.layers.uv.new(uv_name)
+        for f in bm.faces:
+            n = f.normal
+            ax = max(range(3), key=lambda i: abs(n[i]))
+            u, v = [(1, 2), (0, 2), (0, 1)][ax]
+            for l in f.loops:
+                co = o.matrix_world @ l.vert.co
+                l[uv].uv = (co[u] * 4.0, co[v] * 4.0)
+        bm.to_mesh(o.data); bm.free()
+
+
+def fix_degenerate_uv(o, eps=1e-6):
+    """
+    Refaz (projeção em caixa) a UV só das faces com UV de área (quase) zero (ex.: laterais do pé do monitor no original):
+    nelas o Unity gerava tangente paralela à normal e o Toon Shader dava NaN (brilho do bloom). As demais UVs ficam.
+    """
+    import bmesh
+    bm = bmesh.new(); bm.from_mesh(o.data)
+    uv = bm.loops.layers.uv.active
+    fixed = 0
+    if uv is not None:
+        for f in bm.faces:
+            pts = [l[uv].uv for l in f.loops]
+            area = 0.0
+            for i in range(1, len(pts) - 1):
+                a, b = pts[i] - pts[0], pts[i + 1] - pts[0]
+                area += abs(a.x * b.y - a.y * b.x)
+            if area > eps:
+                continue
+            n = f.normal
+            ax = max(range(3), key=lambda i: abs(n[i]))
+            u, v = [(1, 2), (0, 2), (0, 1)][ax]
+            for l in f.loops:
+                l[uv].uv = (l.vert.co[u] * 0.05, l.vert.co[v] * 0.05)
+            fixed += 1
+    bm.to_mesh(o.data); bm.free()
+    print("UV_DEGENERADA_CORRIGIDA", o.name, fixed)
+
+
 def remove_unused():
     for o in list(bpy.data.objects):
         if o.type == 'EMPTY':
@@ -279,7 +328,9 @@ def build_monitor(orig_path):
 
 
     place(parts, origin)
+    box_uv(parts, base.data.uv_layers.active.name if base.data.uv_layers else "UVMap")
     merge_into(base, parts, {"MAT_Gabinete_Corpo"})
+    fix_degenerate_uv(base)
     return base
 
 
