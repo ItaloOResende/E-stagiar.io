@@ -905,7 +905,7 @@ Transform:
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.8, z: 0}
+  m_LocalPosition: {x: 0, y: 0.85, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -3173,6 +3173,13 @@ MonoBehaviour:
   source: {fileID: 1201922504}
   screenRenderer: {fileID: 1055287582}
   biosTexture: {fileID: 2800000, guid: 153c06066a4d19840b21c0b12bbf7997, type: 3}
+  noBootableTexture: {fileID: 2800000, guid: 2d3111979057fc441a71b479717fb02d, type: 3}
+  installTextures:
+  - {fileID: 2800000, guid: ff9a5f3d6b282794d87ff76dcb38962a, type: 3}
+  - {fileID: 2800000, guid: 02864e3d358aa054d83338980bc49145, type: 3}
+  - {fileID: 2800000, guid: 28cd5a2c9e328cf449cd5a6c86b04f6e, type: 3}
+  - {fileID: 2800000, guid: 28d80dea90361164384fdf4746330dce, type: 3}
+  - {fileID: 2800000, guid: 2871e476781018b419db6bd9447b3eeb, type: 3}
   operatingSystemTexture: {fileID: 2800000, guid: 753611e2642a3534ab4e459863a1b189, type: 3}
   onlineTexture: {fileID: 2800000, guid: 4481eed078f54a8489401c75f4255a8f, type: 3}
   offColor: {r: 0, g: 0, b: 0, a: 1}
@@ -3258,7 +3265,7 @@ Transform:
   m_GameObject: {fileID: 1171177457}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.3, y: -0.12, z: 0.48}
+  m_LocalPosition: {x: 0.26, y: -0.22, z: 0.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4405,9 +4412,8 @@ MonoBehaviour:
   holdPoint: {fileID: 1171177458}
   armVisual: {fileID: 2128157880}
   showArmOnlyWhileHolding: 0
-  dropDistance: 1.5
-  minDropDistance: 0.6
-  maxGroundSearch: 6
+  placeReach: 2.5
+  minSurfaceUp: 0.6
   placementMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -4427,6 +4433,9 @@ MonoBehaviour:
   disableWhileOpen:
   - {fileID: 1638108196}
   - {fileID: 1638108190}
+  defaultCursor: {fileID: 2800000, guid: e33886b47fcf252499b55c0cea6c75bf, type: 3}
+  defaultCursorHotspot: {x: 280, y: 0}
+  defaultCursorHeight: 48
   handCursor: {fileID: 1926458697}
   closeWithEscape: 1
 --- !u!1 &1670675821
@@ -5522,8 +5531,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2128157880}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.11921707, y: -0.25830346, z: -0.000000029143914, w: 0.9586796}
-  m_LocalPosition: {x: 0.39, y: -0.19, z: 0.18}
+  m_LocalRotation: {x: -0.27711797, y: -0.06888593, z: -0.029837541, w: 0.95789886}
+  m_LocalPosition: {x: 0.29636273, y: -0.38724905, z: 0.23579757}
   m_LocalScale: {x: 0.52497625, y: 0.52497625, z: 0.52497625}
   m_ConstrainProportionsScale: 0
   m_Children:
