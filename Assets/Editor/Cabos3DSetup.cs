@@ -118,6 +118,22 @@ public static class Cabos3DSetup
     }
 
     // ------------------------------------------------------------------ itens de cabo
+    private const float ItemScale = 1.06f, MinPickHeight = 0.05f, PickMargin = 0.005f, MaxItemSize = 0.149f;
+
+    // Margem de mira nos lados, sem passar do tamanho que cabe na gaveta (MaxItemSize; nunca menor que o rolo).
+    private static float Widen(float size) => Mathf.Max(size, Mathf.Min(size + 2 * PickMargin, MaxItemSize));
+
+    /// <summary>Só reaplica escala e collider dos itens Pickup_Cabo* (não mexe em cena, gabinete nem sprites).</summary>
+    [MenuItem("Tools/E-stagiar.io/Ajustar itens de cabo")]
+    public static void AjustarItensDeCabo()
+    {
+        var meshes = AssetDatabase.LoadAllAssetsAtPath(Fbx).OfType<Mesh>().ToDictionary(m => m.name);
+        foreach (var (prefab, mesh) in new[] { ("Pickup_CaboEnergia", "Rolo_Energia"), ("Pickup_CaboVideo", "Rolo_VGA"),
+                                               ("Pickup_CaboHDMI", "Rolo_HDMI"), ("Pickup_CaboRede", "Rolo_Rede") })
+            CableItemVisual(prefab, meshes[mesh]);
+        AssetDatabase.SaveAssets();
+    }
+
     private static void CableItemVisual(string prefabName, Mesh mesh)
     {
         string path = Gameplay + prefabName + ".prefab";
@@ -128,8 +144,14 @@ public static class Cabos3DSetup
         visual.transform.SetParent(root.transform, false);
         visual.AddComponent<MeshFilter>().sharedMesh = mesh;
         visual.AddComponent<MeshRenderer>().sharedMaterials = MaterialsOf(mesh.name);
+        visual.transform.localScale = Vector3.one * ItemScale;
+        // Collider: base no chão do rolo (y = 0, não flutua), um pouco mais largo e no mínimo MinPickHeight de
+        // altura PARA CIMA, para a mira acertar com facilidade os rolos baixos (2,7–4 cm).
+        Bounds b = mesh.bounds;
         var box = root.GetComponent<BoxCollider>();
-        box.size = mesh.bounds.size; box.center = mesh.bounds.center;
+        float h = Mathf.Max(b.size.y * ItemScale, MinPickHeight);
+        box.size = new Vector3(Widen(b.size.x * ItemScale), h, Widen(b.size.z * ItemScale));
+        box.center = new Vector3(b.center.x * ItemScale, b.min.y * ItemScale + h / 2, b.center.z * ItemScale);
         PrefabUtility.SaveAsPrefabAsset(root, path);
         PrefabUtility.UnloadPrefabContents(root);
     }

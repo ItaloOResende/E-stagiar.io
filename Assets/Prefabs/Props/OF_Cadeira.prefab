@@ -9,7 +9,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7180497438259959541}
-  - component: {fileID: 7716081623919584498}
   m_Layer: 0
   m_Name: OF_Cadeira
   m_TagString: Untagged
@@ -33,27 +32,6 @@ Transform:
   - {fileID: 8270135302132614875}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &7716081623919584498
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1303482112310275716}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 0.8118139, y: 1.2236103, z: 0.81039983}
-  m_Center: {x: 0, y: 0.61180514, z: 0}
 --- !u!1001 &8453209500725616944
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -125,10 +103,40 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 260eac792b208aa4094ef779f264d277, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8656799726848034633}
   m_SourcePrefab: {fileID: 100100000, guid: 260eac792b208aa4094ef779f264d277, type: 3}
 --- !u!4 &8270135302132614875 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 260eac792b208aa4094ef779f264d277, type: 3}
   m_PrefabInstance: {fileID: 8453209500725616944}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &8759145656686746721 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 260eac792b208aa4094ef779f264d277, type: 3}
+  m_PrefabInstance: {fileID: 8453209500725616944}
+  m_PrefabAsset: {fileID: 0}
+--- !u!64 &8656799726848034633
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8759145656686746721}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 2212009239438826721, guid: 260eac792b208aa4094ef779f264d277, type: 3}
