@@ -63,6 +63,31 @@ Todos são malha estática: sem rig, sem animação e sem avatar, incluindo o `c
 - `ui_render_pc_aberto` e `ui_render_peca_*`: render do gabinete **oficial do Matheus** aberto por boolean (lado da tampa), com estrutura interna e esses componentes (`Tools/blender/pc_interior_renders.py`), recortado em camadas por `pc_interior_camadas.py`.
 - `ui_render_pc_frente` agora tem o botão Power apagado; `ui_render_pc_frente_led` é o LED aceso recortado. `ui_hover_anel` foi gerado por `Tools/sprites/gerar_sprites_pc.py`. `M_PC_LED_Off` é o LED apagado no 3D.
 
+### Pendrive e USB elevadas (`Models/componentes.fbx` `Item_Pendrive`, `UI/ui_render_pendrive`, 2026-10-13)
+
+- `Item_Pendrive`: pendrive simples (corpo azul, etiqueta, conector USB-A) de autoria própria do projeto, gerado por `Tools/blender/componentes_build.py` (mesmos materiais `M_Comp_*`). O conector tem a medida da boca das USB do gabinete (9 x 16 mm) para encaixar sem flutuar. `ui_render_pendrive`: render dele encaixado, visto de trás (mesmo render Workbench dos plugues, `cabos_build.render`).
+- `gabinete.fbx`: só as 3 USB do I/O traseiro subiram (`gabinete_v2_build.USB_YN` 0,615 → 0,47, acima das PS/2) para os cabos das placas de expansão não esconderem o pendrive. Regerado pelo fluxo de sempre (`pc_modelos_build.py` sobre o original do Matheus em `Art/_Backup/2026-10-12_gabinete/`); a malha, os materiais e o resto do modelo não mudaram (render da frente idêntico). `ui_render_pc_traseira` regerado por `pc_canvas_renders.py`. Backup do estado anterior em `Art/_Backup/2026-10-13_usb_pendrive/`.
+
+### Chave de fenda 3D, cursor e telas de boot/instalação (2026-10-13)
+
+- `Item_ChaveDeFenda` (`componentes.fbx`): chave de fenda Phillips simples (cabo vermelho com frisos, haste de aço) de autoria própria do projeto, gerada por `Tools/blender/componentes_build.py` com os materiais `M_Comp_*`. Usada no `Pickup_Ferramenta` no lugar das ilustrações 2D (`PH_chave_de_fenda` continua como ícone do HUD).
+- `UI/ui_cursor_chave_de_fenda.png`: render dessa chave a 45° (ponta embaixo à esquerda), pelo mesmo script; cursor da Traseira.
+- `UI/PH_ui_tela_bios_sem_sistema.png` e `UI/PH_ui_tela_instalando_0..4.png`: telas geradas por `Tools/screens/gerar_telas_monitor.py` (autoria própria, fonte DejaVu Sans Mono livre); `PH_ui_tela_bios.png` regerada com a mensagem "Nenhum dispositivo de armazenamento detectado".
+
+### Assets do Matheus recebidos pelo Discord e Toon Shader (2026-10-13)
+
+- Pasta recebida `assets matheus/` (fora do repositório, não alterada). Integrados com os GUIDs dele: modelos `caixa.fbx`, `impressora.fbx`, `objetos.fbx`, `character2.fbx`, `gaveta_separada.fbx` (era `gaveta separada.fbx`); texturas `character_1DARK.png`, `character_2.png`, `officepapers.png`; materiais `M_Objetos_Parede.mat` (era `Objetos parede.mat`) e `M_Character_Tex1_1.mat` (era `M_Character_Tex1 1.mat`). Os modelos novos ainda não têm materiais ligados (no projeto dele isso fica na cena) nem prefabs.
+- Substituídos pelas versões dele (Unity Toon Shader, mesmos GUIDs): `M_Character_CylinderLayer2`, `M_Character_Tex1` (agora usa `character_1DARK`), `M_Escritorio_Claro`, `M_Escritorio_Escuro`, `M_Of`, `M_Plant`. Pacote `com.unity.toonshader` 0.15.1-preview reinstalado. Backup dos anteriores (URP/Lit) em `Art/_Backup/2026-10-13_matheus_toon/`.
+- Não usados: 69 arquivos idênticos; `character_1.png`/`plant_texture.png` (mesmos pixels); `gabinete.fbx` e `componentes.fbx` (cópias antigas das nossas, sem USB elevadas/pendrive/chave); `monitor.fbx` (corrompido: ponteiro Git LFS com conflito de merge); `character.fbx` (mantido o atual, que tem 6 slots de material; o dele tem 1).
+- Sombras dos materiais Toon corrigidas (`ToonShaderSetup.FixShading`): sombra com a textura/cor da própria peça (`_Use_BaseAs1st`), cor sem multiplicar pela intensidade da luz (`_Is_LightColor_* = 0`) e sem luz de borda branca (`_RimLight = 0`). Sem isso, peças pretas ficavam lilás, a planta perdia a textura e havia um halo claro nas bordas (perto do monitor).
+- `monitor.fbx` regerado (2026-10-13, `pc_modelos_build.py`, mesma geometria): UV por projeção nas peças acrescentadas e nas faces do original com UV degenerada (laterais do pé/pescoço). Nelas o Unity calculava tangente paralela à normal; o Toon Shader gerava NaN e o bloom do pós-processamento o espalhava como um brilho forte nas laterais do monitor, maior de perto. Backup em `Art/_Backup/2026-10-13_monitor_uv/`.
+- `M_PC_*` (detalhes do gabinete e do monitor, criados pelo projeto) passaram para o Toon Shader com a configuração do `M_Escritorio_Escuro` dele e as nossas cores (`Assets/Editor/ToonShaderSetup.cs`); os modelos não mudaram.
+
+### Peças quebradas (`componentes.fbx`: `Item_PlacaMae_Quebrada`, `Item_MemoriaRAM_Quebrada`, 2026-10-13)
+
+- Também `Item_HD_Quebrado`, `Item_Fonte_Quebrada` e `Item_Cooler_Quebrado` (carcaça partida), mesmo processo.
+- Geradas por `Tools/blender/componentes_build.py` a partir das próprias malhas da placa-mãe e da RAM (corte em diagonal, metade afastada e dobrada, lascas), mesmos materiais. Autoria própria do projeto.
+
 ### Prefabs visuais (`Assets/Prefabs/Props/`, criados na integração)
 
 Seguem o padrão dos `PH_*`:
