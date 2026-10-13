@@ -9,10 +9,21 @@ Funções: cada uma devolve UM objeto (já juntado) em "coordenadas da peça":
                O layout segue o sprite placa_mae.png (processador em cima à esquerda, 2 slots de RAM à direita dele).
   memoria_ram(): pente de pé: comprimento em Y, altura em Z (contatos dourados em z = 0), face em X.
   cooler(), hd(), fonte(): base em z = 0, centrados em X/Y.
+  pendrive(): "coordenadas de porta", como os plugues de cabos.fbx: entra na USB VERTICAL da traseira do gabinete
+              (boca 9 x 16 mm, gabinete_v2_build.usb_t) indo para -Y; a boca da porta fica em y = 0, o conector
+              metálico ocupa y < 0 (dentro da porta) e o corpo fica em y > 0 (fora do gabinete).
+  chave_de_fenda(): chave de fenda (Phillips) deitada ao longo de X, ponta em -X, eixo em z = 0.
+  quebrada(o, ...): versão QUEBRADA de um item deitado (placa-mãe, RAM): a própria malha cortada em diagonal,
+              uma metade afastada e entortada (dobrada para cima) e algumas lascas soltas; exportada como
+              Item_PlacaMae_Quebrada / Item_MemoriaRAM_Quebrada / Item_HD_Quebrado / Item_Fonte_Quebrada /
+              Item_Cooler_Quebrado (mesma peça, reconhecível, danificada).
 Constantes de encaixe: CPU_XY (centro do soquete), RAM_XY (centro do 1º slot), na placa.
 
 Uso (headless, exporta os itens deitados):
-  blender -b --factory-startup --python Tools/blender/componentes_build.py -- <saida.blend> <saida.fbx>
+  blender -b --factory-startup --python Tools/blender/componentes_build.py -- <saida.blend> <saida.fbx> [<pasta_renders>]
+  <pasta_renders>: ui_render_pendrive.png (pendrive encaixado visto de trás do gabinete, para o Canvas) e
+                   ui_cursor_chave_de_fenda.png (chave de fenda em ângulo fixo, ponta embaixo à esquerda: cursor da
+                   Traseira; imprime 'HOTSPOT x y' em pixels da imagem, origem no canto superior esquerdo).
 """
 import bpy, math, os, sys
 from mathutils import Vector, Matrix
@@ -159,20 +170,130 @@ def fonte():
     return done(p, "Comp_Fonte")
 
 
+USB_BOCA = (0.009, 0.016)        # largura (X) x altura (Z) da USB do gabinete (gabinete_v2_build: usb_t)
+
+
+def pendrive():
+    bw, bh = USB_BOCA
+    sw, sh, sl = bw - 0.0012, bh - 0.0014, 0.012                                             # conector USB-A (cabe na boca)
+    p = [box((sw, sl, sh), (0, -sl / 2 + 0.001, 0), M["aluminio"], bevel=0.0004)]
+    for z in (-0.003, 0.003):                                                                # janelinhas da casca
+        p.append(box((sw + 0.0002, 0.0022, 0.0022), (0, -0.007, z), M["chip"]))
+    L, w, h = 0.044, 0.010, 0.020                                                            # corpo
+    p.append(box((w, L, h), (0, L / 2 + 0.001, 0), M["fan"], bevel=0.0025))
+    p.append(box((w + 0.0003, 0.018, h * 0.62), (0, 0.020, 0), M["etiqueta"]))              # etiqueta (dos dois lados)
+    p.append(box((w + 0.0004, 0.004, h * 0.62), (0, 0.009, 0), M["vermelho"]))
+    p.append(cyl(0.0032, w + 0.0006, (0, L - 0.004, 0), M["chip"], axis='X', verts=14))      # furo do chaveiro
+    p.append(box((0.0016, 0.003, 0.003), (w / 2 + 0.0002, 0.033, h * 0.30), M["vermelho"]))  # LED de atividade
+    return done(p, "Comp_Pendrive")
+
+
+def chave_de_fenda():
+    Lc, rc = 0.095, 0.0135                                                                   # cabo
+    Lh, rh = 0.105, 0.0030                                                                   # haste
+    p = [cyl(rc, Lc, (Lc / 2, 0, 0), M["vermelho"], axis='X', verts=8, bevel=0.004)]         # cabo octogonal (pega)
+    for x in (0.020, 0.048, 0.076):                                                          # frisos pretos da pega
+        p.append(cyl(rc + 0.0006, 0.006, (x, 0, 0), M["chip"], axis='X', verts=8))
+    p.append(cyl(rc * 0.62, 0.012, (-0.004, 0, 0), M["chip"], axis='X', verts=16, bevel=0.002))  # virola
+    p.append(cyl(rh, Lh, (-0.010 - Lh / 2, 0, 0), M["aluminio"], axis='X', verts=12))        # haste
+    tip = cyl(rh, 0.012, (-0.010 - Lh - 0.004, 0, 0), M["aluminio"], axis='X', verts=4)      # ponta Phillips
+    tip.scale = (1.0, 1.0, 1.0)
+    p.append(tip)
+    p.append(box((0.010, rh * 2.6, 0.0012), (-0.010 - Lh - 0.005, 0, 0), M["aluminio"]))     # cruz da ponta
+    p.append(box((0.010, 0.0012, rh * 2.6), (-0.010 - Lh - 0.005, 0, 0), M["aluminio"]))
+    return done(p, "Comp_ChaveDeFenda")
+
+
+def quebrada(src, nome, normal, gap, tilt_deg, lascas):
+    """Corta 'src' (item deitado, base em z = 0) por um plano vertical pelo centro, separa as metades e dobra uma."""
+    import bmesh
+    vs = [src.matrix_world @ v.co for v in src.data.vertices]
+    c = Vector(((min(v.x for v in vs) + max(v.x for v in vs)) / 2, (min(v.y for v in vs) + max(v.y for v in vs)) / 2, 0))
+    n = Vector(normal).normalized()
+    halves = []
+    for keep_outer in (False, True):
+        o = src.copy(); o.data = src.data.copy(); bpy.context.scene.collection.objects.link(o)
+        bm = bmesh.new(); bm.from_mesh(o.data)
+        geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+        r = bmesh.ops.bisect_plane(bm, geom=geom, plane_co=c, plane_no=n, clear_inner=keep_outer, clear_outer=not keep_outer)
+        edges = [e for e in r["geom_cut"] if isinstance(e, bmesh.types.BMEdge)]
+        bmesh.ops.holes_fill(bm, edges=edges, sides=0)                     # tampa o corte (borda da placa partida)
+        bm.to_mesh(o.data); bm.free()
+        halves.append(o)
+    a, b = halves
+    axis = Vector((-n.y, n.x, 0)).normalized()                            # linha do corte
+    m = (Matrix.Translation(c + n * gap) @ Matrix.Rotation(math.radians(tilt_deg), 4, axis) @ Matrix.Translation(-c))
+    b.matrix_world = m @ b.matrix_world                                   # metade de fora afastada e dobrada
+    parts = [a, b]
+    mat = src.data.materials[0]
+    for (dx, dy, sx, sy, rot) in lascas:                                  # lascas da placa soltas perto do corte
+        l = v2.box("lasca", (sx, sy, 0.0016), (c.x + dx, c.y + dy, 0.0008), mat)
+        l.rotation_euler = (0, 0, math.radians(rot))
+        parts.append(l)
+    o = done(parts, nome)
+    zmin = min((o.matrix_world @ v.co).z for v in o.data.vertices)
+    for v in o.data.vertices:
+        v.co.z -= zmin
+    return o
+
+
 def build_all():
     mats()
-    return {"PlacaMae": placa_mae(), "MemoriaRAM": memoria_ram(), "Cooler": cooler(), "HD": hd(), "Fonte": fonte()}
+    return {"PlacaMae": placa_mae(), "MemoriaRAM": memoria_ram(), "Cooler": cooler(), "HD": hd(), "Fonte": fonte(),
+            "Pendrive": pendrive(), "ChaveDeFenda": chave_de_fenda()}
 
 
 if __name__ == "__main__" and "--" in sys.argv and os.path.basename(sys.argv[sys.argv.index("--") - 1]).startswith("componentes_build"):
-    out_blend, out_fbx = map(os.path.abspath, sys.argv[sys.argv.index("--") + 1:][:2])
+    args = sys.argv[sys.argv.index("--") + 1:]
+    out_blend, out_fbx = map(os.path.abspath, args[:2])
+    renders = os.path.abspath(args[2]) if len(args) > 2 else None
     bpy.ops.wm.read_factory_settings(use_empty=True)
     objs = build_all()
+    if renders:                                     # pendrive encaixado, visto de trás do gabinete (+Y), em escala real
+        import cabos_build as cb                    # noqa: E402  (mesmo render dos plugues do Canvas)
+        cb.render_setup()
+        os.makedirs(renders, exist_ok=True)
+        cb.render([objs["Pendrive"]], os.path.join(renders, "ui_render_pendrive.png"), from_back=True)
+        # cursor: chave de fenda inclinada 45 graus, ponta embaixo à esquerda (vista de frente, -Y)
+        ch = objs["ChaveDeFenda"]
+        ch.matrix_world = Matrix.Rotation(math.radians(-45), 4, 'Y') @ ch.matrix_world
+        bpy.context.view_layer.update()
+        vs = [ch.matrix_world @ v.co for v in ch.data.vertices]
+        x0, x1 = min(v.x for v in vs), max(v.x for v in vs)
+        z0, z1 = min(v.z for v in vs), max(v.z for v in vs)
+        pad = 0.004
+        frame = (x0 - pad, z0 - pad, x1 + pad, z1 + pad)
+        out = os.path.join(renders, "ui_cursor_chave_de_fenda.png")
+        cb.render([ch], out, from_back=False, frame=frame, height=256)
+        tipv = min(vs, key=lambda v: v.x + v.z)                     # ponta = vértice mais embaixo à esquerda
+        w, h = frame[2] - frame[0], frame[3] - frame[1]
+        rx, ry = bpy.context.scene.render.resolution_x, bpy.context.scene.render.resolution_y
+        print("HOTSPOT", round((tipv.x - frame[0]) / w * rx), round((frame[3] - tipv.z) / h * ry))
+        ch.matrix_world = Matrix.Rotation(math.radians(45), 4, 'Y') @ ch.matrix_world
+        for o in bpy.data.objects:
+            o.hide_render = False
+    # pendrive deitado (face maior para baixo): espessura (X) vira a altura
+    pd = objs["Pendrive"]
+    pd.matrix_world = Matrix.Rotation(math.radians(90), 4, 'Y') @ pd.matrix_world
+    bpy.ops.object.select_all(action='DESELECT'); pd.select_set(True); bpy.context.view_layer.objects.active = pd
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     # itens deitados: RAM de pé vira deitada (face para cima); demais já estão deitados; base em z = 0
     ram = objs["MemoriaRAM"]
     ram.matrix_world = Matrix.Rotation(math.radians(90), 4, 'Z') @ Matrix.Rotation(math.radians(90), 4, 'Y') @ ram.matrix_world  # comprimento em X
     bpy.ops.object.select_all(action='DESELECT'); ram.select_set(True); bpy.context.view_layer.objects.active = ram
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    # versões quebradas (depois da RAM deitada, para cortar já na posição de item)
+    objs["PlacaMae_Quebrada"] = quebrada(objs["PlacaMae"], "Comp_PlacaMae_Quebrada", (1.0, 0.45, 0), 0.010, 9,
+                                         [(0.03, -0.09, 0.014, 0.009, 20), (-0.02, 0.10, 0.010, 0.012, -35), (0.05, 0.07, 0.008, 0.006, 60)])
+    objs["MemoriaRAM_Quebrada"] = quebrada(objs["MemoriaRAM"], "Comp_MemoriaRAM_Quebrada", (1.0, 0.30, 0), 0.006, 14,
+                                           [(0.012, -0.024, 0.006, 0.004, 30), (-0.010, 0.022, 0.005, 0.004, -20)])
+    # resistentes (quebram só na 2ª queda): carcaça partida, uma metade afastada e inclinada
+    objs["HD_Quebrado"] = quebrada(objs["HD"], "Comp_HD_Quebrado", (1.0, 0.55, 0), 0.008, 7,
+                                   [(0.02, -0.03, 0.008, 0.006, 25), (-0.015, 0.035, 0.006, 0.005, -40)])
+    objs["Fonte_Quebrada"] = quebrada(objs["Fonte"], "Comp_Fonte_Quebrada", (1.0, -0.4, 0), 0.010, 6,
+                                      [(0.03, 0.04, 0.010, 0.007, 15), (-0.02, -0.05, 0.008, 0.006, -30)])
+    objs["Cooler_Quebrado"] = quebrada(objs["Cooler"], "Comp_Cooler_Quebrado", (1.0, 0.8, 0), 0.007, 10,
+                                       [(0.015, -0.02, 0.006, 0.005, 35), (-0.02, 0.01, 0.005, 0.004, -15)])
     for name, o in objs.items():
         vs = [v.co for v in o.data.vertices]
         mn = Vector([min(v[i] for v in vs) for i in range(3)]); mx = Vector([max(v[i] for v in vs) for i in range(3)])

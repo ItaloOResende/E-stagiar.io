@@ -1,5 +1,102 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1959772760462815144
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 161730194745282264}
+  - component: {fileID: 6383126536844213585}
+  - component: {fileID: 7933647177094344839}
+  m_Layer: 0
+  m_Name: Visual_Quebrado
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &161730194745282264
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1959772760462815144}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 823544150760564609}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!33 &6383126536844213585
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1959772760462815144}
+  m_Mesh: {fileID: 2349760877225130790, guid: 81facda8346da5044a1057e444459b35, type: 3}
+--- !u!23 &7933647177094344839
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1959772760462815144}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 82267b5ee02b78f46bb26151420ccae0, type: 2}
+  - {fileID: 2100000, guid: a2eb6e894e85ddf4c94812e7bfc5738e, type: 2}
+  - {fileID: 2100000, guid: c9439de89ba3fbf47802fcbf90433894, type: 2}
+  - {fileID: 2100000, guid: 27b3fa9b1ef83e44289cfda498fe259a, type: 2}
+  - {fileID: 2100000, guid: b2c0bb4d979ab8449bba03921a344098, type: 2}
+  - {fileID: 2100000, guid: e6ed058c34aa4e20b3f7a4aac5fed867, type: 2}
+  - {fileID: 2100000, guid: ba3e20e2b7704c39810e2a55c3504162, type: 2}
+  - {fileID: 2100000, guid: cfbc6e01787c3104bb32d5cbb1aa3533, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
 --- !u!1 &6206471097846611796
 GameObject:
   m_ObjectHideFlags: 0
@@ -110,6 +207,7 @@ GameObject:
   - component: {fileID: 7027361978601358562}
   - component: {fileID: 5685848229411537940}
   - component: {fileID: 4526217068511605969}
+  - component: {fileID: 5907901061941042752}
   m_Layer: 0
   m_Name: Pickup_PlacaMae
   m_TagString: Untagged
@@ -131,6 +229,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 352045650382344087}
+  - {fileID: 161730194745282264}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!65 &3605926536739700839
@@ -212,3 +311,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: EstagiarIo.Computer::ComputerPartItem
   component: 1
   displayName: "placa-m\xE3e"
+--- !u!114 &5907901061941042752
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6564981409461720845}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f3a4f88f622107d448c8dd2930235eff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EstagiarIo.Computer::PartFallDamage
+  dropsToBreak: 1
+  minImpactSpeed: 2.2
+  intactVisual: {fileID: 6206471097846611796}
+  brokenVisual: {fileID: 1959772760462815144}
+  breakSound: {fileID: 0}
