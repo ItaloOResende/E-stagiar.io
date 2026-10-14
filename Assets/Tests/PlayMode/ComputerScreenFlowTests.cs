@@ -82,7 +82,14 @@ public class ComputerScreenFlowTests
         foreach (var c in Object.FindObjectsByType<ComputerCase>(FindObjectsSortMode.None)) Object.Destroy(c.gameObject);
     }
 
-    private GameObject SpawnCase(Vector3 pos) => Object.Instantiate(LoadPrefab(CasePrefab), pos, Quaternion.identity);
+    // Gabinete sozinho, sem mesa embaixo: estes testes cobrem a tela; abrir só sobre mesa/bancada tem testes próprios
+    // (EstacaoInteracaoTests), então aqui a exigência da superfície fica desligada.
+    private GameObject SpawnCase(Vector3 pos)
+    {
+        GameObject g = Object.Instantiate(LoadPrefab(CasePrefab), pos, Quaternion.identity);
+        g.GetComponent<ComputerCase>().RequiresWorkSurface = false;
+        return g;
+    }
 
     private GameObject OpenScreen(GameObject source)
     {
@@ -381,9 +388,10 @@ public class ComputerScreenFlowTests
     public void Traseira_TomadaDoMonitorDesenhadaAntesDosCabos()
     {
         Transform rear = LoadPrefab(ScreenPrefab).transform.Find("Traseira");
-        Assert.Less(rear.Find("Tomada_Monitor").GetSiblingIndex(), rear.Find("Cabos").GetSiblingIndex(),
+        Assert.Less(rear.Find("PainelConexoes").GetSiblingIndex(), rear.Find("Cabos").GetSiblingIndex(),
             "cabo da tomada do monitor desenhado na frente do plugue");
-        Assert.Less(rear.Find("Tomada").GetSiblingIndex(), rear.Find("Cabos").GetSiblingIndex());
+        Assert.IsNotNull(rear.Find("PainelConexoes/Tomada_Monitor"), "as tomadas ficam no painel do ponto elétrico");
+        Assert.IsNotNull(rear.Find("PainelConexoes/Tomada"));
     }
 
     [UnityTest]
@@ -505,13 +513,13 @@ public class ComputerScreenFlowTests
         yield return null;
         AssertOnly(screen, "Frente");
         Assert.AreEqual(0, b.GetComponent<ComputerCase>().RemovedCount);
-        Assert.AreEqual(8, Views(screen).Count(v => v.GetComponent<Button>().interactable), "views reconstruídas para o outro gabinete");
+        Assert.AreEqual(8, Views(screen).Count(v => !(bool)Get(v, "Removed")), "views reconstruídas para o outro gabinete");
         CloseScreen();
         yield return null;
 
         screen = OpenScreen(a);
         yield return null;
-        Assert.IsFalse(Views(screen)[2].GetComponent<Button>().interactable);
+        Assert.IsTrue((bool)Get(Views(screen)[2], "Removed"), "o parafuso removido aparece como furo (que continua clicável para recolocar)");
     }
 
     private Component GiveToPlayer(string prefabPath)

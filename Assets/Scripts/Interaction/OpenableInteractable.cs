@@ -67,6 +67,7 @@ public class OpenableInteractable : Interactable
     {
         if (open == targetOpen) return;
         targetOpen = open;
+        InteractionSounds.Raise(open ? InteractionSound.DrawerOpened : InteractionSound.DrawerClosed, MovingPart.position);
         (open ? onOpened : onClosed).Invoke();
         if (open) Opened?.Invoke();
     }

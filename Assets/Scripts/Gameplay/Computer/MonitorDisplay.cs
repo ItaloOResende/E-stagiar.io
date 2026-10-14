@@ -1,8 +1,11 @@
 using UnityEngine;
 
 /// <summary>
-/// Tela de um monitor no mundo 3D: mostra preto, BIOS ou sistema conforme o <see cref="ComputerPower"/> ligado a ele.
-/// Vai num objeto da tela do monitor (ex.: um Quad "Tela" filho do monitor, com material URP/Unlit).
+/// Tela de um monitor no mundo 3D: mostra preto, "Sem sinal", BIOS ou sistema conforme o <see cref="ComputerPower"/>
+/// ligado a ele (<see cref="ComputerPower.Screen"/>). Vai num objeto da tela do monitor (ex.: um Quad "Tela" filho do
+/// monitor, com material URP/Unlit). Ao ser ativado, registra-se no PC (<see cref="ComputerPower.AttachMonitor"/>):
+/// é por ele que o gabinete sabe qual é o SEU monitor e a que distância está (longe do gabinete o monitor não aparece na
+/// tela de manutenção e as portas dele não são usadas; a imagem continua, ela só depende do cabo).
 /// Só apresentação: troca a textura/cor do renderer por MaterialPropertyBlock (o material compartilhado não muda).
 /// </summary>
 public class MonitorDisplay : MonoBehaviour
@@ -20,6 +23,8 @@ public class MonitorDisplay : MonoBehaviour
     [SerializeField] private Texture operatingSystemTexture;
     [Tooltip("Sistema com o cabo de rede ligado. Vazio = usa a textura do sistema.")]
     [SerializeField] private Texture onlineTexture;
+    [Tooltip("PC ligado sem sinal de vídeo (sem cabo VGA/HDMI ou monitor longe do gabinete). Vazio = tela preta.")]
+    [SerializeField] private Texture noSignalTexture;
     [Tooltip("Cor da tela desligada.")]
     [SerializeField] private Color offColor = Color.black;
 
@@ -38,6 +43,7 @@ public class MonitorDisplay : MonoBehaviour
     {
         if (source != null)
         {
+            source.AttachMonitor(transform);
             source.PowerStateChanged += Show;
             source.ConnectionsChanged += Refresh;
             source.DisplayChanged += Refresh;
@@ -48,6 +54,7 @@ public class MonitorDisplay : MonoBehaviour
     private void OnDisable()
     {
         if (source == null) return;
+        source.DetachMonitor(transform);
         source.PowerStateChanged -= Show;
         source.ConnectionsChanged -= Refresh;
         source.DisplayChanged -= Refresh;
@@ -55,20 +62,25 @@ public class MonitorDisplay : MonoBehaviour
 
     private void Refresh() => Show(source != null ? source.State : PcPowerState.Off);
 
-    /// <summary>Atualiza a tela para o estado dado.</summary>
+    /// <summary>Atualiza a tela (o que aparece vem de <see cref="ComputerPower.Screen"/>; o estado dado só importa sem PC).</summary>
     public void Show(PcPowerState state)
     {
         if (screenRenderer == null) return;
         block ??= new MaterialPropertyBlock();
         screenRenderer.GetPropertyBlock(block);
 
-        Texture tex = state == PcPowerState.Bios ? biosTexture : state == PcPowerState.OperatingSystem ? operatingSystemTexture : null;
-        if (state == PcPowerState.OperatingSystem && onlineTexture != null && source != null && source.NetworkConnected) tex = onlineTexture;
-        if (state == PcPowerState.Bios && source != null)
+        Texture tex = null;
+        switch (source != null ? source.Screen : PcScreen.Off)
         {
-            if (source.Screen == PcScreen.NoBootableDevice && noBootableTexture != null) tex = noBootableTexture;
-            else if (source.Screen == PcScreen.Installing && installTextures.Length > 0)
-                tex = installTextures[Mathf.Clamp(source.InstallStage, 0, installTextures.Length - 1)];
+            case PcScreen.NoSignal: tex = noSignalTexture; break;
+            case PcScreen.NoStorage: tex = biosTexture; break;
+            case PcScreen.NoBootableDevice: tex = noBootableTexture != null ? noBootableTexture : biosTexture; break;
+            case PcScreen.Installing:
+                tex = installTextures.Length > 0 ? installTextures[Mathf.Clamp(source.InstallStage, 0, installTextures.Length - 1)] : biosTexture;
+                break;
+            case PcScreen.OperatingSystem:
+                tex = onlineTexture != null && source.NetworkConnected ? onlineTexture : operatingSystemTexture;
+                break;
         }
         block.SetTexture(BaseMapId, tex != null ? tex : Texture2D.whiteTexture);
         block.SetColor(BaseColorId, tex != null ? Color.white : offColor);

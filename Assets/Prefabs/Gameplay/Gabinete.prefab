@@ -267,8 +267,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PickupInteractable
   interactionMessage: Pegar
   promptIcon: {fileID: 0}
-  holdPositionOffset: {x: -0.1, y: 0.2, z: 0.2}
+  holdPositionOffset: {x: 0, y: 0.27, z: 0.3}
   holdEulerOffset: {x: 0, y: 0, z: 0}
+  holdScale: 1
+  placedYawOffset: 0
   startsFrozen: 0
 --- !u!114 &1573490853129729101
 MonoBehaviour:
@@ -339,10 +341,13 @@ MonoBehaviour:
     requiredTool: 1
     removed: 0
   state: 0
+  requiresWorkSurface: 1
+  surfaceTolerance: 0.05
+  minSurfaceUp: 0.7
   randomizeComponents: 1
   componentChance: 0.5
   componentSeed: 0
-  fixedComponents: 31
+  fixedComponents: -1
   startingHddHasOperatingSystem: 1
   motherboardItemPrefab: {fileID: 6564981409461720845, guid: f51d0a7c463b55a47bfc12a3f86efcef, type: 3}
   ramItemPrefab: {fileID: 5354285645995597624, guid: 290f929f086ceb347ab385d185e0f11f, type: 3}
@@ -363,6 +368,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: EstagiarIo.Computer::ComputerPower
   state: 0
   installDuration: 3
+  installStages: 5
+  monitorRange: 1.5
 --- !u!114 &7667494675601495846
 MonoBehaviour:
   m_ObjectHideFlags: 0

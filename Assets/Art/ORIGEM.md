@@ -72,6 +72,7 @@ Todos são malha estática: sem rig, sem animação e sem avatar, incluindo o `c
 
 - `Item_ChaveDeFenda` (`componentes.fbx`): chave de fenda Phillips simples (cabo vermelho com frisos, haste de aço) de autoria própria do projeto, gerada por `Tools/blender/componentes_build.py` com os materiais `M_Comp_*`. Usada no `Pickup_Ferramenta` no lugar das ilustrações 2D (`PH_chave_de_fenda` continua como ícone do HUD).
 - `UI/ui_cursor_chave_de_fenda.png`: render dessa chave a 45° (ponta embaixo à esquerda), pelo mesmo script; cursor da Traseira.
+- `UI/PH_ui_tela_sem_sinal.png` (2026-10-13): tela preta do monitor sem entrada de vídeo, só com "Sem sinal" e "Nenhuma entrada de vídeo detectada", 640 × 464 (proporção da área do display), gerada pela função `sem_sinal` do mesmo script (autoria própria, fonte DejaVu Sans Mono livre).
 - `UI/PH_ui_tela_bios_sem_sistema.png` e `UI/PH_ui_tela_instalando_0..4.png`: telas geradas por `Tools/screens/gerar_telas_monitor.py` (autoria própria, fonte DejaVu Sans Mono livre); `PH_ui_tela_bios.png` regerada com a mensagem "Nenhum dispositivo de armazenamento detectado".
 
 ### Assets do Matheus recebidos pelo Discord e Toon Shader (2026-10-13)
@@ -167,7 +168,7 @@ A emissão estava ligada, mas com cor preta, então não fez diferença. Recuper
 
 | Arquivo aqui | Origem (`master:`) |
 |---|---|
-| `pc.fbx` | `Assets/blender/PC.fbx` |
+| ~~`pc.fbx`~~ | `Assets/blender/PC.fbx` — **removido em 2026-10-13** (substituído pelo `PC_Escritorio` com o gabinete/monitor oficiais; cópia em `Art/_Removidos_2026-10-13/`) |
 | `bancada.fbx` | `Assets/blender/bancada.fbx` |
 | `gaveta.fbx` | `Assets/blender/gaveta.fbx` |
 | `rack_internet.fbx` | `Assets/blender/rackInternet.fbx` |
@@ -181,9 +182,9 @@ A emissão estava ligada, mas com cor preta, então não fez diferença. Recuper
 
 | Arquivo aqui | Origem (`master:`) |
 |---|---|
-| `pc_atlas.png` | `Assets/texturas/PC 3D/PC_atlas.png` |
-| `pc_front.png` | `Assets/texturas/PC 3D/pc_front GameObject.png` |
-| `pc_back.png` | `Assets/texturas/PC 3D/pc_back GameObject.png` |
+| ~~`pc_atlas.png`~~ | `Assets/texturas/PC 3D/PC_atlas.png` — **removido em 2026-10-13** (só o `PH_pc.fbx` usava; cópia em `Art/_Removidos_2026-10-13/`) |
+| ~~`pc_front.png`~~ | `Assets/texturas/PC 3D/pc_front GameObject.png` — **removido em 2026-10-13** (idem) |
+| ~~`pc_back.png`~~ | `Assets/texturas/PC 3D/pc_back GameObject.png` — **removido em 2026-10-13** da pasta `Textures/` (idem; o `UI/PH_pc_back.png` continua) |
 | `tela_no_signal.png` | `Assets/texturas/objetos/tela no signal.png` |
 | `cabo_rede.png` | `Assets/texturas/objetos/cabo de rede.png` |
 | `energia.png` | `Assets/texturas/objetos/energia.png` |
@@ -240,3 +241,8 @@ Scripts, prefabs com scripts quebrados (`Gabinete`, `gaveteiro*`), cenas legadas
 - `Materials/M_Item2D_Fonte` e `M_Item2D_Cooler`: cópias do `M_Item2D_HD` com os sprites `ui_fonte`/`ui_cooler` (itens `Pickup_Fonte`/`Pickup_Cooler`).
 - `Materials/M_CaboHDMI`: cópia do material do cabo de vídeo, cinza-escuro, para o `Pickup_CaboHDMI`.
 - Criados por `Assets/Editor/PcManutencaoSetup.cs` (menu *Tools > E-stagiar.io > Configurar manutenção do PC*).
+
+## 2026-10-14 — efeitos sonoros (autoria própria)
+- `Assets/Audio/SFX/sfx_*.wav` (11 arquivos: parafuso retirar/recolocar, gabinete abrir/fechar, pegar, colocar, soltar, cabo conectar/desconectar, gaveta abrir/fechar): **sintetizados** por `Tools/audio/gerar_sfx.py` (ruído filtrado e senoides com envelope, semente fixa). Sem amostras de terceiros; autoria da equipe, sem restrição de licença. Placeholders sonoros: podem ser trocados por áudios finais na tabela do `Sons_Interacao`.
+- `Models/character2.fbx` (Matheus) passou a ser usado como supervisor provisório (`Prefabs/Gameplay/NPC_Supervisor`, material `M_Character_Tex1_1`), sem alteração no FBX.
+- `Audio/SFX/sfx_supervisor_alerta.wav` (2026-10-14): alerta do supervisor, dois tons sintetizados por `Tools/audio/gerar_sfx.py` (autoria própria).

@@ -17,6 +17,7 @@ public class PlayerLook : MonoBehaviour
 
     private void Update()
     {
+        if (Mouse.current == null) return;   // sem mouse (ex.: testes em batchmode)
         Vector2 mouseDelta = Mouse.current.delta.ReadValue();
 
         float mouseX = mouseDelta.x * sensitivity;

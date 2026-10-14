@@ -1,7 +1,8 @@
 """
 Gera as telas do monitor no mesmo formato da tela_no_signal do legado:
 BIOS sem armazenamento (PH_ui_tela_bios), BIOS com HD sem sistema (PH_ui_tela_bios_sem_sistema), instalação do
-sistema pelo pendrive em etapas (PH_ui_tela_instalando_0..4) e sistema sem rede / com rede (PH_ui_tela_sistema[_rede]),
+sistema pelo pendrive em etapas (PH_ui_tela_instalando_0..4), sistema sem rede / com rede (PH_ui_tela_sistema[_rede])
+e "Sem sinal" do monitor sem cabo de vídeo (PH_ui_tela_sem_sinal),
 640 x 320, pixel art (desenhado em 320 x 160 e ampliado 2x sem filtro).
 
 Criadas para o projeto, sem arte de terceiros. Fonte: DejaVu Sans Mono (licença livre Bitstream Vera/DejaVu,
@@ -101,6 +102,30 @@ def instalando(folder, etapa):
     save(img, folder, f"PH_ui_tela_instalando_{etapa}.png")
 
 
+SEM_SINAL_W, SEM_SINAL_H = 320, 232  # proporção da tela do monitor (2D ~1,35, 3D ~1,41): o texto não deforma
+
+
+def sem_sinal(folder):
+    """
+    PC ligado sem imagem chegando ao monitor: a tela inteira preta, com o aviso discreto do próprio monitor
+    (só o sintoma, sem instruções). Feita na proporção da área do display (não 2:1 como as outras telas), porque o
+    Canvas e o quad 3D esticam a imagem até a área da tela.
+    """
+    w, h = SEM_SINAL_W, SEM_SINAL_H
+    img = Image.new("RGB", (w, h), (0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.fontmode = "1"
+
+    def centro(y, texto, f, cor):
+        x0_, _, x1_, _ = d.textbbox((0, 0), texto, font=f)
+        d.text(((w - (x1_ - x0_)) // 2, y), texto, font=f, fill=cor)
+
+    centro(h // 2 - 14, "Sem sinal", font(14), (210, 210, 210))
+    centro(h // 2 + 6, "Nenhuma entrada de vídeo detectada", font(9), (140, 140, 140))
+    img.resize((w * 2, h * 2), Image.NEAREST).save(os.path.join(folder, "PH_ui_tela_sem_sinal.png"), optimize=True)
+    print("gerado PH_ui_tela_sem_sinal.png")
+
+
 def sistema(folder, rede=False):
     img, d = canvas((40, 120, 160))
     for y in range(H):  # papel de parede em degradê, em faixas (pixel art)
@@ -162,3 +187,4 @@ if __name__ == "__main__":
         instalando(pasta, i)
     sistema(pasta)
     sistema(pasta, rede=True)
+    sem_sinal(pasta)

@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6416879267038209556}
   - component: {fileID: 8578823219864845974}
+  - component: {fileID: 8263794896213527687}
   m_Layer: 0
   m_Name: OF_Mesa
   m_TagString: Untagged
@@ -54,6 +55,19 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 2.1906152, y: 0.75000006, z: 1.0697247}
   m_Center: {x: 0, y: 0.37500003, z: 0.00000011920929}
+--- !u!114 &8263794896213527687
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5586871303766928152}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d35ec8aa6226634f856c4bfcc659d83, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EstagiarIo.Computer::WorkSurface
+  allowsCaseMaintenance: 1
 --- !u!1001 &1616875476827012344
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -245,6 +245,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Interactable
   interactionMessage: Interagir
+  promptIcon: {fileID: 0}
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -745,6 +746,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Interaction
   interactionDistance: 3
   playerCamera: {fileID: 330585545}
+  interactionMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  handCursor: {fileID: 0}
+  holder: {fileID: 0}
+  screens: {fileID: 0}
+  aimAssistRadius: 0.035
+  targetGraceTime: 0.15
+  graceMargin: 0.05
 --- !u!1 &1738241514
 GameObject:
   m_ObjectHideFlags: 0

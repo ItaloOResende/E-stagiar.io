@@ -5,7 +5,7 @@ using UnityEngine;
 /// <summary>Pontas de cabo que a estação de trabalho (tomada + gabinete + monitor) aceita.</summary>
 public enum PcPort
 {
-    /// <summary>Tomada da parede (ponta "de fora" do cabo de energia).</summary>
+    /// <summary>Tomada 1 da parede (ponta "de fora" de qualquer cabo de energia: PC ou monitor).</summary>
     Outlet,
     /// <summary>Entrada de energia da fonte, na traseira do gabinete.</summary>
     CasePower,
@@ -15,7 +15,7 @@ public enum PcPort
     MonitorVideo,
     /// <summary>Entrada de energia na traseira do monitor.</summary>
     MonitorPower,
-    /// <summary>Tomada própria do monitor (ponta "de fora" do cabo de energia do monitor).</summary>
+    /// <summary>Tomada 2 da parede. Apesar do nome, aceita qualquer cabo de energia (PC ou monitor), como a 1.</summary>
     MonitorOutlet,
     /// <summary>Saída HDMI na traseira do gabinete.</summary>
     CaseHdmi,
@@ -36,8 +36,10 @@ public enum PcPowerState { Off, Bios, OperatingSystem }
 /// <summary>
 /// Tela exata do monitor (detalha a BIOS): sem armazenamento (nenhum HD), HD sem sistema ("No bootable device"),
 /// instalando o sistema pelo pendrive, ou o sistema (com/sem rede: ver <see cref="ComputerPower.Online"/>).
+/// <see cref="NoSignal"/>: o PC está ligado, mas a imagem não chega ao monitor (sem cabo de vídeo nas duas pontas ou
+/// monitor longe do gabinete). Valores novos sempre no fim.
 /// </summary>
-public enum PcScreen { Off, NoStorage, NoBootableDevice, Installing, OperatingSystem }
+public enum PcScreen { Off, NoStorage, NoBootableDevice, Installing, OperatingSystem, NoSignal }
 
 /// <summary>Resultado de clicar numa porta (<see cref="ComputerPower.UsePort"/>).</summary>
 public enum PortResult
@@ -56,7 +58,12 @@ public enum PortResult
     WrongCable,
     /// <summary>Para desconectar, a mão precisa estar livre.</summary>
     HandsFull,
-    Invalid
+    Invalid,
+    /// <summary>
+    /// O equipamento da porta (ponto elétrico ou monitor) está longe do gabinete (ver <see cref="ComputerPower.CanReachPort"/>):
+    /// nada muda. Valor novo no fim.
+    /// </summary>
+    OutOfReach
 }
 
 public enum PowerButtonResult { TurnedOn, TurnedOff, MissingRequirements }
@@ -67,10 +74,22 @@ public enum PowerButtonResult { TurnedOn, TurnedOff, MissingRequirements }
 ///
 /// Regras (GDD/CH-01):
 ///  - Desligado ou sem requisitos → tela preta.
-///  - Power com energia do PC e do monitor (cada cabo nas duas pontas) + vídeo (VGA ou HDMI) nas duas pontas
-///    + fonte + placa-mãe + memória RAM + cooler → liga na BIOS.
+///  - Power com energia do PC e do monitor (cada cabo nas duas pontas) + fonte + placa-mãe + memória RAM + cooler
+///    → liga na BIOS. O vídeo NÃO é requisito para ligar: sem cabo VGA/HDMI nas duas pontas o PC funciona, mas o
+///    monitor mostra "Sem sinal" (<see cref="PcScreen.NoSignal"/>). O sinal depende SÓ do estado físico do cabo: levar o
+///    gabinete ou o monitor para longe não desliga nada (a distância, <see cref="MonitorInRange"/>, só decide se o monitor
+///    aparece e pode ser usado na tela 2D). Ligar o cabo de vídeo mostra o estado real; soltá-lo volta ao "Sem sinal".
 ///  - Os mesmos requisitos + HD COM SISTEMA (gravado na unidade, ver <see cref="ComputerCase.HddHasOperatingSystem"/>)
 ///    → liga no sistema operacional.
+///  - Tomadas: as duas tomadas da parede (<see cref="PcPort.Outlet"/> e <see cref="PcPort.MonitorOutlet"/>) aceitam
+///    qualquer um dos dois cabos de energia. O que distingue os cabos é a ponta do equipamento (fonte do gabinete ou
+///    entrada do monitor), não a tomada.
+///  - Monitor: o <see cref="MonitorDisplay"/> que aponta para este PC se registra aqui (<see cref="AttachMonitor"/>);
+///    a distância dele ao gabinete decide se o monitor aparece na tela 2D e se recebe sinal.
+///  - Proximidade ENTRE EQUIPAMENTOS (nunca do jogador): o monitor precisa estar perto do gabinete
+///    (<see cref="MonitorInRange"/>) e o ponto elétrico da parede (<see cref="WallConnectionPoint"/>) também
+///    (<see cref="IsWallPointInRange"/>). Fora disso, as portas deles não são usadas (<see cref="CanReachPort"/>) e a tela
+///    2D os esconde. Sem monitor/ponto registrado, não há limite (ex.: o Gabinete.prefab sozinho).
 ///  - HD sem sistema + pendrive numa USB da traseira: ao ligar, dá boot pelo pendrive (tela da BIOS por
 ///    <see cref="installDuration"/> s), grava o sistema no HD e vai para o sistema. Sem HD: fica na BIOS, sem instalar.
 ///    Tirar o pendrive, o HD ou um requisito durante a instalação a cancela.
@@ -90,6 +109,7 @@ public class ComputerPower : MonoBehaviour
         public GameObject item;
         public bool endA; // ponta "de fora": tomada / saída de vídeo do gabinete / ponto de rede
         public bool endB; // ponta do equipamento: gabinete / monitor
+        public int outlet = -1; // cabos de energia: tomada da parede onde está a ponta A (0 ou 1; -1 = nenhuma)
         public bool Attached => endA || endB;
         public bool Complete => endA && endB;
     }
@@ -100,9 +120,14 @@ public class ComputerPower : MonoBehaviour
     [Min(0f)] [SerializeField] private float installDuration = 6f;
     [Tooltip("Quantas etapas visuais a instalação tem (uma imagem de progresso por etapa).")]
     [Min(1)] [SerializeField] private int installStages = 5;
+    [Tooltip("Distância máxima (m) entre o gabinete e a tela do SEU monitor (o MonitorDisplay que aponta para este PC). " +
+             "Mais longe: o monitor some da tela 2D de manutenção e não recebe sinal de vídeo.")]
+    [Min(0f)] [SerializeField] private float monitorRange = 1.5f;
 
     /// <summary>Portas USB da traseira do gabinete (qualquer uma aceita o pendrive).</summary>
     public const int UsbPortCount = 3;
+
+    private static readonly PcLink[] PowerLinks = { PcLink.Power, PcLink.MonitorPower };
 
     private readonly Dictionary<PcLink, Cable> cables = new Dictionary<PcLink, Cable>();
     private ComputerCase pcCase;
@@ -110,13 +135,72 @@ public class ComputerPower : MonoBehaviour
     private GameObject pendriveItem;
     private int pendrivePort = -1;
     private float installRemaining = -1f;
+    private Transform monitor;
+    private Transform wallPoint;
+    private float wallPointRange;
+    private bool lastInRange = true;
 
     /// <summary>Disparado quando o PC liga, desliga ou muda de tela.</summary>
     public event Action<PcPowerState> PowerStateChanged;
     /// <summary>Disparado quando qualquer ponta de cabo é conectada ou desconectada.</summary>
     public event Action ConnectionsChanged;
-    /// <summary>Disparado quando o que o monitor deve mostrar muda (<see cref="Screen"/>, etapa da instalação, rede).</summary>
+    /// <summary>
+    /// Disparado quando o que o monitor deve mostrar muda (<see cref="Screen"/>, etapa da instalação, rede, sinal de
+    /// vídeo, monitor entrando ou saindo do alcance).
+    /// </summary>
     public event Action DisplayChanged;
+
+    /// <summary>Cabo (ligação) que mudou por último num <see cref="UsePort"/> (a tela 2D faz a ponta solta dele seguir o mouse).</summary>
+    public PcLink? LastChangedLink { get; private set; }
+
+    /// <summary>Tela do monitor deste PC (registrada pelo <see cref="MonitorDisplay"/>). Vazio = PC sem monitor associado.</summary>
+    public Transform Monitor => monitor;
+    public float MonitorRange { get => monitorRange; set { monitorRange = Mathf.Max(0f, value); CheckMonitorRange(); } }
+
+    /// <summary>
+    /// O monitor deste PC está perto o bastante do gabinete (<see cref="monitorRange"/>), em qualquer direção.
+    /// Sem monitor associado (ex.: o Gabinete.prefab sozinho) a distância não é exigida.
+    /// </summary>
+    public bool MonitorInRange =>
+        monitor == null || (monitor.position - transform.position).sqrMagnitude <= monitorRange * monitorRange;
+
+    /// <summary>Ponto elétrico da parede deste PC (tomadas + rede; registrado pelo <see cref="WallConnectionPoint"/>). Vazio = sem limite.</summary>
+    public Transform WallPoint => wallPoint;
+
+    /// <summary>
+    /// O ponto elétrico deste PC está perto do GABINETE (distância horizontal até <see cref="WallConnectionPoint"/>
+    /// <c>Case Range</c>). Longe (ex.: gabinete levado para a bancada), tomadas e rede não são usadas nem mostradas.
+    /// </summary>
+    public bool IsWallPointInRange => WithinReach(wallPoint, wallPointRange, transform.position);
+
+    /// <summary>Distância HORIZONTAL (a altura não conta) entre <paramref name="point"/> e <paramref name="from"/> dentro de <paramref name="reach"/>; sem ponto ou alcance 0 = sem limite.</summary>
+    public static bool WithinReach(Transform point, float reach, Vector3 from)
+    {
+        if (point == null || reach <= 0f) return true;
+        Vector3 d = point.position - from;
+        d.y = 0f;
+        return d.sqrMagnitude <= reach * reach;
+    }
+
+    /// <summary>Porta do ponto elétrico da parede (as duas tomadas e o ponto de rede).</summary>
+    public static bool IsWallPort(PcPort port) => port == PcPort.Outlet || port == PcPort.MonitorOutlet || port == PcPort.NetworkJack;
+
+    /// <summary>Porta da traseira do monitor.</summary>
+    public static bool IsMonitorPort(PcPort port) => port == PcPort.MonitorPower || port == PcPort.MonitorVideo || port == PcPort.MonitorHdmi;
+
+    /// <summary>
+    /// A porta pode ser usada agora: portas da parede pedem o ponto elétrico perto do gabinete
+    /// (<see cref="IsWallPointInRange"/>), portas do monitor pedem o monitor perto do gabinete (<see cref="MonitorInRange"/>);
+    /// as do gabinete, sempre. Não depende de onde o jogador está.
+    /// </summary>
+    public bool CanReachPort(PcPort port) =>
+        IsWallPort(port) ? IsWallPointInRange : !IsMonitorPort(port) || MonitorInRange;
+
+    /// <summary>
+    /// A imagem chega ao monitor: cabo de vídeo (VGA ou HDMI) nas duas pontas. Só o estado físico do cabo conta; a
+    /// distância (<see cref="MonitorInRange"/>) é regra de interface/interação, não desconecta nada.
+    /// </summary>
+    public bool HasVideoSignal => VideoConnected;
 
     public PcPowerState State => state;
     public ComputerCase Case
@@ -140,9 +224,12 @@ public class ComputerPower : MonoBehaviour
     /// <summary>No sistema operacional e com o cabo de rede ligado.</summary>
     public bool Online => state == PcPowerState.OperatingSystem && NetworkConnected;
 
-    /// <summary>Requisitos para ligar e chegar à BIOS.</summary>
+    /// <summary>
+    /// Requisitos para ligar e chegar à BIOS. O cabo de vídeo não entra: sem ele o PC liga do mesmo jeito e o
+    /// monitor mostra "Sem sinal" (<see cref="HasVideoSignal"/>).
+    /// </summary>
     public bool CanReachBios =>
-        PowerConnected && MonitorPowerConnected && VideoConnected && Case.HasComponent(PcComponent.Psu) &&
+        PowerConnected && MonitorPowerConnected && Case.HasComponent(PcComponent.Psu) &&
         Case.HasComponent(PcComponent.Motherboard) && Case.HasComponent(PcComponent.Ram) && Case.HasComponent(PcComponent.CpuCooler);
 
     /// <summary>Requisitos para ligar e chegar ao sistema operacional (HD com o sistema gravado).</summary>
@@ -167,12 +254,16 @@ public class ComputerPower : MonoBehaviour
     /// </summary>
     public bool InstallPaused { get; set; }
 
-    /// <summary>Tela exata do monitor agora. A detecção do HD na BIOS é ao vivo (instalar/retirar o HD muda a mensagem).</summary>
+    /// <summary>
+    /// Tela exata do monitor agora. Ligado sem sinal de vídeo = <see cref="PcScreen.NoSignal"/> (o PC continua no
+    /// estado real, <see cref="State"/>, e a imagem volta assim que o vídeo chega). A detecção do HD na BIOS é ao vivo.
+    /// </summary>
     public PcScreen Screen
     {
         get
         {
             if (state == PcPowerState.Off) return PcScreen.Off;
+            if (!HasVideoSignal) return PcScreen.NoSignal;
             if (state == PcPowerState.OperatingSystem) return PcScreen.OperatingSystem;
             if (IsInstallingOperatingSystem) return PcScreen.Installing;
             return Case.HasComponent(PcComponent.Hdd) ? PcScreen.NoBootableDevice : PcScreen.NoStorage;
@@ -194,7 +285,52 @@ public class ComputerPower : MonoBehaviour
         subscribed = true;
     }
 
-    /// <summary>Cabo (ligação) a que a porta pertence e se ela é a ponta A ("de fora") dele.</summary>
+    // ------------------------------------------------------------------ monitor associado
+
+    /// <summary>Registra a tela do monitor deste PC (chamado pelo <see cref="MonitorDisplay"/> que aponta para cá).</summary>
+    public void AttachMonitor(Transform screen)
+    {
+        monitor = screen;
+        CheckMonitorRange(force: true);
+    }
+
+    /// <summary>Desfaz o registro (o monitor foi desativado ou passou a apontar para outro PC).</summary>
+    public void DetachMonitor(Transform screen)
+    {
+        if (monitor != screen) return;
+        monitor = null;
+        CheckMonitorRange(force: true);
+    }
+
+    /// <summary>Registra o ponto elétrico da parede deste PC (chamado pelo <see cref="WallConnectionPoint"/>).</summary>
+    /// <param name="caseRange">Distância horizontal máxima (m) entre o gabinete e o ponto; 0 = sem limite.</param>
+    public void AttachWallPoint(Transform point, float caseRange)
+    {
+        wallPoint = point;
+        wallPointRange = caseRange;
+    }
+
+    /// <summary>Desfaz o registro do ponto elétrico.</summary>
+    public void DetachWallPoint(Transform point)
+    {
+        if (wallPoint == point) wallPoint = null;
+    }
+
+    // O gabinete pode ser carregado: avisa a tela quando o monitor entra ou sai do alcance.
+    private void CheckMonitorRange(bool force = false)
+    {
+        bool near = MonitorInRange;
+        if (!force && near == lastInRange) return;
+        lastInRange = near;
+        DisplayChanged?.Invoke();
+    }
+
+    // ------------------------------------------------------------------ portas e cabos
+
+    /// <summary>
+    /// Cabo (ligação) a que a porta pertence por padrão e se ela é a ponta A ("de fora") dele. As duas tomadas da
+    /// parede aceitam qualquer cabo de energia: para saber qual cabo está numa tomada, use <see cref="OutletLink"/>.
+    /// </summary>
     public static PcLink LinkFor(PcPort port, out bool isEndA)
     {
         isEndA = port == PcPort.Outlet || port == PcPort.MonitorOutlet || port == PcPort.CaseVideo ||
@@ -230,52 +366,111 @@ public class ComputerPower : MonoBehaviour
 
     public bool IsComplete(PcLink link) => cables.TryGetValue(link, out Cable c) && c.Complete;
 
+    private static bool IsPowerLink(PcLink link) => link == PcLink.Power || link == PcLink.MonitorPower;
+
+    /// <summary>Índice da tomada da parede (0 ou 1) ou -1 se a porta não é uma tomada.</summary>
+    public static int OutletIndex(PcPort port) => port == PcPort.Outlet ? 0 : port == PcPort.MonitorOutlet ? 1 : -1;
+
+    private static PcPort OutletPort(int index) => index == 1 ? PcPort.MonitorOutlet : PcPort.Outlet;
+
+    /// <summary>Cabo de energia que está nesta tomada agora (null = tomada livre ou porta que não é tomada).</summary>
+    public PcLink? OutletLink(PcPort outlet)
+    {
+        int index = OutletIndex(outlet);
+        if (index < 0) return null;
+        foreach (PcLink link in PowerLinks)
+            if (cables.TryGetValue(link, out Cable c) && c.endA && c.outlet == index) return link;
+        return null;
+    }
+
     public bool IsPlugged(PcPort port)
     {
         if (!Enum.IsDefined(typeof(PcPort), port)) return false;
+        if (OutletIndex(port) >= 0) return OutletLink(port).HasValue;
         PcLink link = LinkFor(port, out bool isEndA);
         return cables.TryGetValue(link, out Cable c) && (isEndA ? c.endA : c.endB);
+    }
+
+    /// <summary>A ponta A ("de fora") ou B (equipamento) deste cabo está conectada.</summary>
+    public bool IsEndPlugged(PcLink link, bool endA) => cables.TryGetValue(link, out Cable c) && (endA ? c.endA : c.endB);
+
+    /// <summary>Portas padrão das duas pontas de um cabo (energia do PC: tomada 1 ↔ fonte; do monitor: tomada 2 ↔ monitor).</summary>
+    public static void DefaultPorts(PcLink link, out PcPort endA, out PcPort endB)
+    {
+        endA = endB = default;
+        foreach (PcPort p in Enum.GetValues(typeof(PcPort)))
+        {
+            if (LinkFor(p, out bool isA) != link) continue;
+            if (isA) endA = p; else endB = p;
+        }
+    }
+
+    /// <summary>Portas onde as pontas deste cabo estão (ou estariam): a de energia usa a tomada em que foi ligada.</summary>
+    public void PortsOf(PcLink link, out PcPort endA, out PcPort endB)
+    {
+        DefaultPorts(link, out endA, out endB);
+        if (IsPowerLink(link) && cables.TryGetValue(link, out Cable c) && c.endA && c.outlet >= 0) endA = OutletPort(c.outlet);
     }
 
     /// <summary>
     /// Clique numa porta. Porta livre: conecta a ponta livre de um cabo já preso ao PC; se não houver, conecta o
     /// cabo da mão (tipo certo). Porta ocupada + mão livre: desconecta essa ponta; soltas as duas, o cabo volta
-    /// em <paramref name="itemForHand"/>.
+    /// em <paramref name="itemForHand"/>. Tomadas da parede: qualquer cabo de energia serve (ver <see cref="UseOutlet"/>).
     /// </summary>
     public PortResult UsePort(PcPort port, CableItem heldCable, bool holdingSomething, out GameObject itemForHand)
     {
+        // equipamento da porta longe do gabinete (monitor ou ponto elétrico): nada muda, mesmo com uma interface antiga
+        itemForHand = null;
+        if (!CanReachPort(port)) return PortResult.OutOfReach;
+        return UsePortCore(port, heldCable, holdingSomething, out itemForHand);
+    }
+
+    private PortResult UsePortCore(PcPort port, CableItem heldCable, bool holdingSomething, out GameObject itemForHand)
+    {
         itemForHand = null;
         if (!Enum.IsDefined(typeof(PcPort), port)) return PortResult.Invalid;
-        PcLink link = LinkFor(port, out bool isEndA);
-        Cable cable = Get(link);
 
         PortResult result;
-        if (IsPlugged(port))
+        PcLink link;
+        int outlet = OutletIndex(port);
+        if (outlet >= 0)
         {
-            if (holdingSomething) return PortResult.HandsFull;
-            SetEnd(cable, isEndA, false);
-            if (cable.Attached) result = PortResult.Unplugged;
-            else
-            {
-                itemForHand = cable.item;
-                cable.item = null;
-                result = PortResult.CableReturned;
-            }
-        }
-        else if (cable.Attached)
-        {
-            SetEnd(cable, isEndA, true);
-            result = PortResult.PluggedOtherEnd;
+            result = UseOutlet(outlet, heldCable, holdingSomething, out itemForHand, out link);
+            if (result != PortResult.PluggedFromHand && result != PortResult.PluggedOtherEnd &&
+                result != PortResult.Unplugged && result != PortResult.CableReturned) return result;
         }
         else
         {
-            if (heldCable == null) return PortResult.NeedsCable;
-            if (heldCable.Type != CableFor(port)) return PortResult.WrongCable;
-            cable.item = heldCable.gameObject;
-            SetEnd(cable, isEndA, true);
-            result = PortResult.PluggedFromHand;
+            link = LinkFor(port, out bool isEndA);
+            Cable cable = Get(link);
+            if (IsPlugged(port))
+            {
+                if (holdingSomething) return PortResult.HandsFull;
+                SetEnd(cable, isEndA, false);
+                if (cable.Attached) result = PortResult.Unplugged;
+                else
+                {
+                    itemForHand = cable.item;
+                    cable.item = null;
+                    result = PortResult.CableReturned;
+                }
+            }
+            else if (cable.Attached || (!isEndA && IsPowerLink(link) && TakeWallOnlyPowerCable(link, out cable)))
+            {
+                SetEnd(cable, isEndA, true);
+                result = PortResult.PluggedOtherEnd;
+            }
+            else
+            {
+                if (heldCable == null) return PortResult.NeedsCable;
+                if (heldCable.Type != CableFor(port)) return PortResult.WrongCable;
+                cable.item = heldCable.gameObject;
+                SetEnd(cable, isEndA, true);
+                result = PortResult.PluggedFromHand;
+            }
         }
 
+        LastChangedLink = link;
         ConnectionsChanged?.Invoke();
         Revalidate();
         return result;
@@ -285,6 +480,81 @@ public class ComputerPower : MonoBehaviour
     {
         if (endA) cable.endA = value;
         else cable.endB = value;
+    }
+
+    /// <summary>
+    /// Clique numa tomada da parede (qualquer cabo de energia serve). Ocupada + mão livre: solta o cabo que está nela.
+    /// Livre: liga a ponta solta de um cabo de energia já preso a um equipamento (o último mexido, se houver dois);
+    /// senão, o cabo de energia da mão, como um cabo ainda sem equipamento (vira o do PC ou o do monitor conforme a
+    /// porta do equipamento em que a outra ponta for ligada).
+    /// </summary>
+    private PortResult UseOutlet(int outlet, CableItem heldCable, bool holdingSomething, out GameObject itemForHand, out PcLink link)
+    {
+        itemForHand = null;
+        PcLink? occupant = OutletLink(OutletPort(outlet));
+        if (occupant.HasValue)
+        {
+            link = occupant.Value;
+            if (holdingSomething) return PortResult.HandsFull;
+            Cable c = Get(link);
+            c.endA = false;
+            c.outlet = -1;
+            if (c.Attached) return PortResult.Unplugged;
+            itemForHand = c.item;
+            c.item = null;
+            return PortResult.CableReturned;
+        }
+
+        PcLink? hanging = null;
+        foreach (PcLink l in PowerLinks)
+        {
+            Cable c = Get(l);
+            if (c.endB && !c.endA && (hanging == null || l == LastChangedLink)) hanging = l;
+        }
+        if (hanging.HasValue)
+        {
+            link = hanging.Value;
+            Cable c = Get(link);
+            c.endA = true;
+            c.outlet = outlet;
+            return PortResult.PluggedOtherEnd;
+        }
+
+        link = PcLink.Power;
+        if (heldCable == null) return PortResult.NeedsCable;
+        if (heldCable.Type != CableType.Power) return PortResult.WrongCable;
+        foreach (PcLink l in PowerLinks)
+        {
+            Cable c = Get(l);
+            if (c.Attached) continue;
+            link = l;
+            c.item = heldCable.gameObject;
+            c.endA = true;
+            c.outlet = outlet;
+            return PortResult.PluggedFromHand;
+        }
+        return PortResult.Invalid;   // os dois cabos de energia já estão em uso
+    }
+
+    /// <summary>
+    /// Cabo de energia preso só numa tomada (sem equipamento) passa a ser o cabo de <paramref name="target"/> quando o
+    /// jogador liga a outra ponta na porta desse equipamento.
+    /// </summary>
+    private bool TakeWallOnlyPowerCable(PcLink target, out Cable cable)
+    {
+        cable = Get(target);
+        PcLink? from = null;
+        foreach (PcLink l in PowerLinks)
+        {
+            if (l == target) continue;
+            Cable c = Get(l);
+            if (c.endA && !c.endB && (from == null || l == LastChangedLink)) from = l;
+        }
+        if (!from.HasValue) return false;
+        cable = cables[from.Value];
+        cables[target] = cable;
+        cables[from.Value] = new Cable();
+        return true;
     }
 
     /// <summary>
@@ -344,6 +614,7 @@ public class ComputerPower : MonoBehaviour
     private void Update()
     {
         if (IsInstallingOperatingSystem && !InstallPaused) AdvanceInstall(Time.deltaTime);
+        if (monitor != null) CheckMonitorRange();
     }
 
     /// <summary>Avança a instalação em andamento (chamado pelo Update quando não está pausada; público para testes).</summary>
@@ -387,20 +658,17 @@ public class ComputerPower : MonoBehaviour
         DisplayChanged?.Invoke();
     }
 
-    /// <summary>O que falta para ligar (nomes em português, na ordem de montagem). Vazio = pode ligar.</summary>
+    /// <summary>
+    /// O que falta para ligar (nomes em português, na ordem de montagem). Vazio = pode ligar. O vídeo não entra
+    /// (sem ele o PC liga e o monitor mostra "Sem sinal").
+    /// </summary>
     public List<string> MissingForBios()
     {
         var missing = new List<string>();
-        if (!IsPlugged(PcPort.Outlet)) missing.Add("cabo de energia na tomada");
-        if (!IsPlugged(PcPort.CasePower)) missing.Add("cabo de energia no gabinete");
-        if (!IsPlugged(PcPort.MonitorOutlet)) missing.Add("cabo de energia do monitor na tomada");
-        if (!IsPlugged(PcPort.MonitorPower)) missing.Add("cabo de energia no monitor");
-        if (!VideoConnected)
-        {
-            bool hdmi = Get(PcLink.Hdmi).Attached && !Get(PcLink.Vga).Attached;
-            if (!IsPlugged(hdmi ? PcPort.CaseHdmi : PcPort.CaseVideo)) missing.Add("cabo de vídeo no gabinete");
-            if (!IsPlugged(hdmi ? PcPort.MonitorHdmi : PcPort.MonitorVideo)) missing.Add("cabo de vídeo no monitor");
-        }
+        if (!IsEndPlugged(PcLink.Power, true)) missing.Add("cabo de energia na tomada");
+        if (!IsEndPlugged(PcLink.Power, false)) missing.Add("cabo de energia no gabinete");
+        if (!IsEndPlugged(PcLink.MonitorPower, true)) missing.Add("cabo de energia do monitor na tomada");
+        if (!IsEndPlugged(PcLink.MonitorPower, false)) missing.Add("cabo de energia no monitor");
         if (!Case.HasComponent(PcComponent.Psu)) missing.Add("fonte de alimentação");
         if (!Case.HasComponent(PcComponent.Motherboard)) missing.Add("placa-mãe");
         if (!Case.HasComponent(PcComponent.Ram)) missing.Add("memória RAM");

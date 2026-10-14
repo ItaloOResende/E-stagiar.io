@@ -12,12 +12,24 @@ using UnityEngine;
 /// Agora (espaço local da câmera, antes da escala 0,85 do Player): câmera nos olhos do modelo, HoldPoint na parte de
 /// baixo da visão e o braço posicionado medindo a própria malha: ombro abaixo da câmera e a mão chegando por baixo
 /// da peça segurada.
+/// 2026-10-13: a câmera em 0,85 ficava quase no TOPO da cabeça (a cabeça do personagem vai de ~-0,22 a 0,94 no espaço
+/// do Player); desceu para 0,62, mais perto do centro da cabeça (~0,36) sem exagero. Ponto de mão e ombro um pouco
+/// mais à frente (o braço aparece mais e a mão não fica colada na câmera).
 /// </summary>
 public static class JogadorBracoSetup
 {
-    private const float CameraHeight = 0.85f;                                // local do Player (era 0,80)
-    private static readonly Vector3 HoldPoint = new Vector3(0.26f, -0.22f, 0.50f);
-    private static readonly Vector3 Shoulder = new Vector3(0.30f, -0.42f, 0.10f);
+    // 2026-10-14: personagem um pouco maior (0,85 → 0,9: mesas e equipamentos na proporção natural) e câmera mais
+    // perto do centro da cabeça (olhos a ~1,40 m); braço mais à frente, mostrando mais antebraço.
+    private const float PlayerScale = 0.9f;                                   // era 0,85
+    private const float CameraHeight = 0.55f;                                 // local do Player (era 0,62; antes 0,85)
+    private static readonly Vector3 HoldPoint = new Vector3(0.22f, -0.19f, 0.55f);   // era (0,24; -0,21; 0,58)
+    private static readonly Vector3 Shoulder = new Vector3(0.30f, -0.30f, 0.30f);    // (0,42; -0,33; 0,40) inverteu o braço: revertido
+
+    // Pose de referência do braço (a do commit 9cab91b, correta). O cálculo abaixo SEMPRE parte dela: antes ele partia da
+    // pose atual, e rodar o setup de novo acumulava rotações; com o ombro quase de lado, a "ponta" detectada passou a ser a
+    // manga e o braço inverteu (manga para fora, mão para dentro).
+    private static readonly Vector3 RefArmPosition = new Vector3(0.29636273f, -0.38724905f, 0.23579757f);
+    private static readonly Quaternion RefArmRotation = new Quaternion(-0.27711797f, -0.06888593f, -0.029837541f, 0.95789886f);
     private static readonly Vector3 HandOffset = new Vector3(0.01f, -0.035f, -0.04f); // mão logo abaixo/atrás do centro da peça
 
     [MenuItem("Tools/E-stagiar.io/Ajustar câmera e braço do jogador")]
@@ -28,10 +40,17 @@ public static class JogadorBracoSetup
         Camera cam = player.GetComponentInChildren<Camera>();
         Transform c = cam.transform, hold = c.Find("HoldPoint"), arm = c.Find("Arm_Personagem");
 
+        // escala do personagem: a cápsula (altura 2, centro 0) continua com a base no chão
+        float floorY = player.transform.position.y - player.transform.localScale.y;
+        player.transform.localScale = Vector3.one * PlayerScale;
+        Vector3 pp = player.transform.position; pp.y = floorY + PlayerScale; player.transform.position = pp;
         Vector3 lp = c.localPosition; lp.y = CameraHeight; c.localPosition = lp;
         hold.localPosition = HoldPoint;
 
-        // ombro e mão atuais do braço (malha), no espaço da câmera
+        arm.localPosition = RefArmPosition;
+        arm.localRotation = RefArmRotation;
+
+        // ombro e mão do braço (malha) na pose de referência, no espaço da câmera
         MeshFilter mf = arm.GetComponentInChildren<MeshFilter>();
         Vector3[] pts = mf.sharedMesh.vertices.Select(v => c.InverseTransformPoint(mf.transform.TransformPoint(v))).ToArray();
         Vector3 fwd = Vector3.forward;

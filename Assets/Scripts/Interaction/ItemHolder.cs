@@ -55,16 +55,19 @@ public class ItemHolder : MonoBehaviour
         {
             if (!drawer.TryStore(item, hit.point)) return;   // incompatível ou sem espaço: continua na mão
             Current = null;
+            InteractionSounds.Raise(InteractionSound.ItemStoredInDrawer, hit.point);
         }
         else if (target == Target.Surface)
         {
             Current = null;
-            item.OnPlaced(hit.point, cam.eulerAngles.y, PlayerColliders);
+            item.OnPlaced(hit.point, cam.eulerAngles.y + item.PlacedYawOffset, PlayerColliders);
+            InteractionSounds.Raise(InteractionSound.ItemPlaced, hit.point);
         }
         else
         {
             Current = null;
             item.OnReleased(cam.position, PlayerColliders, ReleasePoint(cam, item));
+            InteractionSounds.Raise(InteractionSound.ItemDropped, item.transform.position);
         }
         RefreshArm();
     }

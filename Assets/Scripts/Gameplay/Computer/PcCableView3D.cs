@@ -92,8 +92,9 @@ public class PcCableView3D : MonoBehaviour
             if (built.TryGetValue(link, out GameObject old) && old != null) Destroy(old);
             built.Remove(link);
 
-            Ports(link, out PcPort pa, out PcPort pb);
-            bool a = power.IsPlugged(pa), b = power.IsPlugged(pb);
+            // cabo de energia: a ponta A vai na tomada em que ele foi ligado (qualquer uma das duas)
+            power.PortsOf(link, out PcPort pa, out PcPort pb);
+            bool a = power.IsEndPlugged(link, true), b = power.IsEndPlugged(link, false);
             if (!a && !b) continue;
             Transform ta = Anchor(pa), tb = Anchor(pb);
             CableStyle style = Style(ComputerPower.CableFor(link));
@@ -105,15 +106,8 @@ public class PcCableView3D : MonoBehaviour
     /// <summary>Quantas partes (tubo e plugues) cada cabo desenhado tem agora; para testes.</summary>
     public int BuiltCount(PcLink link) => built.TryGetValue(link, out GameObject g) && g != null ? g.transform.childCount : 0;
 
-    public static void Ports(PcLink link, out PcPort endA, out PcPort endB)
-    {
-        endA = endB = default;
-        foreach (PcPort p in Enum.GetValues(typeof(PcPort)))
-        {
-            if (ComputerPower.LinkFor(p, out bool isA) != link) continue;
-            if (isA) endA = p; else endB = p;
-        }
-    }
+    /// <summary>Portas padrão do cabo. A tomada real de um cabo de energia: <see cref="ComputerPower.PortsOf"/>.</summary>
+    public static void Ports(PcLink link, out PcPort endA, out PcPort endB) => ComputerPower.DefaultPorts(link, out endA, out endB);
 
     private Transform Anchor(PcPort port)
     {

@@ -35,6 +35,14 @@ public class PickupInteractable : Interactable
     [SerializeField] private Vector3 holdPositionOffset = Vector3.zero;
     [Tooltip("Rotação extra do objeto em relação ao ponto de mão (graus).")]
     [SerializeField] private Vector3 holdEulerOffset = Vector3.zero;
+    [Tooltip("Escala do objeto SÓ enquanto está na mão (1 = tamanho real). Para objetos grandes (monitor, gabinete) não " +
+             "cobrirem a visão. Ao soltar, volta ao tamanho real.")]
+    [Range(0.2f, 1.5f)] [SerializeField] private float holdScale = 1f;
+
+    [Header("Ao colocar numa superfície")]
+    [Tooltip("Giro (graus) somado à direção do jogador ao colocar o item numa superfície mirada. 0 = frente do item para " +
+             "onde o jogador olha; 180 = virado para o jogador (monitor, teclado, mouse).")]
+    [SerializeField] private float placedYawOffset = 0f;
 
     [Header("Física")]
     [Tooltip("Cinemático até ser pego pela primeira vez (evita peças soltas caindo/brigando na cena).")]
@@ -43,6 +51,7 @@ public class PickupInteractable : Interactable
     private Rigidbody body;
     private Collider[] colliders;
     private Renderer[] renderers;
+    private IPickupBlocker[] blockers;
 
     private Vector3 restWorldScale;
     private Quaternion restWorldRotation;
@@ -60,17 +69,41 @@ public class PickupInteractable : Interactable
     /// <summary>Disparado quando o jogador pega o item (ex.: gaveta atualiza o que ainda contém).</summary>
     public event System.Action<PickupInteractable> PickedUp;
     public float HoldYaw => holdEulerOffset.y;
+    public Vector3 HoldPositionOffset => holdPositionOffset;
+    public Vector3 HoldEulerOffset => holdEulerOffset;
+    public float HoldScale => holdScale;
+    /// <summary>Giro somado à direção do jogador ao colocar numa superfície (ver Inspector).</summary>
+    public float PlacedYawOffset
+    {
+        get => placedYawOffset;
+        set => placedYawOffset = value;
+    }
+
+    /// <summary>Ajusta como o objeto fica na mão (usado por scripts de configuração; vale na próxima vez que for pego).</summary>
+    public void SetHoldPose(Vector3 positionOffset, Vector3 eulerOffset, float scale)
+    {
+        holdPositionOffset = positionOffset;
+        holdEulerOffset = eulerOffset;
+        holdScale = Mathf.Clamp(scale, 0.2f, 1.5f);
+    }
 
     /// <summary>Raio horizontal aproximado, usado para não soltar dentro de paredes.</summary>
     public float HorizontalRadius => horizontalRadius;
 
+    private static readonly System.Collections.Generic.HashSet<PickupInteractable> all = new System.Collections.Generic.HashSet<PickupInteractable>();
+    /// <summary>Itens pegáveis ativos na cena (registro; evita procurar a cena inteira toda hora).</summary>
+    public static System.Collections.Generic.IReadOnlyCollection<PickupInteractable> All => all;
+
     private void Awake() => Init();
+    private void OnEnable() => all.Add(this);
+    private void OnDisable() => all.Remove(this);
 
     private void Init()
     {
         if (body != null) return;
         body = GetComponent<Rigidbody>();
         renderers = GetComponentsInChildren<Renderer>(true);
+        blockers = GetComponents<IPickupBlocker>();
 
         restWorldScale = transform.lossyScale;
         restWorldRotation = transform.rotation;
@@ -106,10 +139,29 @@ public class PickupInteractable : Interactable
     public override string PromptText =>
         string.IsNullOrEmpty(interactionMessage) || interactionMessage == "Interagir" ? "Pegar" : interactionMessage;
 
-    public override bool CanInteract(InteractionDetector interactor)
-        => base.CanInteract(interactor) && !IsHeld && interactor.Holder != null && !interactor.Holder.IsHolding;
+    /// <summary>
+    /// Algum <see cref="IPickupBlocker"/> do objeto impede pegá-lo agora (ex.: gabinete aberto). Só o pegar é
+    /// bloqueado: colliders e as outras interações do objeto (como abrir a tela de manutenção) continuam valendo.
+    /// </summary>
+    public bool IsPickupBlocked
+    {
+        get
+        {
+            Init();
+            foreach (IPickupBlocker b in blockers)
+                if (b as Object != null && b.BlocksPickup) return true;
+            return false;
+        }
+    }
 
-    public override void Interact(InteractionDetector interactor) => interactor.Holder.Pick(this);
+    public override bool CanInteract(InteractionDetector interactor)
+        => base.CanInteract(interactor) && !IsHeld && !IsPickupBlocked && interactor.Holder != null && !interactor.Holder.IsHolding;
+
+    public override void Interact(InteractionDetector interactor)
+    {
+        if (IsPickupBlocked) return;
+        if (interactor.Holder.Pick(this)) InteractionSounds.Raise(InteractionSound.ItemPickedUp, transform.position);
+    }
 
     public void OnPickedUp(Transform holdPoint)
     {
@@ -128,15 +180,15 @@ public class PickupInteractable : Interactable
         Placement = ItemPlacement.Held;
         Drawer = null;
 
-        // Escala mundial original preservada, qualquer que seja o pai antigo.
+        // Escala mundial original preservada (vezes a escala de mão), qualquer que seja o pai antigo.
         Vector3 hs = holdPoint.lossyScale;
-        transform.localScale = new Vector3(restWorldScale.x / hs.x, restWorldScale.y / hs.y, restWorldScale.z / hs.z);
+        transform.localScale = new Vector3(restWorldScale.x / hs.x, restWorldScale.y / hs.y, restWorldScale.z / hs.z) * holdScale;
 
         Quaternion rot = holdPoint.rotation * Quaternion.Euler(holdEulerOffset) * restWorldRotation;
         transform.rotation = rot;
 
         // Centro visual (e não o pivô) fica no ponto de mão.
-        Vector3 centerOffset = (rot * Quaternion.Inverse(restWorldRotation)) * restCenterOffset;
+        Vector3 centerOffset = (rot * Quaternion.Inverse(restWorldRotation)) * restCenterOffset * holdScale;
         transform.position = holdPoint.TransformPoint(holdPositionOffset) - centerOffset;
 
         PickedUp?.Invoke(this);

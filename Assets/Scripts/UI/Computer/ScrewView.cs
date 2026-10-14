@@ -38,23 +38,26 @@ public class ScrewView : MonoBehaviour
         button.onClick.AddListener(() => clicked?.Invoke(index));
     }
 
-    /// <summary>Mostra o parafuso removido (furo) ou presente. <paramref name="animate"/>: só quando acabou de ser removido.</summary>
+    /// <summary>
+    /// Mostra o parafuso removido (furo) ou presente. <paramref name="animate"/>: só quando acabou de ser removido ou
+    /// recolocado. O furo continua clicável: é por ele que o parafuso é recolocado.
+    /// </summary>
     public void SetRemoved(bool removed, bool animate)
     {
         Removed = removed;
-        button.interactable = !removed;
+        button.interactable = true;
         StopRunning();
         ResetPose();
 
         if (hole != null) hole.gameObject.SetActive(removed);
         if (flash != null) flash.gameObject.SetActive(false);
-        if (removed && animate && isActiveAndEnabled) running = StartCoroutine(RemoveRoutine());
+        if (animate && isActiveAndEnabled) running = StartCoroutine(removed ? RemoveRoutine() : InstallRoutine());
     }
 
-    /// <summary>Tremida de recusa (ferramenta errada ou ausente).</summary>
+    /// <summary>Tremida de recusa (ferramenta errada ou ausente), no parafuso ou no furo.</summary>
     public void PlayRejected()
     {
-        if (Removed || !isActiveAndEnabled) return;
+        if (!isActiveAndEnabled) return;
         StopRunning();
         ResetPose();
         running = StartCoroutine(RejectRoutine());
@@ -114,6 +117,30 @@ public class ScrewView : MonoBehaviour
             hole.rectTransform.localScale = Vector3.one;
             Color c = hole.color; c.a = 1f; hole.color = c;
         }
+        running = null;
+    }
+
+    // Recolocado: o parafuso "assenta" (encolhe até o tamanho normal) com o mesmo anel de brilho da remoção.
+    private IEnumerator InstallRoutine()
+    {
+        float t = 0f;
+        if (flash != null) flash.gameObject.SetActive(true);
+        while (t < removeDuration)
+        {
+            t += Time.unscaledDeltaTime;
+            float k = Mathf.Clamp01(t / removeDuration);
+            float s = Mathf.Lerp(1.5f, 1f, 1f - (1f - k) * (1f - k));
+            rect.localScale = new Vector3(s, s, 1f);
+            if (flash != null)
+            {
+                float f = Mathf.Lerp(2.4f, 1f, k);
+                flash.rectTransform.localScale = new Vector3(f, f, 1f);
+                Color c = flash.color; c.a = 1f - k; flash.color = c;
+            }
+            yield return null;
+        }
+        if (flash != null) flash.gameObject.SetActive(false);
+        rect.localScale = Vector3.one;
         running = null;
     }
 

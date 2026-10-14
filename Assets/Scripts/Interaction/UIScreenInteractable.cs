@@ -17,10 +17,22 @@ public class UIScreenInteractable : Interactable
     public override bool CanInteract(InteractionDetector interactor) => false;
 
     public override bool CanInteractSecondary(InteractionDetector interactor) =>
-        isActiveAndEnabled && screen != null && interactor != null && interactor.Screens != null;
+        isActiveAndEnabled && screen != null && interactor != null && interactor.Screens != null && !IsScreenBlocked;
+
+    /// <summary>Algum <see cref="IScreenBlocker"/> do objeto impede abrir a tela agora (ex.: gabinete fora da mesa).</summary>
+    public bool IsScreenBlocked
+    {
+        get
+        {
+            foreach (IScreenBlocker b in GetComponents<IScreenBlocker>())
+                if (b as Object != null && b.BlocksScreen) return true;
+            return false;
+        }
+    }
 
     public override void InteractSecondary(InteractionDetector interactor)
     {
+        if (IsScreenBlocked) return;
         interactor.Screens.Open(screen, gameObject, interactor);
     }
 }

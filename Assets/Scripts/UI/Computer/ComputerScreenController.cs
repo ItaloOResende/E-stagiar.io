@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -41,7 +42,29 @@ public class ComputerScreenController : MonoBehaviour
     [SerializeField] private Sprite operatingSystemScreen;
     [Tooltip("Sistema operacional com o cabo de rede ligado. Vazio = usa a tela do sistema.")]
     [SerializeField] private Sprite onlineScreen;
+    [Tooltip("PC ligado sem sinal de vídeo (sem cabo VGA/HDMI nas duas pontas ou monitor longe). Vazio = tela preta.")]
+    [SerializeField] private Sprite noSignalScreen;
     [SerializeField] private Color screenOffColor = Color.black;
+
+    [Header("Monitor (perto do gabinete: ComputerPower.MonitorInRange)")]
+    [Tooltip("Partes da tela que mostram o monitor (Frente/Monitor, Traseira/Monitor). Somem com o monitor longe do gabinete.")]
+    [SerializeField] private List<GameObject> monitorViews = new List<GameObject>();
+
+    [Header("Lado de cada equipamento (segue a posição física do monitor e do gabinete)")]
+    [Tooltip("Partes que trocam de lado (espelhadas no eixo X, a imagem não vira) quando, no mundo, o gabinete está do " +
+             "outro lado do monitor: Frente/Monitor e Frente/Gabinete, Traseira/Monitor, Traseira/ContainerTraseira_Area e " +
+             "Traseira/PainelConexoes (o ponto elétrico acompanha o lado do gabinete). O layout do prefab é o da estação " +
+             "padrão (vista de frente: gabinete à esquerda do monitor).")]
+    [SerializeField] private List<RectTransform> sideViews = new List<RectTransform>();
+    [Tooltip("Eixo (0-1, horizontal) do espelhamento de cada item de 'Side Views' (mesma ordem). Faltando: 'Mirror Center X'.")]
+    [SerializeField] private List<float> sideMirrorCenters = new List<float>();
+    [Tooltip("Eixo padrão do espelhamento.")]
+    [Range(0f, 1f)] [SerializeField] private float mirrorCenterX = 0.5f;
+
+    [Header("Ponto elétrico (perto do gabinete: ComputerPower.IsWallPointInRange)")]
+    [Tooltip("Painel das tomadas e do ponto de rede (Traseira/PainelConexoes). Some com o gabinete longe do ponto elétrico " +
+             "(Case Range no WallConnectionPoint).")]
+    [SerializeField] private List<GameObject> wallViews = new List<GameObject>();
 
     [Header("Cabos (traseira)")]
     [SerializeField] private List<ComputerPortView> ports = new List<ComputerPortView>();
@@ -56,6 +79,11 @@ public class ComputerScreenController : MonoBehaviour
     [Header("Navegação")]
     [SerializeField] private Button backButton;
     [SerializeField] private Button nextButton;
+
+    [Header("Abertura do gabinete (Avançar na Traseira)")]
+    [Tooltip("Opacidade do Avançar na Traseira enquanto a tampa não pode abrir (parafusos obrigatórios no lugar ou " +
+             "gabinete fora de uma superfície de trabalho). Continua clicável: balança, sem texto.")]
+    [Range(0f, 1f)] [SerializeField] private float lockedAlpha = 0.4f;
 
     [Header("Cursores")]
     [Tooltip("Mãozinha, usada só se a tela não tiver UIScreenManager com cursor padrão (o normal é o do gerenciador).")]
@@ -80,14 +108,73 @@ public class ComputerScreenController : MonoBehaviour
     private readonly List<ScrewView> views = new List<ScrewView>();
     // Última vista de cada gabinete: ao reabrir a tela, volta onde o jogador parou (só durante a execução).
     private readonly Dictionary<ComputerCase, ComputerView> lastViews = new Dictionary<ComputerCase, ComputerView>();
+    private CanvasGroup nextGroup;
+    private RectTransform nextRect;
+    private Vector2 nextRestPosition;
+    private bool nextLocked;
+    private Coroutine nextRoutine;
+    private readonly List<(Vector2 min, Vector2 max)> sideAnchors = new List<(Vector2, Vector2)>();
+    private bool mirrored;
 
     public ComputerView CurrentView => current;
+    /// <summary>
+    /// O Avançar está bloqueado agora (na Traseira, gabinete fechado e a tampa não pode abrir: faltam parafusos
+    /// obrigatórios ou o gabinete não está numa superfície de trabalho).
+    /// </summary>
+    public bool NextLocked => nextLocked;
+
+    // Interior bloqueado: o gabinete está fechado e a tampa não pode abrir agora (estado real dos parafusos e do apoio).
+    private bool InteriorLocked => boundCase != null && boundCase.State == CaseState.Closed && !boundCase.CanOpen;
+
+    /// <summary>O monitor deste PC aparece na tela agora (perto do gabinete; a distância do jogador não importa).</summary>
+    public bool MonitorVisible => boundPower == null || boundPower.MonitorInRange;
+
+    /// <summary>Vista de frente (pelo lado da tela do monitor): o gabinete está à esquerda do monitor no mundo.</summary>
+    public bool CaseLeftOfMonitor
+    {
+        get
+        {
+            if (boundPower == null || boundPower.Monitor == null) return true;
+            Transform mon = boundPower.Monitor.parent != null ? boundPower.Monitor.parent : boundPower.Monitor;
+            // olhando a tela de frente, a direita de quem olha é -right do monitor
+            return Vector3.Dot(boundCase.transform.position - mon.position, mon.right) >= 0f;
+        }
+    }
+
+    /// <summary>A tela está espelhada agora (gabinete à direita do monitor, vista de frente).</summary>
+    public bool Mirrored => mirrored;
+
+    private void ApplySides()
+    {
+        mirrored = !CaseLeftOfMonitor;
+        for (int i = 0; i < sideViews.Count; i++)
+        {
+            RectTransform r = sideViews[i];
+            if (r == null) continue;
+            (Vector2 min, Vector2 max) = sideAnchors[i];
+            float c = i < sideMirrorCenters.Count ? sideMirrorCenters[i] : mirrorCenterX;
+            if (mirrored) { float a = 2f * c - max.x, b = 2f * c - min.x; min.x = a; max.x = b; }
+            r.anchorMin = min;
+            r.anchorMax = max;
+        }
+    }
+
+    /// <summary>O painel do ponto elétrico (tomadas e rede) aparece na tela agora (ponto perto do gabinete deste PC).</summary>
+    public bool WallPointVisible => boundPower == null || boundPower.IsWallPointInRange;
 
     private void Awake()
     {
         screen = GetComponent<UIScreen>();
         if (backButton != null) backButton.onClick.AddListener(Back);
-        if (nextButton != null) nextButton.onClick.AddListener(Next);
+        if (nextButton != null)
+        {
+            nextButton.onClick.AddListener(Next);
+            nextGroup = nextButton.GetComponent<CanvasGroup>();
+            if (nextGroup == null) nextGroup = nextButton.gameObject.AddComponent<CanvasGroup>();
+            nextRect = (RectTransform)nextButton.transform;
+            nextRestPosition = nextRect.anchoredPosition;
+        }
+        foreach (RectTransform r in sideViews) sideAnchors.Add(r != null ? (r.anchorMin, r.anchorMax) : (Vector2.zero, Vector2.zero));
         if (powerButton != null) powerButton.onClick.AddListener(PressPower);
         foreach (ComputerPortView p in ports) if (p != null) p.Init(OnPortClicked);
         foreach (ComputerSlotView v in slots) if (v != null) v.Init(OnSlotClicked);
@@ -120,12 +207,16 @@ public class ComputerScreenController : MonoBehaviour
         if (boundPower != null) boundPower.InstallPaused = false;   // tela fechada: segue no monitor 3D
         Unsubscribe();
         UICursor.Reset();
+        nextRoutine = null;                                        // corrotinas param junto com o objeto
+        if (nextRect != null) { nextRect.anchoredPosition = nextRestPosition; nextRect.localScale = Vector3.one; }
     }
 
     private void Subscribe()
     {
         if (subscribed || boundCase == null) return;
         boundCase.ScrewRemoved += HandleScrewRemoved;
+        boundCase.ScrewInstalled += HandleScrewInstalled;
+        boundCase.StateChanged += HandleCaseState;
         boundCase.ComponentsChanged += RefreshHardware;
         if (boundPower != null)
         {
@@ -140,6 +231,8 @@ public class ComputerScreenController : MonoBehaviour
     {
         if (!subscribed || boundCase == null) { subscribed = false; return; }
         boundCase.ScrewRemoved -= HandleScrewRemoved;
+        boundCase.ScrewInstalled -= HandleScrewInstalled;
+        boundCase.StateChanged -= HandleCaseState;
         boundCase.ComponentsChanged -= RefreshHardware;
         if (boundPower != null)
         {
@@ -180,13 +273,62 @@ public class ComputerScreenController : MonoBehaviour
                 ShowView(ComputerView.Rear);
                 break;
             case ComputerView.Rear:
-                if (boundCase.TryOpen() == CaseOpenResult.ScrewsRemaining) 
+                // Bloqueado (parafusos ou apoio): não abre; só o Avançar balança, sem texto e sem apontar a solução.
+                CaseOpenResult result = boundCase.TryOpen();
+                if (result == CaseOpenResult.ScrewsRemaining || result == CaseOpenResult.NotOnWorkSurface) ShowLockedFeedback();
+                else
                 {
-                    // Aguarda remover os parafusos
+                    if (result == CaseOpenResult.Opened) InteractionSounds.Raise(InteractionSound.CaseOpened);
+                    ShowView(ComputerView.Interior);
                 }
-                else ShowView(ComputerView.Interior);
                 break;
         }
+    }
+
+    private void ShowLockedFeedback()
+    {
+        if (nextRect != null && isActiveAndEnabled)
+        {
+            if (nextRoutine != null) StopCoroutine(nextRoutine);
+            nextRoutine = StartCoroutine(ShakeNext());
+        }
+    }
+
+    /// <summary>Atualiza a aparência do Avançar (opacidade reduzida quando bloqueado); devolve se acabou de desbloquear.</summary>
+    private bool UpdateNextLock()
+    {
+        bool was = nextLocked;
+        nextLocked = current == ComputerView.Rear && InteriorLocked;
+        if (nextGroup != null && (nextRoutine == null || nextLocked)) nextGroup.alpha = nextLocked ? lockedAlpha : 1f;
+        return was && !nextLocked;
+    }
+
+    // Balança o Avançar bloqueado (recusa), como o parafuso com a ferramenta errada.
+    private IEnumerator ShakeNext()
+    {
+        for (float t = 0f; t < 0.35f; t += Time.unscaledDeltaTime)
+        {
+            nextRect.anchoredPosition = nextRestPosition + Vector2.right * Mathf.Sin(t * 60f) * 10f * (1f - t / 0.35f);
+            yield return null;
+        }
+        nextRect.anchoredPosition = nextRestPosition;
+        nextRoutine = null;
+    }
+
+    // Desbloqueio: o Avançar volta à opacidade total e "pulsa" (cresce e volta).
+    private IEnumerator PulseUnlocked()
+    {
+        nextRect.anchoredPosition = nextRestPosition;
+        for (float t = 0f; t < 0.6f; t += Time.unscaledDeltaTime)
+        {
+            float k = t / 0.6f;
+            if (nextGroup != null) nextGroup.alpha = Mathf.Lerp(lockedAlpha, 1f, Mathf.Clamp01(k * 2f));
+            nextRect.localScale = Vector3.one * (1f + 0.25f * Mathf.Sin(k * Mathf.PI));
+            yield return null;
+        }
+        nextRect.localScale = Vector3.one;
+        if (nextGroup != null) nextGroup.alpha = 1f;
+        nextRoutine = null;
     }
 
     public void Back()
@@ -208,6 +350,7 @@ public class ComputerScreenController : MonoBehaviour
         if (interiorView != null) interiorView.SetActive(view == ComputerView.Interior);
         if (backButton != null) backButton.interactable = view != ComputerView.Front;
         if (nextButton != null) nextButton.interactable = view != ComputerView.Interior;
+        UpdateNextLock();
 
         // Aplica o cursor correspondente à vista atual (já redimensionado)
         ApplyViewCursor(view);
@@ -233,6 +376,17 @@ public class ComputerScreenController : MonoBehaviour
             v.SetInstalled(boundCase.HasComponent(v.Slot));
         }
 
+        ApplySides();   // monitor e gabinete no lado em que estão no mundo (atualiza ao abrir e ao mudarem de lugar)
+
+        // monitor longe do gabinete ou do jogador / ponto elétrico longe do jogador: some da tela (e as portas dele
+        // deixam de ser clicáveis; o clique também é validado em OnPortClicked)
+        bool monitorNear = MonitorVisible;
+        foreach (GameObject m in monitorViews)
+            if (m != null && m.activeSelf != monitorNear) m.SetActive(monitorNear);
+        bool wallNear = WallPointVisible;
+        foreach (GameObject w in wallViews)
+            if (w != null && w.activeSelf != wallNear) w.SetActive(wallNear);
+
         foreach (UsbPortView u in usbPorts)
             if (u != null) u.SetPlugged(boundPower != null && boundPower.PendrivePort == u.Index);
         foreach (ComputerPortView p in ports)
@@ -240,24 +394,36 @@ public class ComputerScreenController : MonoBehaviour
         foreach (CableLineView line in cableLines)
         {
             if (line == null) continue;
-            bool a = false, b = false;
+            bool a = false, b = false, toMonitor = false, fromWall = false;
             if (boundPower != null)
             {
-                PcCableView3D.Ports(line.Link, out PcPort pa, out PcPort pb);
-                a = boundPower.IsPlugged(pa);
-                b = boundPower.IsPlugged(pb);
+                // cabo de energia: a ponta A segue a tomada em que foi ligado (qualquer uma das duas)
+                boundPower.PortsOf(line.Link, out PcPort pa, out PcPort pb);
+                a = boundPower.IsEndPlugged(line.Link, true);
+                b = boundPower.IsEndPlugged(line.Link, false);
+                line.SetFrom(PortRect(pa));
+                toMonitor = ComputerPower.IsMonitorPort(pb);
+                fromWall = ComputerPower.IsWallPort(pa);
             }
             if (a == b && carriedLink == line.Link) carriedLink = null;  // completo ou solto: ninguém está levando
-            line.SetState(current == ComputerView.Rear, a, b, carriedLink == line.Link);
+            bool visible = current == ComputerView.Rear && (monitorNear || !toMonitor) && (wallNear || !fromWall);
+            line.SetState(visible, a, b, carriedLink == line.Link);
         }
 
         ShowScreen(boundPower != null ? boundPower.State : PcPowerState.Off);
         if (isActiveAndEnabled) ApplyViewCursor(current);   // item na mão mudou (guardou/pegou algo)
     }
 
+    private RectTransform PortRect(PcPort port)
+    {
+        foreach (ComputerPortView p in ports) if (p != null && p.Port == port) return p.Anchor;
+        return null;
+    }
+
     private void HandlePowerState(PcPowerState state) => ShowScreen(state);
 
-    private void RefreshScreen() => ShowScreen(boundPower != null ? boundPower.State : PcPowerState.Off);
+    // Tela, sinal de vídeo ou distância do monitor mudaram (o monitor pode ter entrado ou saído do alcance).
+    private void RefreshScreen() => RefreshHardware();
 
     private void ShowScreen(PcPowerState state)
     {
@@ -266,6 +432,7 @@ public class ComputerScreenController : MonoBehaviour
         Sprite s = null;
         switch (boundPower != null ? boundPower.Screen : PcScreen.Off)
         {
+            case PcScreen.NoSignal: s = noSignalScreen; break;
             case PcScreen.NoStorage: s = biosScreen; break;
             case PcScreen.NoBootableDevice: s = noBootableScreen != null ? noBootableScreen : biosScreen; break;
             case PcScreen.Installing:
@@ -324,7 +491,9 @@ public class ComputerScreenController : MonoBehaviour
     /// <summary>Botão Power (frente do gabinete): liga só com os requisitos; ligado, desliga.</summary>
     public void PressPower()
     {
-        if (boundPower != null) boundPower.PressPower();
+        if (boundPower == null) return;
+        InteractionSounds.Raise(InteractionSound.PowerButton);
+        boundPower.PressPower();
     }
 
     // Itens conectados/instalados saem da mão e ficam guardados no objeto do mundo (nunca destruídos).
@@ -336,8 +505,11 @@ public class ComputerScreenController : MonoBehaviour
         CableItem cable = held != null ? held.GetComponentInParent<CableItem>() : null;
 
         PortResult result = boundPower.UsePort(port, cable, held != null, out GameObject back);
-        if (result == PortResult.PluggedFromHand) carriedLink = ComputerPower.LinkFor(port, out _);
-        else if (result == PortResult.Unplugged) carriedLink = ComputerPower.LinkFor(port, out _); // segue a ponta que soltou
+        if (result == PortResult.OutOfReach) { RefreshHardware(); return; }   // interface antiga: esconde o que está longe
+        if (result == PortResult.PluggedFromHand || result == PortResult.PluggedOtherEnd) InteractionSounds.Raise(InteractionSound.CablePlugged);
+        else if (result == PortResult.Unplugged || result == PortResult.CableReturned) InteractionSounds.Raise(InteractionSound.CableUnplugged);
+        // segue a ponta solta (cabo recém-ligado por uma ponta ou que acabou de soltar uma); tomada: o cabo que estava nela
+        if (result == PortResult.PluggedFromHand || result == PortResult.Unplugged) carriedLink = boundPower.LastChangedLink;
         RefreshHardware(); // o UsePort já atualizou a tela; de novo, agora sabendo qual cabo segue o mouse
         if (result == PortResult.PluggedFromHand) holder.Stow(boundCase.transform.position);
         else if (result == PortResult.CableReturned && holder != null) holder.Retrieve(back);
@@ -351,6 +523,8 @@ public class ComputerScreenController : MonoBehaviour
         PendriveItem pendrive = held != null ? held.GetComponentInParent<PendriveItem>() : null;
 
         PortResult result = boundPower.UseUsbPort(index, pendrive, held != null, out GameObject back);
+        if (result == PortResult.PluggedFromHand) InteractionSounds.Raise(InteractionSound.PendrivePlugged);
+        else if (result == PortResult.CableReturned) InteractionSounds.Raise(InteractionSound.PendriveUnplugged);
         if (result == PortResult.PluggedFromHand) holder.Stow(boundCase.transform.position);
         else if (result == PortResult.CableReturned && holder != null) holder.Retrieve(back);
     }
@@ -363,6 +537,8 @@ public class ComputerScreenController : MonoBehaviour
         ComputerPartItem part = held != null ? held.GetComponentInParent<ComputerPartItem>() : null;
 
         PartSlotResult result = boundCase.UsePartSlot(slot, part, held != null, out GameObject back);
+        if (result == PartSlotResult.Installed) InteractionSounds.Raise(InteractionSound.PartInstalled);
+        else if (result == PartSlotResult.Removed) InteractionSounds.Raise(InteractionSound.PartRemoved);
         if (result == PartSlotResult.Installed) holder.Stow(boundCase.transform.position);
         else if (result == PartSlotResult.Removed && holder != null) holder.Retrieve(back);
     }
@@ -373,6 +549,13 @@ public class ComputerScreenController : MonoBehaviour
 
         ToolItem tool = GetHeldToolItem();
         ToolType held = tool != null ? tool.Type : ToolType.None;
+
+        // furo (parafuso removido) = recoloca; parafuso no lugar = remove (estado real de cada parafuso)
+        if (boundCase.Screws[index].removed)
+        {
+            if (boundCase.TryInstallScrew(index, held) == ScrewInstallResult.WrongTool) views[index].PlayRejected();
+            return;
+        }
 
         switch (boundCase.TryRemoveScrew(index, held))
         {
@@ -387,5 +570,30 @@ public class ComputerScreenController : MonoBehaviour
     private void HandleScrewRemoved(int index)
     {
         if (index >= 0 && index < views.Count) views[index].SetRemoved(true, true);
+        InteractionSounds.Raise(InteractionSound.ScrewRemoved);
+        // último parafuso obrigatório retirado (e gabinete na mesa/bancada): libera o Avançar com um pulso, sem texto
+        if (!UpdateNextLock()) return;
+        if (nextRect != null && isActiveAndEnabled)
+        {
+            if (nextRoutine != null) StopCoroutine(nextRoutine);
+            nextRoutine = StartCoroutine(PulseUnlocked());
+        }
+    }
+
+    private void HandleScrewInstalled(int index)
+    {
+        if (index >= 0 && index < views.Count) views[index].SetRemoved(false, true);
+        InteractionSounds.Raise(InteractionSound.ScrewInstalled);
+        UpdateNextLock();   // de volta no lugar: o Avançar pode voltar a ficar bloqueado (sem texto)
+    }
+
+    // Fechado ao recolocar os obrigatórios: o Interior deixa de valer (ShowView cai para a Traseira) e o Avançar
+    // volta ao bloqueio. Aberto: nada a fazer aqui (a navegação já cuida).
+    private void HandleCaseState(CaseState state)
+    {
+        if (state != CaseState.Closed) return;
+        if (current == ComputerView.Interior) ShowView(ComputerView.Rear);   // (os parafusos só mudam na Traseira)
+        UpdateNextLock();   // o Avançar volta a ficar apagado: é o sinal visual do fechamento (sem texto)
+        InteractionSounds.Raise(InteractionSound.CaseClosed);
     }
 }

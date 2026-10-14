@@ -17,18 +17,22 @@ public class PlayerMovement : MonoBehaviour
     private void Update()
     {
         Vector2 input = Vector2.zero;
+        Keyboard keyboard = Keyboard.current;   // sem teclado (ex.: testes em batchmode): só a gravidade
 
-        if (Keyboard.current.wKey.isPressed)
-            input.y += 1;
+        if (keyboard != null)
+        {
+            if (keyboard.wKey.isPressed)
+                input.y += 1;
 
-        if (Keyboard.current.sKey.isPressed)
-            input.y -= 1;
+            if (keyboard.sKey.isPressed)
+                input.y -= 1;
 
-        if (Keyboard.current.aKey.isPressed)
-            input.x -= 1;
+            if (keyboard.aKey.isPressed)
+                input.x -= 1;
 
-        if (Keyboard.current.dKey.isPressed)
-            input.x += 1;
+            if (keyboard.dKey.isPressed)
+                input.x += 1;
+        }
 
         Vector3 direction = transform.right * input.x + transform.forward * input.y;
 

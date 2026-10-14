@@ -13,6 +13,7 @@ public class ComputerCaseTests
         go = new GameObject("Gabinete_Teste");
         pcCase = go.AddComponent<ComputerCase>();
         pcCase.Configure(ComputerCase.CreateDefaultTowerBackScrews());
+        pcCase.RequiresWorkSurface = false;   // estes testes cobrem parafusos e peças; a mesa/bancada tem WorkSurfaceTests
     }
 
     [TearDown]
@@ -132,11 +133,56 @@ public class ComputerCaseTests
     }
 
     [Test]
-    public void AfterOpen_ScrewsNoLongerChange()
+    public void AfterOpen_ScrewsCannotBeRemoved_OnlyReinstalled()
     {
         RemoveAll();
         pcCase.TryOpen();
         Assert.AreEqual(ScrewRemovalResult.CaseAlreadyOpen, pcCase.TryRemoveScrew(0, ToolType.Screwdriver));
+    }
+
+    [Test]
+    public void ReinstallingTheRequiredScrews_ClosesTheCase_OptionalOnesAreNotNeeded()
+    {
+        RemoveAll();
+        pcCase.TryOpen();
+        var states = new List<CaseState>();
+        var installed = new List<int>();
+        pcCase.StateChanged += states.Add;
+        pcCase.ScrewInstalled += installed.Add;
+        Assert.IsTrue(pcCase.BlocksPickup);
+
+        Assert.AreEqual(ScrewInstallResult.WrongTool, pcCase.TryInstallScrew(3, ToolType.None), "sem a chave não volta");
+        Assert.IsTrue(pcCase.Screws[3].removed);
+        Assert.AreEqual(ScrewInstallResult.Installed, pcCase.TryInstallScrew(3, ToolType.Screwdriver));
+        Assert.AreEqual(ScrewInstallResult.AlreadyInstalled, pcCase.TryInstallScrew(3, ToolType.Screwdriver));
+        Assert.AreEqual(ScrewInstallResult.Installed, pcCase.TryInstallScrew(5, ToolType.Screwdriver));
+        Assert.AreEqual(ScrewInstallResult.Installed, pcCase.TryInstallScrew(0, ToolType.Screwdriver), "opcional também pode voltar");
+        Assert.AreEqual(CaseState.Open, pcCase.State, "ainda falta um obrigatório");
+        Assert.IsEmpty(states);
+
+        Assert.AreEqual(ScrewInstallResult.Installed, pcCase.TryInstallScrew(7, ToolType.Screwdriver));
+        Assert.AreEqual(CaseState.Closed, pcCase.State, "obrigatórios de volta: fechado (opcionais 1, 2, 4, 6 continuam fora)");
+        CollectionAssert.AreEqual(new[] { CaseState.Closed }, states);
+        CollectionAssert.AreEqual(new[] { 3, 5, 0, 7 }, installed);
+        Assert.IsTrue(pcCase.RequiredScrewsInstalled);
+        Assert.IsTrue(pcCase.Screws[1].removed);
+        Assert.IsFalse(pcCase.BlocksPickup, "fechado: pode ser carregado de novo");
+        Assert.AreEqual(PartSlotResult.CaseClosed, pcCase.UsePartSlot(PcComponent.Hdd, null, false, out _), "fechado: interior inacessível");
+
+        // fechado de novo, o ciclo recomeça: tirar os obrigatórios e abrir
+        Assert.AreEqual(CaseOpenResult.ScrewsRemaining, pcCase.TryOpen());
+        foreach (int i in new[] { 3, 5, 7 }) Assert.AreEqual(ScrewRemovalResult.Removed, pcCase.TryRemoveScrew(i, ToolType.Screwdriver));
+        Assert.AreEqual(CaseOpenResult.Opened, pcCase.TryOpen());
+    }
+
+    [Test]
+    public void ReinstallingWhileClosed_JustPutsTheScrewBack()
+    {
+        pcCase.TryRemoveScrew(3, ToolType.Screwdriver);
+        Assert.AreEqual(ScrewInstallResult.Installed, pcCase.TryInstallScrew(3, ToolType.Screwdriver));
+        Assert.AreEqual(CaseState.Closed, pcCase.State);
+        Assert.AreEqual(0, pcCase.RemovedCount);
+        Assert.AreEqual(ScrewInstallResult.InvalidScrew, pcCase.TryInstallScrew(99, ToolType.Screwdriver));
     }
 
     // ---- persistência / instâncias -------------------------------------------------------------------------

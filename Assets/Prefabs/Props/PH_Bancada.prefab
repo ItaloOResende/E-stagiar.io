@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1088604128727222965}
   - component: {fileID: 8569303248502220737}
+  - component: {fileID: 425816160919248633}
   m_Layer: 0
   m_Name: PH_Bancada
   m_TagString: Untagged
@@ -54,6 +55,19 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.75, y: 0.75000006, z: 0.7693286}
   m_Center: {x: 0, y: 0.37500003, z: 0}
+--- !u!114 &425816160919248633
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 310940803377598479}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d35ec8aa6226634f856c4bfcc659d83, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EstagiarIo.Computer::WorkSurface
+  allowsCaseMaintenance: 1
 --- !u!1001 &1300656929520136640
 PrefabInstance:
   m_ObjectHideFlags: 0

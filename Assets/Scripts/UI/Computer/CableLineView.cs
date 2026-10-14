@@ -38,6 +38,20 @@ public class CableLineView : MonoBehaviour
     private readonly List<Vector2> pts = new List<Vector2>();
 
     public PcLink Link => link;
+    /// <summary>Porta da ponta A configurada no Inspector (a padrão do cabo).</summary>
+    public RectTransform DefaultFrom { get; private set; }
+
+    /// <summary>
+    /// Troca a porta da ponta A (ex.: cabo de energia ligado na outra tomada da parede). Null = volta à configurada.
+    /// </summary>
+    public void SetFrom(RectTransform port)
+    {
+        if (DefaultFrom == null) DefaultFrom = from;
+        RectTransform target = port != null ? port : DefaultFrom;
+        if (from == target) return;
+        from = target;
+        freeEndValid = false;
+    }
 
     private void Awake()
     {

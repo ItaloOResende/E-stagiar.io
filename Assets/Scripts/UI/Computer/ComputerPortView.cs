@@ -15,8 +15,11 @@ public class ComputerPortView : MonoBehaviour
     [SerializeField] private Graphic pluggedIndicator;
 
     public PcPort Port => port;
-    /// <summary>Ponto onde o cabo encosta (para a linha do cabo).</summary>
-    public RectTransform Anchor => (RectTransform)transform;
+    /// <summary>
+    /// Ponto onde o cabo encosta (para a linha do cabo): o centro do plugue desenhado (que nem sempre fica no centro da
+    /// área clicável da porta); sem plugue, a própria porta.
+    /// </summary>
+    public RectTransform Anchor => pluggedIndicator != null ? pluggedIndicator.rectTransform : (RectTransform)transform;
 
     public void Init(Action<PcPort> onClick)
     {

@@ -19,6 +19,7 @@ public class ComputerPowerTests
         created.Add(pc);
         pcCase = pc.AddComponent<ComputerCase>();
         pcCase.Configure(ComputerCase.CreateDefaultTowerBackScrews());
+        pcCase.RequiresWorkSurface = false;   // abrir sobre mesa/bancada tem testes próprios (WorkSurfaceTests)
         pcCase.SetComponents(PcComponent.None);
         power = pc.AddComponent<ComputerPower>();
 
@@ -105,7 +106,7 @@ public class ComputerPowerTests
     {
         Assert.AreEqual(PowerButtonResult.MissingRequirements, power.PressPower());
         Assert.AreEqual(PcPowerState.Off, power.State);
-        Assert.AreEqual(10, power.MissingForBios().Count);
+        Assert.AreEqual(8, power.MissingForBios().Count, "4 pontas de energia + 4 peças (o vídeo não é requisito para ligar)");
     }
 
     [Test]
@@ -140,8 +141,10 @@ public class ComputerPowerTests
         Assert.IsFalse(power.VgaConnected);
         power.PressPower();
         Assert.AreEqual(PcPowerState.Bios, power.State);
+        Assert.AreEqual(PcScreen.NoStorage, power.Screen);
         Assert.AreEqual(PortResult.Unplugged, power.UsePort(PcPort.MonitorHdmi, null, false, out _));
-        Assert.AreEqual(PcPowerState.Off, power.State, "sem nenhum cabo de vídeo o PC desliga");
+        Assert.AreEqual(PcPowerState.Bios, power.State, "sem cabo de vídeo o PC continua ligado");
+        Assert.AreEqual(PcScreen.NoSignal, power.Screen, "...mas o monitor fica sem sinal");
     }
 
     [Test]
@@ -532,6 +535,165 @@ public class ComputerPowerTests
         power.AdvanceInstall(10f);
         Assert.IsFalse(blankHdd.HasOperatingSystem);
     }
+    // ---- sinal de vídeo e monitor --------------------------------------------------------------------------------
+
+    private void ConnectPowerOnly()
+    {
+        Connect(powerCable, PcPort.CasePower, PcPort.Outlet);
+        Connect(monitorPowerCable, PcPort.MonitorPower, PcPort.MonitorOutlet);
+    }
+
+    [Test]
+    public void NoVideoCable_StillBoots_MonitorShowsNoSignal_UntilTheCableArrives()
+    {
+        OpenCase();
+        ConnectPowerOnly();
+        InstallBiosParts();
+        Install(hdd);
+        Assert.IsEmpty(power.MissingForBios(), "o vídeo não é requisito para ligar");
+        Assert.AreEqual(PowerButtonResult.TurnedOn, power.PressPower());
+        Assert.AreEqual(PcPowerState.OperatingSystem, power.State, "o PC liga de verdade");
+        Assert.IsFalse(power.HasVideoSignal);
+        Assert.AreEqual(PcScreen.NoSignal, power.Screen);
+
+        int displayChanges = 0;
+        power.DisplayChanged += () => displayChanges++;
+        power.UsePort(PcPort.CaseVideo, videoCable, true, out _);
+        Assert.AreEqual(PcScreen.NoSignal, power.Screen, "só uma ponta do VGA: ainda sem sinal");
+        power.UsePort(PcPort.MonitorVideo, null, false, out _);
+        Assert.AreEqual(PcScreen.OperatingSystem, power.Screen, "VGA nas duas pontas: mostra o estado real");
+        Assert.Greater(displayChanges, 0, "a tela é avisada");
+
+        Assert.AreEqual(PortResult.Unplugged, power.UsePort(PcPort.CaseVideo, null, false, out _));
+        Assert.AreEqual(PcScreen.NoSignal, power.Screen, "cabo solto durante o uso: sem sinal de novo");
+        Assert.AreEqual(PcPowerState.OperatingSystem, power.State, "...sem desligar o PC");
+    }
+
+    [Test]
+    public void Screens_KeepOffNoSignalNoDriveNoSystemAndSystemDistinct()
+    {
+        OpenCase();
+        ConnectPowerOnly();
+        InstallBiosParts();
+        Assert.AreEqual(PcScreen.Off, power.Screen, "desligado");
+        power.PressPower();
+        Assert.AreEqual(PcScreen.NoSignal, power.Screen, "ligado sem vídeo");
+        Connect(videoCable, PcPort.CaseVideo, PcPort.MonitorVideo);
+        Assert.AreEqual(PcScreen.NoStorage, power.Screen, "sem HD");
+        Install(blankHdd);
+        power.PressPower(); power.PressPower();
+        Assert.AreEqual(PcScreen.NoBootableDevice, power.Screen, "HD sem sistema");
+        Assert.AreEqual(PartSlotResult.Removed, pcCase.UsePartSlot(PcComponent.Hdd, null, false, out _));
+        Install(hdd);
+        power.PressPower(); power.PressPower();
+        Assert.AreEqual(PcScreen.OperatingSystem, power.Screen, "sistema");
+    }
+
+    [Test]
+    public void MonitorFarFromTheCase_LosesSignalAndComesBackWhenNear_InAnyDirection()
+    {
+        var screen = new GameObject("TelaMonitor").transform;
+        created.Add(screen.gameObject);
+        power.MonitorRange = 1.5f;
+        Assert.IsTrue(power.MonitorInRange, "sem monitor associado a distância não é exigida");
+        power.AttachMonitor(screen);
+        Assert.AreSame(screen, power.Monitor);
+        ReadyForBios();
+        Install(hdd);
+        power.PressPower();
+
+        foreach (Vector3 dir in new[] { Vector3.left, Vector3.right, Vector3.forward, Vector3.back })
+        {
+            screen.position = pc.transform.position + dir * 0.8f;
+            Assert.IsTrue(power.MonitorInRange, "perto: " + dir);
+            Assert.AreEqual(PcScreen.OperatingSystem, power.Screen);
+        }
+        screen.position = pc.transform.position + Vector3.right * 3f;
+        Assert.IsFalse(power.MonitorInRange);
+        Assert.IsTrue(power.VideoConnected, "o cabo continua ligado...");
+        Assert.AreEqual(PcScreen.OperatingSystem, power.Screen, "...e a imagem continua: só o estado do cabo conta");
+        pc.transform.position = screen.position + Vector3.left * 0.5f;     // gabinete levado até o monitor
+        Assert.IsTrue(power.MonitorInRange);
+        Assert.AreEqual(PcScreen.OperatingSystem, power.Screen);
+
+        power.DetachMonitor(screen);
+        Assert.IsNull(power.Monitor);
+    }
+
+    // ---- tomadas compatíveis -------------------------------------------------------------------------------------
+
+    [Test]
+    public void PowerCables_WorkInEitherWallOutlet()
+    {
+        OpenCase();
+        InstallBiosParts();
+        Connect(powerCable, PcPort.CasePower, PcPort.MonitorOutlet);         // PC na tomada 2
+        Connect(monitorPowerCable, PcPort.MonitorPower, PcPort.Outlet);      // monitor na tomada 1
+        Assert.IsTrue(power.PowerConnected);
+        Assert.IsTrue(power.MonitorPowerConnected);
+        Assert.AreEqual(PcLink.Power, power.OutletLink(PcPort.MonitorOutlet));
+        Assert.AreEqual(PcLink.MonitorPower, power.OutletLink(PcPort.Outlet));
+        power.PortsOf(PcLink.Power, out PcPort a, out PcPort b);
+        Assert.AreEqual(PcPort.MonitorOutlet, a, "a ponta A segue a tomada real");
+        Assert.AreEqual(PcPort.CasePower, b, "a ponta do equipamento continua a do gabinete");
+        Assert.AreEqual(PowerButtonResult.TurnedOn, power.PressPower());
+
+        // tirar o cabo da tomada 2 solta o cabo do PC (e não o do monitor)
+        Assert.AreEqual(PortResult.Unplugged, power.UsePort(PcPort.MonitorOutlet, null, false, out _));
+        Assert.IsFalse(power.PowerConnected);
+        Assert.IsTrue(power.MonitorPowerConnected);
+        Assert.AreEqual(PcPowerState.Off, power.State);
+        Assert.AreEqual(PcLink.Power, power.LastChangedLink);
+    }
+
+    [Test]
+    public void PowerCable_PluggedInTheWallFirst_BecomesTheCableOfTheEquipmentChosenLater()
+    {
+        Assert.AreEqual(PortResult.PluggedFromHand, power.UsePort(PcPort.Outlet, powerCable, true, out _));
+        Assert.AreEqual(PortResult.PluggedOtherEnd, power.UsePort(PcPort.MonitorPower, null, false, out _), "vai para o monitor");
+        Assert.IsTrue(power.MonitorPowerConnected);
+        Assert.IsFalse(power.PowerConnected);
+        Assert.AreEqual(PortResult.PluggedFromHand, power.UsePort(PcPort.MonitorOutlet, monitorPowerCable, true, out _));
+        Assert.AreEqual(PortResult.PluggedOtherEnd, power.UsePort(PcPort.CasePower, null, false, out _), "e este para o gabinete");
+        Assert.IsTrue(power.PowerConnected);
+
+        Assert.AreEqual(PortResult.HandsFull, power.UsePort(PcPort.Outlet, null, true, out _), "tomada ocupada: mão livre para soltar");
+        Assert.AreEqual(PortResult.Unplugged, power.UsePort(PcPort.CasePower, null, false, out _));
+        Assert.AreEqual(PortResult.CableReturned, power.UsePort(PcPort.MonitorOutlet, null, false, out GameObject back));
+        Assert.AreSame(monitorPowerCable.gameObject, back, "volta o mesmo objeto que foi ligado");
+        Assert.IsFalse(power.IsPlugged(PcPort.MonitorOutlet));
+        Assert.AreEqual(PortResult.WrongCable, power.UsePort(PcPort.MonitorOutlet, networkCable, true, out _), "tomada só aceita energia");
+    }
+
+    [Test]
+    public void TwoPcs_DoNotShareCablesOrMonitor()
+    {
+        var other = new GameObject("PC_Outro");
+        created.Add(other);
+        other.AddComponent<ComputerCase>().SetComponents(ComputerCase.AllComponents);
+        var otherPower = other.AddComponent<ComputerPower>();
+        var screen = new GameObject("Tela_Outro").transform;
+        created.Add(screen.gameObject);
+        otherPower.AttachMonitor(screen);
+
+        Connect(powerCable, PcPort.CasePower, PcPort.Outlet);
+        Assert.IsTrue(power.PowerConnected);
+        Assert.IsFalse(otherPower.PowerConnected);
+        Assert.IsFalse(otherPower.IsPlugged(PcPort.Outlet));
+        Assert.IsNull(power.Monitor, "o monitor do outro PC não é deste");
+    }
+
+    [Test]
+    public void OpenCase_CannotBeCarried_ClosedCaseCan()
+    {
+        Assert.IsFalse(pcCase.BlocksPickup, "fechado: transporte normal");
+        for (int i = 0; i < pcCase.TotalCount; i++) pcCase.TryRemoveScrew(i, ToolType.Screwdriver);
+        Assert.IsFalse(pcCase.BlocksPickup, "parafusos fora, mas a tampa ainda não foi aberta");
+        pcCase.TryOpen();
+        Assert.IsTrue(pcCase.BlocksPickup, "aberto: não pode ser pego");
+        Assert.AreEqual(PartSlotResult.Installed, pcCase.UsePartSlot(PcComponent.Hdd, hdd, true, out _), "peças continuam funcionando");
+    }
+
     // ---- quedas e dano das peças -------------------------------------------------------------------------------
 
     [Test]

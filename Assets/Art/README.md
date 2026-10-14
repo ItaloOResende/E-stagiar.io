@@ -38,20 +38,24 @@ A cena guarda só a instância do prefab. Por isso, quando o prefab é alterado,
 5. Quando o placeholder não tiver mais uso, apague o `PH_*.fbx` e o material dele. Antes, confira em *Find References In Scene*/*Select Dependencies*.
 
 **Exceções (pedem atenção manual):**
-- **`PC_1` na `Office_Placeholder`:** é uma instância do `PH_Pc` com pickups de teste presos nos nós do FBX. Trocar o modelo apaga esses nós. Mova os pickups para a raiz antes.
+- **`PC_Escritorio` e `Estacao_Trabalho` (`Prefabs/Gameplay/`):** são composições de prefabs aninhados (gabinete, monitor, periféricos, ponto elétrico; mesa, cadeira, PC, xícara). Para trocar um modelo, mude o `Visual` do prefab de origem (`Gabinete`, `OF_*`), não a composição. O `PC_Escritorio` é o antigo `PH_Pc` (mesmo GUID). Ver `../docs/GUIA_DE_MECANICAS.md` §4.7.
 - **`Openable_Gaveta`:** tem o `PH_Gaveta` aninhado e o `OpenableInteractable` move a raiz (`movingPart` vazio). Por isso, trocar o modelo filho funciona como nos outros prefabs. Mas o `gaveta.fbx` oficial é uma malha única (sem gaveta separada), então os gaveteiros oficiais (`Gaveteiro_Hardware`/`Cabos`) foram montados à parte por `GaveteirosSetup.cs`.
 - **Piso, paredes, teto e tela do monitor da cena:** são primitivos da cena com materiais `PH_M_*`. Para trocar, basta mudar o material no `MeshRenderer`.
 - **Materiais `PH_M_Item2D_*`, `PH_M_CaboHDMI` e sprites `PH_*` de UI:** o `PcManutencaoSetup.cs` os procura pelo nome. Se forem renomeados, atualize o script.
 
-## Placeholders ainda em uso (2026-10-12)
+## Placeholders ainda em uso (2026-10-13)
 
 - **Cena `Office_Placeholder`:**
-  - os prefabs `PH_Bancada`, `PH_Janela`, `PH_Pc`, `PH_Porta` e `PH_RackInternet`;
-  - os materiais `PH_M_Piso/Parede/Mesa_Placeholder`, `PH_M_Tela_Monitor` e `PH_M_Braco_Placeholder`.
+  - os prefabs `PH_Bancada`, `PH_Janela`, `PH_Porta` e `PH_RackInternet`;
+  - os materiais `PH_M_Piso/Parede_Placeholder` e `PH_M_Braco_Placeholder`;
+  - o material `PH_M_Tela_Monitor` (na `Tela` do monitor do `PC_Escritorio`).
 - **`Openable_Gaveta`:** o `PH_Gaveta`.
 - **Tela de manutenção (`UI_Screen_Gabinete`, `ScrewView`):**
-  - os sprites `PH_ui_tela_bios/sistema/sistema_rede`, `PH_ui_mao`, `PH_ui_branco`, `PH_ui_cursor_chave_de_fenda`, `PH_ui_parafuso_anel/furo` e `PH_chave_de_fenda`.
-- **Itens:** `Pickup_Ferramenta` (`PH_M_Item2D_ChaveDeFenda`) e `Pickup_CaixaTeste` (`PH_M_Metal_Cinza`).
+  - os sprites `PH_ui_tela_bios/sistema/sistema_rede/sem_sinal`, `PH_ui_mao`, `PH_ui_branco`, `PH_ui_cursor_chave_de_fenda`, `PH_ui_parafuso_anel/furo` e `PH_chave_de_fenda`.
+- **Itens:** `Pickup_Ferramenta` (`PH_M_Item2D_ChaveDeFenda`).
+- `PH_M_Metal_Cinza`: remapeado no `PH_rack_internet.fbx`.
+
+**Removidos em 2026-10-13** (cópias com `.meta` em `Art/_Removidos_2026-10-13/`, fora de `Assets`): `PH_pc.fbx`, `PH_M_PC_Atlas/TowerBack/TowerFront`, `Textures/PH_pc_atlas/back/front`, `PH_M_Mesa_Placeholder` e `Pickup_CaixaTeste`.
 
 **Sem uso, mas mantidos de propósito:**
 - `PH_hd_virado`: previsto para um minigame.

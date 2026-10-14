@@ -4,9 +4,21 @@ using UnityEngine;
 
 public enum CaseState { Closed, Open }
 
-public enum ScrewRemovalResult { Removed, WrongTool, AlreadyRemoved, InvalidScrew, CaseAlreadyOpen }
+/// <summary>Valores novos sempre no fim. NotOnWorkSurface: gabinete fora de mesa/bancada (nada muda).</summary>
+public enum ScrewRemovalResult { Removed, WrongTool, AlreadyRemoved, InvalidScrew, CaseAlreadyOpen, NotOnWorkSurface }
 
-public enum CaseOpenResult { Opened, ScrewsRemaining, AlreadyOpen }
+/// <summary>Resultado de recolocar um parafuso (<see cref="ComputerCase.TryInstallScrew"/>).</summary>
+public enum ScrewInstallResult { Installed, WrongTool, AlreadyInstalled, InvalidScrew, NotOnWorkSurface }
+
+/// <summary>Resultado de abrir a tampa (<see cref="ComputerCase.TryOpen"/>). Valores novos sempre no fim.</summary>
+public enum CaseOpenResult
+{
+    Opened,
+    ScrewsRemaining,
+    AlreadyOpen,
+    /// <summary>O gabinete não está apoiado numa superfície de trabalho (<see cref="WorkSurface"/>): chão, gaveteiro, mão...</summary>
+    NotOnWorkSurface
+}
 
 /// <summary>Resultado de clicar num encaixe de peça do interior (<see cref="ComputerCase.UsePartSlot"/>).</summary>
 public enum PartSlotResult
@@ -31,7 +43,9 @@ public enum PartSlotResult
     BlockedByParts,
     Invalid,
     /// <summary>A peça da mão está quebrada (caiu demais): não é instalada. Valor novo no fim (prefabs guardam o número).</summary>
-    BrokenPart
+    BrokenPart,
+    /// <summary>O gabinete não está numa mesa/bancada (<see cref="WorkSurface"/>): nada muda.</summary>
+    NotOnWorkSurface
 }
 
 /// <summary>Componentes internos que um gabinete pode ter (cada um presente ou ausente de forma independente).</summary>
@@ -71,13 +85,28 @@ public class ScrewData
 /// Vai no ROOT LÓGICO do gabinete (nunca no Visual nem na tela 2D): o Canvas só lê e comanda este
 /// componente, por isso o estado sobrevive a fechar e reabrir a tela. O interior só é liberado
 /// (<see cref="TryOpen"/>) com todos os parafusos marcados como obrigatórios removidos; os opcionais não contam.
+/// Fechar: recolocando os parafusos (<see cref="TryInstallScrew"/>); com todos os obrigatórios de volta, o gabinete
+/// aberto volta a ficar fechado (os opcionais também não contam para fechar).
 /// Os componentes internos são sorteados uma única vez por instância (ou fixados no Inspector).
+/// Aberto, o gabinete não pode ser pego nem carregado (<see cref="IPickupBlocker"/>); fechado, segue as regras normais.
+/// Abrir também exige o gabinete APOIADO numa superfície de trabalho marcada com <see cref="WorkSurface"/> (mesa,
+/// bancada): no chão ou em outro móvel não há manutenção nenhuma (<see cref="IsOnWorkSurface"/>): a tela 2D não abre
+/// (<see cref="IScreenBlocker"/>) e parafusos, tampa e peças recusam (<c>NotOnWorkSurface</c>). Fechado, pode ser carregado.
 /// Sem dependência de modelo, UI, tag ou nome.
 /// </summary>
-public class ComputerCase : MonoBehaviour
+public class ComputerCase : MonoBehaviour, IPickupBlocker, IScreenBlocker
 {
     [SerializeField] private List<ScrewData> screws = new List<ScrewData>();
     [SerializeField] private CaseState state = CaseState.Closed;
+
+    [Header("Onde pode ser aberto")]
+    [Tooltip("Ligado: a tampa só abre com o gabinete apoiado sobre um objeto com WorkSurface (mesa, bancada). " +
+             "Desligado: abre em qualquer lugar (como antes; só para cenários/testes).")]
+    [SerializeField] private bool requiresWorkSurface = true;
+    [Tooltip("Folga (m) abaixo da base do gabinete em que o apoio ainda conta (o gabinete pousado fica a ~1 cm do tampo).")]
+    [Min(0.005f)] [SerializeField] private float surfaceTolerance = 0.05f;
+    [Tooltip("Inclinação mínima do apoio (normal.y; 1 = plano). Abaixo disso não conta como apoiado.")]
+    [Range(0f, 1f)] [SerializeField] private float minSurfaceUp = 0.7f;
 
     [Header("Componentes internos")]
     [Tooltip("Ligado: sorteia, uma vez por instância, se cada componente está presente. Desligado: usa 'Fixed Components'.")]
@@ -114,7 +143,9 @@ public class ComputerCase : MonoBehaviour
 
     /// <summary>Disparado com o índice do parafuso removido.</summary>
     public event Action<int> ScrewRemoved;
-    /// <summary>Disparado quando o estado do gabinete muda (fechado → aberto).</summary>
+    /// <summary>Disparado com o índice do parafuso recolocado.</summary>
+    public event Action<int> ScrewInstalled;
+    /// <summary>Disparado quando o estado do gabinete muda (fechado → aberto, ou aberto → fechado ao recolocar os parafusos).</summary>
     public event Action<CaseState> StateChanged;
     /// <summary>Disparado quando uma peça é instalada ou retirada (ou os componentes são redefinidos).</summary>
     public event Action ComponentsChanged;
@@ -146,7 +177,76 @@ public class ComputerCase : MonoBehaviour
         }
     }
 
-    public bool CanOpen => state == CaseState.Closed && RequiredScrewsRemoved;
+    /// <summary>Todos os parafusos obrigatórios estão no lugar (os opcionais não importam).</summary>
+    public bool RequiredScrewsInstalled
+    {
+        get
+        {
+            for (int i = 0; i < screws.Count; i++)
+                if (screws[i].required && screws[i].removed) return false;
+            return true;
+        }
+    }
+
+    public bool CanOpen => state == CaseState.Closed && RequiredScrewsRemoved && (!requiresWorkSurface || IsOnWorkSurface);
+
+    /// <summary>Ligado: abrir exige <see cref="IsOnWorkSurface"/>.</summary>
+    public bool RequiresWorkSurface
+    {
+        get => requiresWorkSurface;
+        set => requiresWorkSurface = value;
+    }
+
+    /// <summary>
+    /// O gabinete está apoiado sobre uma superfície de trabalho (collider de um objeto com <see cref="WorkSurface"/>
+    /// ativo, ou de um filho dele): lança a base do gabinete um pouco para baixo (<see cref="surfaceTolerance"/>) e
+    /// olha o primeiro apoio que encontrar. Apoio de outro tipo (chão, gaveteiro, cadeira) = falso. Sem colliders
+    /// ativos (ex.: na mão do jogador) = falso. Não depende de nome, tag nem altura.
+    /// </summary>
+    public bool IsOnWorkSurface => SupportingSurface() != null;
+
+    /// <summary>Superfície de trabalho que apoia o gabinete agora (null = nenhuma). Ver <see cref="IsOnWorkSurface"/>.</summary>
+    public WorkSurface SupportingSurface()
+    {
+        bool any = false;
+        Bounds b = default;
+        foreach (Collider c in GetComponentsInChildren<Collider>())
+        {
+            if (!c.enabled || c.isTrigger) continue;
+            if (!any) { b = c.bounds; any = true; }
+            else b.Encapsulate(c.bounds);
+        }
+        if (!any) return null;
+
+        // caixa fina na base (um pouco menor que a pegada, para não pegar a parede ou o móvel vizinho), descendo
+        Vector3 half = new Vector3(b.extents.x * 0.8f, 0.005f, b.extents.z * 0.8f);
+        Vector3 origin = new Vector3(b.center.x, b.min.y + 0.02f, b.center.z);
+        RaycastHit[] hits = Physics.BoxCastAll(origin, half, Vector3.down, Quaternion.identity, 0.02f + surfaceTolerance,
+                                               ~0, QueryTriggerInteraction.Ignore);
+        Array.Sort(hits, (x, y) => x.distance.CompareTo(y.distance));
+        foreach (RaycastHit h in hits)
+        {
+            if (h.collider.transform.IsChildOf(transform)) continue;                 // o próprio gabinete
+            // objetos móveis (monitor, teclado, cabos, peças: têm Rigidbody, parados ou não) não são apoio: encostar
+            // neles (ex.: monitor ao lado, de qualquer lado) não pode esconder a mesa que está embaixo
+            if (h.collider.attachedRigidbody != null) continue;
+            WorkSurface surface = h.collider.GetComponentInParent<WorkSurface>();
+            // começou encostado (distância 0): a normal não vale; conta o objeto que está embaixo
+            bool flat = h.distance <= 0f || h.normal.y >= minSurfaceUp;
+            if (surface != null && surface.AllowsCaseMaintenance && flat) return surface;
+            if (h.distance > 0f) return null;                                        // apoiado em outra coisa (chão, gaveteiro)
+        }
+        return null;
+    }
+
+    /// <summary>Gabinete aberto não é transportado (as peças ficariam soltas); vale em qualquer lugar onde ele esteja.</summary>
+    public bool BlocksPickup => state == CaseState.Open;
+
+    /// <summary>Fora de uma mesa/bancada a tela de manutenção não abre (com <see cref="RequiresWorkSurface"/>).</summary>
+    public bool BlocksScreen => !MaintenanceAllowed;
+
+    /// <summary>Manutenção permitida agora: sem exigência de superfície, ou apoiado numa <see cref="WorkSurface"/>.</summary>
+    public bool MaintenanceAllowed => !requiresWorkSurface || IsOnWorkSurface;
 
     /// <summary>
     /// Componentes presentes. Resolvidos uma vez (no Awake ou na primeira consulta) e estáveis daí em diante:
@@ -261,6 +361,7 @@ public class ComputerCase : MonoBehaviour
         itemForHand = null;
         if (!IsSingleComponent(slot)) return PartSlotResult.Invalid;
         if (state != CaseState.Open) return PartSlotResult.CaseClosed;
+        if (!MaintenanceAllowed) return PartSlotResult.NotOnWorkSurface;
 
         if (HasComponent(slot))
         {
@@ -332,12 +433,14 @@ public class ComputerCase : MonoBehaviour
 
     /// <summary>
     /// Tenta remover um parafuso com a ferramenta que o jogador segura
-    /// (<see cref="ToolType.None"/> = mãos vazias ou item sem <see cref="ToolItem"/>).
+    /// (<see cref="ToolType.None"/> = mãos vazias ou item sem <see cref="ToolItem"/>). Com o gabinete aberto nenhum
+    /// parafuso sai (como antes); recolocá-los é <see cref="TryInstallScrew"/>.
     /// </summary>
     public ScrewRemovalResult TryRemoveScrew(int index, ToolType heldTool)
     {
         if (index < 0 || index >= screws.Count) return ScrewRemovalResult.InvalidScrew;
         if (state == CaseState.Open) return ScrewRemovalResult.CaseAlreadyOpen;
+        if (!MaintenanceAllowed) return ScrewRemovalResult.NotOnWorkSurface;
 
         ScrewData screw = screws[index];
         if (screw.removed) return ScrewRemovalResult.AlreadyRemoved;
@@ -348,11 +451,37 @@ public class ComputerCase : MonoBehaviour
         return ScrewRemovalResult.Removed;
     }
 
-    /// <summary>Libera o interior. Só funciona com todos os parafusos obrigatórios removidos.</summary>
+    /// <summary>
+    /// Recoloca um parafuso já removido, com a ferramenta exigida por ele. Funciona com o gabinete aberto ou fechado.
+    /// Aberto: quando o último obrigatório volta, o gabinete fecha (<see cref="StateChanged"/>) e pode ser carregado de novo.
+    /// </summary>
+    public ScrewInstallResult TryInstallScrew(int index, ToolType heldTool)
+    {
+        if (index < 0 || index >= screws.Count) return ScrewInstallResult.InvalidScrew;
+        ScrewData screw = screws[index];
+        if (!screw.removed) return ScrewInstallResult.AlreadyInstalled;
+        if (!MaintenanceAllowed) return ScrewInstallResult.NotOnWorkSurface;
+        if (heldTool != screw.requiredTool) return ScrewInstallResult.WrongTool;
+
+        screw.removed = false;
+        ScrewInstalled?.Invoke(index);
+        if (state == CaseState.Open && RequiredScrewsInstalled)
+        {
+            state = CaseState.Closed;
+            StateChanged?.Invoke(state);
+        }
+        return ScrewInstallResult.Installed;
+    }
+
+    /// <summary>
+    /// Libera o interior. Só funciona com todos os parafusos obrigatórios removidos e (com
+    /// <see cref="RequiresWorkSurface"/>) o gabinete apoiado numa superfície de trabalho.
+    /// </summary>
     public CaseOpenResult TryOpen()
     {
         if (state == CaseState.Open) return CaseOpenResult.AlreadyOpen;
         if (!RequiredScrewsRemoved) return CaseOpenResult.ScrewsRemaining;
+        if (requiresWorkSurface && !IsOnWorkSurface) return CaseOpenResult.NotOnWorkSurface;
 
         state = CaseState.Open;
         StateChanged?.Invoke(state);

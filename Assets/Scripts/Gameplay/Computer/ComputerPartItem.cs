@@ -32,6 +32,9 @@ public class ComputerPartItem : MonoBehaviour
     public bool IsBroken => Condition == PartCondition.Broken;
     /// <summary>Disparado quando a peça sofre uma queda ou quebra.</summary>
     public event Action<ComputerPartItem> ConditionChanged;
+    /// <summary>Igual a <see cref="ConditionChanged"/>, para QUALQUER peça (ex.: registro de infrações, sem precisar
+    /// achar e assinar cada peça da cena, inclusive as criadas depois pelas gavetas).</summary>
+    public static event Action<ComputerPartItem> AnyConditionChanged;
 
     /// <summary>
     /// Registra uma queda. <paramref name="dropsToBreak"/> &gt; 0: quebra ao atingir esse número de quedas
@@ -43,5 +46,6 @@ public class ComputerPartItem : MonoBehaviour
         DropCount++;
         Condition = dropsToBreak > 0 && DropCount >= dropsToBreak ? PartCondition.Broken : PartCondition.Damaged;
         ConditionChanged?.Invoke(this);
+        AnyConditionChanged?.Invoke(this);
     }
 }
