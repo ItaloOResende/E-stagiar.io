@@ -52,6 +52,10 @@ public class NotebookEstacao : MonoBehaviour
     public NotebookParafusoResultado RemoverParafuso(int indice, ToolType ferramenta) =>
         Sessao.RemoverParafuso(indice, ferramenta);
 
+    /// <summary>Clique num furo vazio: recoloca o parafuso (precisa da chave de fenda na mão).</summary>
+    public NotebookParafusoResultado InstalarParafuso(int indice, ToolType ferramenta) =>
+        Sessao.InstalarParafuso(indice, ferramenta);
+
     public NotebookAberturaResultado Abrir() => Sessao.Abrir();
 
     /// <summary>

@@ -6,7 +6,7 @@ public enum NotebookEstado { Fechado, Aberto }
 /// <summary>O que a tela do notebook mostra (igual à do PC: BIOS sem armazenamento, sem sistema, instalando, sistema).</summary>
 public enum NotebookEstadoTela { Desligado, SemArmazenamento, SemSistema, Instalando, Sistema }
 
-public enum NotebookParafusoResultado { Removido, FerramentaErrada, JaRemovido, Invalido, JaAberto }
+public enum NotebookParafusoResultado { Removido, Instalado, FerramentaErrada, JaRemovido, JaNoLugar, Invalido, JaAberto }
 public enum NotebookAberturaResultado { Aberto, ParafusosFaltando, JaAberto }
 
 public enum NotebookEncaixeResultado
@@ -122,6 +122,21 @@ public class NotebookSession
 
         removidos[indice] = true;
         return NotebookParafusoResultado.Removido;
+    }
+
+    /// <summary>
+    /// Recoloca um parafuso no furo vazio (também precisa da chave de fenda). Só com a tampa de baixo ainda
+    /// fechada: depois de aberta, os parafusos saíram de vez.
+    /// </summary>
+    public NotebookParafusoResultado InstalarParafuso(int indice, ToolType ferramenta)
+    {
+        if (Estado == NotebookEstado.Aberto) return NotebookParafusoResultado.JaAberto;
+        if (indice < 0 || indice >= removidos.Count) return NotebookParafusoResultado.Invalido;
+        if (!removidos[indice]) return NotebookParafusoResultado.JaNoLugar;
+        if (ferramenta != ToolType.Screwdriver) return NotebookParafusoResultado.FerramentaErrada;
+
+        removidos[indice] = false;
+        return NotebookParafusoResultado.Instalado;
     }
 
     /// <summary>Abre o notebook (só com todos os parafusos removidos).</summary>

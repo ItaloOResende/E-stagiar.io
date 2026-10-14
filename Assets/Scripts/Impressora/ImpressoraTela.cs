@@ -42,7 +42,7 @@ public class ImpressoraTela : MonoBehaviour
 
     private ImpressoraVista vista = ImpressoraVista.Toner;
     private RectTransform[] vistas;
-    private Text tituloTxt, instrTxt, msgTxt;
+    private Text msgTxt;
 
     // Vista "Toner".
     private Image tonerMiolo, tonerCartucho;
@@ -101,23 +101,6 @@ public class ImpressoraTela : MonoBehaviour
         RectTransform painel = RedeUi.Cheio(transform, "Painel", CorPainel);
         RedeUi.BotaoFechar(painel, Fechar);
 
-        tituloTxt = RedeUi.Texto(painel, "TituloVista", "", 34, TextAnchor.MiddleCenter, TextoClaro);
-        RedeUi.Ancorar((RectTransform)tituloTxt.transform, new Vector2(0.5f, 0.5f), new Vector2(900f, 52f), new Vector2(0.5f, 0.5f));
-        ((RectTransform)tituloTxt.transform).anchoredPosition = new Vector2(0f, 486f);
-        tituloTxt.fontStyle = FontStyle.Bold;
-
-        RectTransform anterior = RedeUi.Botao(painel, "Anterior", "«  Anterior", new Color(0.22f, 0.25f, 0.3f, 0.95f), () => TrocarVista(-1), 26);
-        RedeUi.Ancorar(anterior, new Vector2(0.5f, 0.5f), new Vector2(220f, 56f), new Vector2(0.5f, 0.5f));
-        anterior.anchoredPosition = new Vector2(-720f, 486f);
-
-        RectTransform proxima = RedeUi.Botao(painel, "Proxima", "Próxima  »", new Color(0.22f, 0.25f, 0.3f, 0.95f), () => TrocarVista(1), 26);
-        RedeUi.Ancorar(proxima, new Vector2(0.5f, 0.5f), new Vector2(220f, 56f), new Vector2(0.5f, 0.5f));
-        proxima.anchoredPosition = new Vector2(720f, 486f);
-
-        instrTxt = RedeUi.Texto(painel, "Instrucao", "", 26, TextAnchor.MiddleCenter, TextoFraco);
-        RedeUi.Ancorar((RectTransform)instrTxt.transform, new Vector2(0.5f, 0.5f), new Vector2(1600f, 40f), new Vector2(0.5f, 0.5f));
-        ((RectTransform)instrTxt.transform).anchoredPosition = new Vector2(0f, -444f);
-
         RectTransform area = RedeUi.Cheio(painel, "Vistas", Color.clear);
         vistas = new RectTransform[3];
         for (int i = 0; i < 3; i++) vistas[i] = RedeUi.Cheio(area, "Vista" + (ImpressoraVista)i, Color.clear);
@@ -126,8 +109,18 @@ public class ImpressoraTela : MonoBehaviour
         ConstruirPapel(vistas[(int)ImpressoraVista.Papel]);
         ConstruirPainel(vistas[(int)ImpressoraVista.Painel]);
 
+        // Setas IGUAIS às do canvas do PC (UI_Screen_Gabinete): os cantos de baixo, sem título de vista e sem
+        // dica escrita — a própria tela mostra o que fazer.
+        RectTransform anterior = RedeUi.Botao(painel, "Anterior", "\u25C4", new Color(0.22f, 0.25f, 0.3f, 0.95f), () => TrocarVista(-1), 40);
+        RedeUi.Ancorar(anterior, new Vector2(0f, 0f), new Vector2(110f, 90f), new Vector2(0f, 0f));
+        anterior.anchoredPosition = new Vector2(24f, 24f);
+
+        RectTransform proxima = RedeUi.Botao(painel, "Proxima", "\u25BA", new Color(0.22f, 0.25f, 0.3f, 0.95f), () => TrocarVista(1), 40);
+        RedeUi.Ancorar(proxima, new Vector2(1f, 0f), new Vector2(110f, 90f), new Vector2(1f, 0f));
+        proxima.anchoredPosition = new Vector2(-24f, 24f);
+
         msgTxt = RedeUi.Texto(painel, "Mensagem", "", 26, TextAnchor.MiddleCenter, TextoFraco);
-        RedeUi.Ancorar((RectTransform)msgTxt.transform, new Vector2(0.5f, 0.5f), new Vector2(1600f, 40f), new Vector2(0.5f, 0.5f));
+        RedeUi.Ancorar((RectTransform)msgTxt.transform, new Vector2(0.5f, 0.5f), new Vector2(1300f, 40f), new Vector2(0.5f, 0.5f));
         ((RectTransform)msgTxt.transform).anchoredPosition = new Vector2(0f, -498f);
         msgTxt.fontStyle = FontStyle.Bold;
     }
@@ -326,8 +319,6 @@ public class ImpressoraTela : MonoBehaviour
         ImpressoraEstacao est = Estacao();
 
         for (int i = 0; i < 3; i++) vistas[i].gameObject.SetActive(i == (int)vista);
-        tituloTxt.text = NomeVista(vista);
-        instrTxt.text = InstrucaoVista(vista);
 
         if (est == null) return;
 
@@ -361,29 +352,6 @@ public class ImpressoraTela : MonoBehaviour
         lcdIp.color = s.IpDigitado.Length > 0
             ? (ImpressoraSession.IpEhValido(s.IpDigitado) ? Verde : TextoClaro)
             : (s.TemIp ? Verde : TextoFraco);
-    }
-
-    private string NomeVista(ImpressoraVista v)
-    {
-        switch (v)
-        {
-            case ImpressoraVista.Toner: return "Toner";
-            case ImpressoraVista.Papel: return "Papel";
-            default: return "Painel";
-        }
-    }
-
-    private string InstrucaoVista(ImpressoraVista v)
-    {
-        switch (v)
-        {
-            case ImpressoraVista.Toner:
-                return "Com o cartucho de toner na mão, clique no compartimento para instalar.";
-            case ImpressoraVista.Papel:
-                return "Com a resma de papel na mão, clique na bandeja para carregar.";
-            default:
-                return "Digite o IP no teclado e clique em Confirmar IP.";
-        }
     }
 
     private void Mensagem(string texto, Color cor)

@@ -69,7 +69,8 @@ public class RedeCrimpScreen : MonoBehaviour
 
     private bool construido;
     private int origemColuna = -1;
-    private bool mostrarTabela = true;
+    // O padrão de cores (T568B) começa ESCONDIDO: o jogador o abre no "celular" do canto inferior direito.
+    private bool mostrarTabela;
 
     [Tooltip("Prefab do cabo que aparece na mão do jogador quando a crimpagem dá certo (ex.: Pickup_CaboRede).")]
     [SerializeField] private GameObject caboPrefab;
@@ -327,33 +328,58 @@ public class RedeCrimpScreen : MonoBehaviour
         ConstruirTabela();
 
         // A ordem dos fios é SORTEADA a cada abertura da tela — não existe botão de "soltar tudo de novo".
-        BotaoCanto(faseFileira, "TabelaBotao", "Ver tabela T568B", new Color(0.20f, 0.26f, 0.36f), () =>
-        {
-            mostrarTabela = !mostrarTabela;
-            Atualizar();
-        }, new Vector2(1f, 0f), new Vector2(-16f, 16f), new Vector2(260f, 56f));
+        // O celular do canto inferior direito é a única ajuda: abre a tabela do padrão de cores.
+        ConstruirCelular();
     }
 
-    /// <summary>Painel de referência com a ordem e as cores do RJ45 (1 a 8), à esquerda.</summary>
+    /// <summary>Botão do celular (canto inferior direito, sem texto): abre/fecha a tabela do padrão T568B.</summary>
+    private void ConstruirCelular()
+    {
+        RectTransform botao = Botao(faseFileira, "BotaoCelular", "", new Color(0.22f, 0.25f, 0.3f, 0.95f),
+            () => { mostrarTabela = !mostrarTabela; Atualizar(); }, 22,
+            new Vector2(1f, 0f), new Vector2(-16f, 16f), new Vector2(96f, 150f));
+
+        // Desenho do aparelho: corpo escuro, a "tela" e o alto-falante (nada de texto).
+        RectTransform tela = RedeUi.Imagem(botao, "TelaCelular", new Color(0.13f, 0.16f, 0.21f));
+        RedeUi.Ancorar(tela, new Vector2(0.5f, 0.5f), new Vector2(78f, 122f), new Vector2(0.5f, 0.5f));
+        tela.anchoredPosition = new Vector2(0f, -5f);
+
+        RectTransform altoFalante = RedeUi.Imagem(botao, "AltoFalante", new Color(0.55f, 0.6f, 0.68f));
+        RedeUi.Ancorar(altoFalante, new Vector2(0.5f, 1f), new Vector2(34f, 7f), new Vector2(0.5f, 1f));
+        altoFalante.anchoredPosition = new Vector2(0f, -12f);
+    }
+
+    /// <summary>
+    /// O celular com a ordem e as cores do RJ45 (1 a 8): fica no canto inferior direito, fechado por padrão,
+    /// e o botão do celular o abre logo acima. A "tela" do aparelho é o antigo painel de referência.
+    /// </summary>
     private void ConstruirTabela()
     {
-        tabelaPainel = Caixa(faseFileira, "Tabela", new Color(0.13f, 0.15f, 0.20f, 0.97f), Vector2.zero, new Vector2(350f, 400f));
-        tabelaPainel.anchorMin = tabelaPainel.anchorMax = new Vector2(0f, 1f);
-        tabelaPainel.pivot = new Vector2(0f, 1f);
-        tabelaPainel.anchoredPosition = new Vector2(40f, -40f);
+        tabelaPainel = Caixa(faseFileira, "Celular", new Color(0.10f, 0.12f, 0.16f, 0.98f), Vector2.zero, new Vector2(430f, 640f));
+        tabelaPainel.anchorMin = tabelaPainel.anchorMax = new Vector2(1f, 0f);
+        tabelaPainel.pivot = new Vector2(1f, 0f);
+        tabelaPainel.anchoredPosition = new Vector2(-16f, 178f);
+
+        RectTransform tela = RedeUi.Imagem(tabelaPainel, "Tela", new Color(0.13f, 0.15f, 0.20f));
+        RedeUi.Esticar(tela, 16f);
+
+        Texto(tela, "Titulo", "PADR\u00C3O T568B", 26, TextAnchor.MiddleCenter, TextoClaro,
+            new Vector2(0.5f, 1f), new Vector2(0f, -26f), new Vector2(360f, 36f));
 
         for (int i = 0; i < 8; i++)
         {
             RedeFio fio = RedeCores.OrdemT568B[i];
-            float y = -22f - i * 46f;
+            float y = -78f - i * 58f;
 
-            Texto(tabelaPainel, "Numero" + i, (i + 1).ToString(), 26, TextAnchor.MiddleLeft, TextoFraco, new Vector2(0f, 1f), new Vector2(18f, y), new Vector2(40f, 40f));
+            Texto(tela, "Numero" + i, (i + 1).ToString(), 26, TextAnchor.MiddleLeft, TextoFraco,
+                new Vector2(0f, 1f), new Vector2(18f, y), new Vector2(40f, 40f));
 
-            RectTransform amostra = RedeUi.Imagem(tabelaPainel, "Amostra" + i, RedeCores.Cor(fio));
-            RedeUi.Ancorar(amostra, new Vector2(0f, 1f), new Vector2(38f, 26f), new Vector2(0f, 1f));
-            amostra.anchoredPosition = new Vector2(58f, y - 7f);
+            RectTransform amostra = RedeUi.Imagem(tela, "Amostra" + i, RedeCores.Cor(fio));
+            RedeUi.Ancorar(amostra, new Vector2(0f, 1f), new Vector2(46f, 30f), new Vector2(0f, 1f));
+            amostra.anchoredPosition = new Vector2(58f, y - 4f);
 
-            Texto(tabelaPainel, "Nome" + i, RedeCores.Nome(fio), 20, TextAnchor.MiddleLeft, TextoClaro, new Vector2(0f, 1f), new Vector2(108f, y), new Vector2(230f, 40f));
+            Texto(tela, "Nome" + i, RedeCores.Nome(fio), 22, TextAnchor.MiddleLeft, TextoClaro,
+                new Vector2(0f, 1f), new Vector2(116f, y), new Vector2(260f, 40f));
         }
     }
 

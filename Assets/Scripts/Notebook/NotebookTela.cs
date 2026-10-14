@@ -55,7 +55,7 @@ public class NotebookTela : MonoBehaviour
 
     private NotebookVista vista = NotebookVista.Baixo;
     private RectTransform[] vistas;
-    private Text tituloTxt, instrTxt, msgTxt;
+    private Text msgTxt;
 
     // Vista "Baixo".
     private Image[] parafusoImg;
@@ -123,23 +123,6 @@ public class NotebookTela : MonoBehaviour
         RectTransform painel = RedeUi.Cheio(transform, "Painel", CorPainel);
         RedeUi.BotaoFechar(painel, Fechar);
 
-        tituloTxt = RedeUi.Texto(painel, "TituloVista", "", 34, TextAnchor.MiddleCenter, TextoClaro);
-        RedeUi.Ancorar((RectTransform)tituloTxt.transform, new Vector2(0.5f, 0.5f), new Vector2(900f, 52f), new Vector2(0.5f, 0.5f));
-        ((RectTransform)tituloTxt.transform).anchoredPosition = new Vector2(0f, 486f);
-        tituloTxt.fontStyle = FontStyle.Bold;
-
-        RectTransform anterior = RedeUi.Botao(painel, "Anterior", "«  Anterior", new Color(0.22f, 0.25f, 0.3f, 0.95f), () => TrocarVista(-1), 26);
-        RedeUi.Ancorar(anterior, new Vector2(0.5f, 0.5f), new Vector2(220f, 56f), new Vector2(0.5f, 0.5f));
-        anterior.anchoredPosition = new Vector2(-720f, 486f);
-
-        RectTransform proxima = RedeUi.Botao(painel, "Proxima", "Próxima  »", new Color(0.22f, 0.25f, 0.3f, 0.95f), () => TrocarVista(1), 26);
-        RedeUi.Ancorar(proxima, new Vector2(0.5f, 0.5f), new Vector2(220f, 56f), new Vector2(0.5f, 0.5f));
-        proxima.anchoredPosition = new Vector2(720f, 486f);
-
-        instrTxt = RedeUi.Texto(painel, "Instrucao", "", 26, TextAnchor.MiddleCenter, TextoFraco);
-        RedeUi.Ancorar((RectTransform)instrTxt.transform, new Vector2(0.5f, 0.5f), new Vector2(1600f, 40f), new Vector2(0.5f, 0.5f));
-        ((RectTransform)instrTxt.transform).anchoredPosition = new Vector2(0f, -444f);
-
         RectTransform area = RedeUi.Cheio(painel, "Vistas", Color.clear);
         vistas = new RectTransform[4];
         for (int i = 0; i < 4; i++) vistas[i] = RedeUi.Cheio(area, "Vista" + (NotebookVista)i, Color.clear);
@@ -149,8 +132,18 @@ public class NotebookTela : MonoBehaviour
         ConstruirLado(vistas[(int)NotebookVista.Lado]);
         ConstruirFrente(vistas[(int)NotebookVista.Frente]);
 
+        // Setas IGUAIS às do canvas do PC (UI_Screen_Gabinete): os cantos de baixo, sem título de vista e sem
+        // dica escrita — a própria tela mostra o que fazer.
+        RectTransform anterior = RedeUi.Botao(painel, "Anterior", "\u25C4", new Color(0.22f, 0.25f, 0.3f, 0.95f), () => TrocarVista(-1), 40);
+        RedeUi.Ancorar(anterior, new Vector2(0f, 0f), new Vector2(110f, 90f), new Vector2(0f, 0f));
+        anterior.anchoredPosition = new Vector2(24f, 24f);
+
+        RectTransform proxima = RedeUi.Botao(painel, "Proxima", "\u25BA", new Color(0.22f, 0.25f, 0.3f, 0.95f), () => TrocarVista(1), 40);
+        RedeUi.Ancorar(proxima, new Vector2(1f, 0f), new Vector2(110f, 90f), new Vector2(1f, 0f));
+        proxima.anchoredPosition = new Vector2(-24f, 24f);
+
         msgTxt = RedeUi.Texto(painel, "Mensagem", "", 26, TextAnchor.MiddleCenter, TextoFraco);
-        RedeUi.Ancorar((RectTransform)msgTxt.transform, new Vector2(0.5f, 0.5f), new Vector2(1600f, 40f), new Vector2(0.5f, 0.5f));
+        RedeUi.Ancorar((RectTransform)msgTxt.transform, new Vector2(0.5f, 0.5f), new Vector2(1300f, 40f), new Vector2(0.5f, 0.5f));
         ((RectTransform)msgTxt.transform).anchoredPosition = new Vector2(0f, -498f);
         msgTxt.fontStyle = FontStyle.Bold;
     }
@@ -325,6 +318,30 @@ public class NotebookTela : MonoBehaviour
         if (est == null) return;
 
         ToolType ferramenta = FerramentaNaMao();
+
+        // Furo vazio (parafuso já removido) = recolocar; parafuso no lugar = soltar (estado real de cada um).
+        if (est.Sessao.ParafusoRemovido(indice))
+        {
+            switch (est.InstalarParafuso(indice, ferramenta))
+            {
+                case NotebookParafusoResultado.Instalado:
+                    Mensagem("Parafuso " + (indice + 1) + " de volta no lugar.", TextoFraco);
+                    break;
+                case NotebookParafusoResultado.FerramentaErrada:
+                    Mensagem("Precisa de uma chave de fenda na mão.", Vermelho);
+                    parafusoFlash[indice] = 0.45f;
+                    break;
+                case NotebookParafusoResultado.JaAberto:
+                    Mensagem("A tampa de baixo já saiu — o notebook está aberto.", Amarelo);
+                    break;
+                default:
+                    Mensagem("Não dá para recolocar esse parafuso agora.", Amarelo);
+                    break;
+            }
+            Atualizar();
+            return;
+        }
+
         NotebookParafusoResultado r = est.RemoverParafuso(indice, ferramenta);
         switch (r)
         {
@@ -332,7 +349,7 @@ public class NotebookTela : MonoBehaviour
                 if (est.Sessao.TodosParafusosRemovidos)
                 {
                     est.Abrir();
-                    Mensagem("Tampa solta — o notebook abriu. Vá para \"Próxima\" e instale a memória e o SSD.", Verde);
+                    Mensagem("Tampa solta — o notebook abriu. Use a seta \u25BA e instale a memória e o SSD.", Verde);
                 }
                 else Mensagem("Parafuso " + (indice + 1) + " removido.", TextoFraco);
                 break;
@@ -454,8 +471,6 @@ public class NotebookTela : MonoBehaviour
         NotebookEstacao est = Estacao();
 
         for (int i = 0; i < 4; i++) vistas[i].gameObject.SetActive(i == (int)vista);
-        tituloTxt.text = NomeVista(vista);
-        instrTxt.text = InstrucaoVista(vista);
 
         if (est == null) return;
 
@@ -466,7 +481,8 @@ public class NotebookTela : MonoBehaviour
                 bool removido = est.Sessao.ParafusoRemovido(i);
                 Color cor = removido ? CorVazio : (parafusoFlash[i] > 0f ? Vermelho : CorMetal);
                 parafusoImg[i].color = cor;
-                parafusoImg[i].raycastTarget = !removido;
+                // O furo vazio continua clicável: clicar nele recoloca o parafuso (com a chave de fenda na mão).
+                parafusoImg[i].raycastTarget = true;
                 parafusoFenda[i].gameObject.SetActive(!removido);
             }
         }
@@ -525,32 +541,6 @@ public class NotebookTela : MonoBehaviour
             etapaTxt.text = "Etapa " + (s.EtapaInstalacao + 1) + " de " + s.EtapasInstalacao;
         }
         else etapaTxt.text = "";
-    }
-
-    private string NomeVista(NotebookVista v)
-    {
-        switch (v)
-        {
-            case NotebookVista.Baixo: return "Por baixo";
-            case NotebookVista.Aberto: return "Aberto";
-            case NotebookVista.Lado: return "De lado";
-            default: return "De frente";
-        }
-    }
-
-    private string InstrucaoVista(NotebookVista v)
-    {
-        switch (v)
-        {
-            case NotebookVista.Baixo:
-                return "Com a chave de fenda na mão, clique em cada parafuso para soltar a tampa de baixo.";
-            case NotebookVista.Aberto:
-                return "Clique no encaixe com a peça na mão para instalar; de mãos vazias, clique de novo para retirar.";
-            case NotebookVista.Lado:
-                return "Com o pendrive na mão, clique na porta USB para conectar (clique de novo para retirar).";
-            default:
-                return "Clique no botão Power para ligar o notebook.";
-        }
     }
 
     private void Mensagem(string texto, Color cor)

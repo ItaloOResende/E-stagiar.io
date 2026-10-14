@@ -27,9 +27,6 @@ public class RedeRackScreen : MonoBehaviour
     private static readonly Color CorTomadaBorda = new Color(0.30f, 0.34f, 0.41f, 1f);
     private static readonly Color CorContato = new Color(0.83f, 0.72f, 0.36f);
     private static readonly Color AzulCabo = new Color(0.22f, 0.50f, 0.90f, 1f);
-    private static readonly Color TextoClaro = new Color(0.92f, 0.94f, 0.97f);
-    private static readonly Color TextoFraco = new Color(0.66f, 0.71f, 0.78f);
-    private static readonly Color VerdeOk = new Color(0.22f, 0.60f, 0.36f);
     private static readonly Color VermelhoErro = new Color(0.85f, 0.30f, 0.28f);
     private static readonly Color AmareloOk = new Color(0.97f, 0.84f, 0.30f);
 
@@ -61,7 +58,12 @@ public class RedeRackScreen : MonoBehaviour
     private UICableCurve[] curvaLigada;
     private UICableCurve curvaLivre;
     private Image plugLivre, brilhoAlvo;
-    private Text statusTxt, instrTxt, msgTxt;
+
+    // Sem texto nenhum na tela: o retorno é só visual. A tomada clicada pisca VERMELHA quando o clique não
+    // vale (sem cabo na mão, par de números diferente, tomada já ligada) e o cabo ligado aparece entre as duas.
+    private Image[] tomadaImgPatch, tomadaImgSwitch;
+    private Color[] corBasePatch, corBaseSwitch;
+    private float[] flashPatch, flashSwitch;
 
     // O cabo: só existe o cabo que o jogador trouxe na mão — não tem cabo infinito.
     // temCabo = o jogador tem um cabo de rede na mão (ou já encaixado numa tomada).
@@ -89,7 +91,6 @@ public class RedeRackScreen : MonoBehaviour
         pontaEhPatch = false;
         temCabo = CaboNaMao() != null;
 
-        Mensagem(temCabo ? "" : "Você precisa de um cabo de rede crimpado na mão pra ligar as portas.", temCabo ? TextoClaro : VermelhoErro);
         Atualizar();
     }
 
@@ -115,9 +116,15 @@ public class RedeRackScreen : MonoBehaviour
 
         tomadaPatch = new RectTransform[numPortas];
         tomadaSwitch = new RectTransform[numPortas];
+        tomadaImgPatch = new Image[numPortas];
+        tomadaImgSwitch = new Image[numPortas];
+        corBasePatch = new Color[numPortas];
+        corBaseSwitch = new Color[numPortas];
+        flashPatch = new float[numPortas];
+        flashSwitch = new float[numPortas];
 
-        Modulo("PatchPanel", "PATCH PANEL", PatchY, true);
-        Modulo("Switch", "SWITCH", SwitchY, false);
+        Modulo("PatchPanel", PatchY, true);
+        Modulo("Switch", SwitchY, false);
 
         // Os cabos ficam ACIMA dos equipamentos (é um cabo por cima do rack, como na traseira do PC).
         cabos = RedeUi.Cheio(bancada, "Cabos", Color.clear);
@@ -146,22 +153,10 @@ public class RedeRackScreen : MonoBehaviour
 
         posPatch = new Vector2[numPortas];
         posSwitch = new Vector2[numPortas];
-
-        statusTxt = RedeUi.Texto(bancada, "Status", "", 24, TextAnchor.UpperLeft, TextoFraco);
-        RedeUi.Ancorar((RectTransform)statusTxt.transform, new Vector2(0f, 1f), new Vector2(1400f, 40f), new Vector2(0f, 1f));
-        ((RectTransform)statusTxt.transform).anchoredPosition = new Vector2(36f, -34f);
-
-        instrTxt = RedeUi.Texto(bancada, "Instrucao", "", 24, TextAnchor.MiddleCenter, TextoClaro);
-        RedeUi.Ancorar((RectTransform)instrTxt.transform, new Vector2(0.5f, 0f), new Vector2(1500f, 40f), new Vector2(0.5f, 0f));
-        ((RectTransform)instrTxt.transform).anchoredPosition = new Vector2(0f, 132f);
-
-        msgTxt = RedeUi.Texto(bancada, "Mensagem", "", 24, TextAnchor.MiddleCenter, TextoClaro);
-        RedeUi.Ancorar((RectTransform)msgTxt.transform, new Vector2(0.5f, 0f), new Vector2(1500f, 60f), new Vector2(0.5f, 0f));
-        ((RectTransform)msgTxt.transform).anchoredPosition = new Vector2(0f, 70f);
     }
 
     /// <summary>Um equipamento do rack (patch panel ou switch) com a fileira de tomadas numeradas.</summary>
-    private void Modulo(string nome, string rotulo, float y, bool ehPatch)
+    private void Modulo(string nome, float y, bool ehPatch)
     {
         RectTransform modulo = RedeUi.Imagem(bancada, nome, CorModulo);
         RedeUi.Ancorar(modulo, new Vector2(0.5f, 0.5f), new Vector2(BarraLargura, BarraAltura), new Vector2(0.5f, 0.5f));
@@ -170,10 +165,6 @@ public class RedeRackScreen : MonoBehaviour
         Caixa(modulo, "Topo", CorModuloTopo, new Vector2(0f, BarraAltura * 0.5f - 10f), new Vector2(BarraLargura, 20f));
         Caixa(modulo, "Trilho", CorTrilho, new Vector2(0f, -BarraAltura * 0.5f + 12f), new Vector2(BarraLargura, 24f));
 
-        Text titulo = RedeUi.Texto(modulo, "Rotulo", rotulo, 24, TextAnchor.MiddleLeft, TextoFraco);
-        RedeUi.Ancorar((RectTransform)titulo.transform, new Vector2(0f, 1f), new Vector2(600f, 32f), new Vector2(0f, 1f));
-        ((RectTransform)titulo.transform).anchoredPosition = new Vector2(28f, -12f);
-
         for (int i = 0; i < numPortas; i++)
         {
             int porta = i + 1;
@@ -181,17 +172,31 @@ public class RedeRackScreen : MonoBehaviour
             float x = (i - (numPortas - 1) * 0.5f) * EspacamentoPorta;
 
             RectTransform tomada = BotaoTomada(modulo, (ehPatch ? "P" : "S") + porta, new Vector2(x, 0f),
-                () => ClicarPorta(patch, porta));
-            if (ehPatch) tomadaPatch[i] = tomada; else tomadaSwitch[i] = tomada;
+                () => ClicarPorta(patch, porta), out Image imagem, out Color corBase);
 
-            Text numero = RedeUi.Texto(modulo, "Numero" + porta, (ehPatch ? "P" : "S") + porta, 22, TextAnchor.MiddleCenter, TextoClaro);
+            if (ehPatch)
+            {
+                tomadaPatch[i] = tomada;
+                tomadaImgPatch[i] = imagem;
+                corBasePatch[i] = corBase;
+            }
+            else
+            {
+                tomadaSwitch[i] = tomada;
+                tomadaImgSwitch[i] = imagem;
+                corBaseSwitch[i] = corBase;
+            }
+
+            // O número da tomada (P1..Pn no patch panel, S1..Sn no switch) é o que casa os pares.
+            Text numero = RedeUi.Texto(modulo, "Numero" + porta, (ehPatch ? "P" : "S") + porta, 22, TextAnchor.MiddleCenter, CorTomadaBorda);
             RedeUi.Ancorar((RectTransform)numero.transform, new Vector2(0.5f, 0.5f), new Vector2(EspacamentoPorta - 20f, 28f), new Vector2(0.5f, 0.5f));
             ((RectTransform)numero.transform).anchoredPosition = new Vector2(x, -80f);
         }
     }
 
     /// <summary>Tomada clicável: a MESMA arte do ponto de rede do PC (com um desenho simples de reserva).</summary>
-    private RectTransform BotaoTomada(Transform pai, string nome, Vector2 pos, UnityAction acao)
+    private RectTransform BotaoTomada(Transform pai, string nome, Vector2 pos, UnityAction acao,
+        out Image imagem, out Color corBase)
     {
         var go = new GameObject(nome, typeof(RectTransform));
         go.transform.SetParent(pai, false);
@@ -205,6 +210,9 @@ public class RedeRackScreen : MonoBehaviour
             img.color = Color.white;
         }
         else img.color = CorTomada;
+
+        imagem = img;
+        corBase = img.color;
 
         var b = go.AddComponent<Button>();
         b.targetGraphic = img;
@@ -288,14 +296,14 @@ public class RedeRackScreen : MonoBehaviour
 
         if (sessao.PortaLigada(porta))
         {
-            Mensagem("A porta " + Nome(ehPatch, porta) + " já está ligada.", TextoFraco);
+            Erro(ehPatch, porta);      // essa tomada já está ligada
             return;
         }
 
         // Sem cabo na mão não dá pra encaixar em nada.
         if (!temCabo)
         {
-            Mensagem("Você precisa de um cabo de rede crimpado na mão pra encaixar numa tomada.", VermelhoErro);
+            Erro(ehPatch, porta);
             return;
         }
 
@@ -307,7 +315,6 @@ public class RedeRackScreen : MonoBehaviour
             pontaEhPatch = ehPatch;
             pontaPorta = porta;
             Escolher(ehPatch, porta);
-            Mensagem("Ponta encaixada em " + Nome(ehPatch, porta) + " — clique na tomada de mesmo número do outro lado.", TextoFraco);
             Atualizar();
             return;
         }
@@ -332,13 +339,12 @@ public class RedeRackScreen : MonoBehaviour
             sessao.LimparEscolhas();
             Escolher(ehPatch, porta);
             pontaPorta = porta;
-            Mensagem("Ponta encaixada agora em " + Nome(ehPatch, porta) + ".", TextoFraco);
             Atualizar();
             return;
         }
 
-        Mensagem("Os números precisam ser iguais: a ponta está em " + Nome(pontaEhPatch, pontaPorta) +
-                 " e você clicou em " + Nome(ehPatch, porta) + ".", VermelhoErro);
+        // Números diferentes: a outra ponta tem de ser a tomada de MESMO número do outro lado.
+        Erro(ehPatch, porta);
     }
 
     /// <summary>Encaixa a outra ponta: se os números batem, a porta fica ligada e o cabo é GASTO (acabou).</summary>
@@ -354,10 +360,8 @@ public class RedeRackScreen : MonoBehaviour
             pontaPorta = 0;
             pontaEhPatch = false;
             temCabo = false;         // e a mão voltou a ficar vazia: precisa de outro cabo
-            Mensagem("Porta " + porta + " ligada! Pegue outro cabo crimpado na mão pra ligar a próxima.", VerdeOk);
-            if (sessao.Completo) Mensagem("Rack completo! Todas as portas estão ligadas.", VerdeOk);
         }
-        else Mensagem("Não deu para ligar a porta " + porta + ".", VermelhoErro);
+        else Erro(ehPatch, porta);
 
         Atualizar();
     }
@@ -376,7 +380,6 @@ public class RedeRackScreen : MonoBehaviour
         pontaEhPatch = false;
         temCabo = true;
         if (sessao != null) sessao.LimparEscolhas();
-        Mensagem("Cabo de volta na sua mão — clique noutra tomada pra encaixar.", TextoFraco);
         Atualizar();
     }
 
@@ -402,7 +405,14 @@ public class RedeRackScreen : MonoBehaviour
         else sessao.EscolherSwitch(porta);
     }
 
-    private static string Nome(bool ehPatch, int porta) => (ehPatch ? "P" : "S") + porta;
+    /// <summary>Aviso SEM texto: a tomada clicada pisca vermelha quando o clique não vale.</summary>
+    private void Erro(bool ehPatch, int porta)
+    {
+        int i = porta - 1;
+        if (i < 0 || i >= numPortas) return;
+        if (ehPatch) flashPatch[i] = 0.5f;
+        else flashSwitch[i] = 0.5f;
+    }
 
     /// <summary>A mão do jogador que abriu a tela (null se a tela não estiver ligada a um jogador).</summary>
     private ItemHolder Mao()
@@ -434,6 +444,22 @@ public class RedeRackScreen : MonoBehaviour
     private void LateUpdate()
     {
         if (sessao == null || cabos == null) return;
+
+        // Piscada vermelha da tomada clicada sem sucesso (retorno sem nenhum texto).
+        float dt = Time.unscaledDeltaTime;
+        for (int i = 0; i < numPortas; i++)
+        {
+            if (flashPatch[i] > 0f)
+            {
+                flashPatch[i] = Mathf.Max(0f, flashPatch[i] - dt);
+                tomadaImgPatch[i].color = Color.Lerp(corBasePatch[i], VermelhoErro, Mathf.Clamp01(flashPatch[i] * 2f));
+            }
+            if (flashSwitch[i] > 0f)
+            {
+                flashSwitch[i] = Mathf.Max(0f, flashSwitch[i] - dt);
+                tomadaImgSwitch[i].color = Color.Lerp(corBaseSwitch[i], VermelhoErro, Mathf.Clamp01(flashSwitch[i] * 2f));
+            }
+        }
 
         for (int i = 0; i < numPortas; i++)
         {
@@ -540,20 +566,5 @@ public class RedeRackScreen : MonoBehaviour
         plugLivre.enabled = temCabo;
         brilhoAlvo.enabled = temCabo && pontaPorta >= 1;
         if (!temCabo && curvaLivre.gameObject.activeSelf) curvaLivre.gameObject.SetActive(false);
-
-        RedeGame jogo = RedeGame.Garantir();
-        statusTxt.text = "Cabos crimpados: " + jogo.CabosDisponiveis + "     Portas ligadas: " + sessao.TotalLigado + " / " + numPortas;
-
-        if (sessao.Completo) instrTxt.text = "Rack completo. Bom trabalho!";
-        else if (!temCabo) instrTxt.text = "Pegue um cabo de rede crimpado na mão (na caixa de cabo de rede) pra ligar as portas.";
-        else if (pontaPorta >= 1) instrTxt.text = "Clique na tomada de mesmo número do outro lado — ou clique de novo na mesma tomada pra tirar o cabo.";
-        else instrTxt.text = "O cabo está na sua mão: clique numa tomada do patch panel ou do switch pra encaixar a primeira ponta.";
-    }
-
-    private void Mensagem(string texto, Color cor)
-    {
-        if (msgTxt == null) return;
-        msgTxt.text = texto;
-        msgTxt.color = cor;
     }
 }
