@@ -52,6 +52,7 @@ public class NotebookTela : MonoBehaviour
     private static readonly Vector2 TamanhoFuroSsd = new Vector2(400f, 150f);
 
     private bool construido;
+    private bool vistaInicial;      // já escolheu a vista da primeira abertura? (depois a vista é lembrada)
     private UIScreen tela;
 
     private NotebookVista vista = NotebookVista.Baixo;
@@ -78,9 +79,15 @@ public class NotebookTela : MonoBehaviour
     private void OnEnable()
     {
         if (tela == null) tela = GetComponent<UIScreen>();
-        // Começa na vista útil: se o notebook já está aberto, vai direto ao interior.
-        NotebookEstacao est = Estacao();
-        vista = est != null && est.Sessao.Estado == NotebookEstado.Aberto ? NotebookVista.Aberto : NotebookVista.Baixo;
+        // A vista é LEMBRADA entre as aberturas (a tela é o mesmo objeto: só desliga e liga de novo). Saiu na
+        // tela do notebook (Frente)? Ao voltar, volta nela. Na primeira vez começa na parte útil: se a tampa
+        // já está aberta, vai direto ao interior; senão, à tampa de baixo.
+        if (!vistaInicial)
+        {
+            NotebookEstacao est = Estacao();
+            vista = est != null && est.Sessao.Estado == NotebookEstado.Aberto ? NotebookVista.Aberto : NotebookVista.Baixo;
+            vistaInicial = true;
+        }
         Mensagem("", TextoFraco);
         Atualizar();
     }
@@ -346,13 +353,12 @@ public class NotebookTela : MonoBehaviour
         // Furo vazio (parafuso já removido) = recolocar; parafuso no lugar = soltar (estado real de cada um).
         if (est.Sessao.ParafusoRemovido(indice))
         {
-            bool estavaAberto = est.Sessao.Estado == NotebookEstado.Aberto;
             switch (est.InstalarParafuso(indice, ferramenta))
             {
                 case NotebookParafusoResultado.Instalado:
                     InteractionSounds.Raise(InteractionSound.ScrewInstalled);
-                    // Último parafuso de volta com o notebook aberto: a tampa fechou de novo (igual ao PC).
-                    if (estavaAberto && est.Sessao.Estado == NotebookEstado.Fechado)
+                    // Todos de volta = tampa presa de novo (notebook montado para entregar).
+                    if (est.Sessao.TodosParafusosInstalados)
                     {
                         InteractionSounds.Raise(InteractionSound.CaseClosed);
                         Mensagem("Tampa de baixo presa de novo — o notebook está montado para entregar.", Verde);
@@ -378,7 +384,6 @@ public class NotebookTela : MonoBehaviour
                 InteractionSounds.Raise(InteractionSound.ScrewRemoved);
                 if (est.Sessao.TodosParafusosRemovidos)
                 {
-                    est.Abrir();
                     InteractionSounds.Raise(InteractionSound.CaseOpened);   // a tampa abriu (como o gabinete do PC)
                     Mensagem("Tampa solta — o notebook abriu. Use a seta \u25BA e instale a memória e o SSD.", Verde);
                 }

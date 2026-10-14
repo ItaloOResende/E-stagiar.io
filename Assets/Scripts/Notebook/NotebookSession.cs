@@ -37,8 +37,9 @@ public enum NotebookBotaoResultado { Ligou, Desligou, FaltamRequisitos }
 /// estado sobrevive a fechar e reabrir a tela.
 ///
 /// Regras (mesma espinha do PC, só com as peças do notebook):
-///  - A tampa de baixo só abre com TODOS os parafusos removidos (com a chave de fenda) e volta a fechar
-///    recolocando todos eles — igual ao gabinete do PC (assim dá para entregar o notebook montado de novo).
+///  - Os parafusos da tampa de baixo podem ser tirados e recolocados QUANTAS VEZES QUISER (com a chave de
+///    fenda). O notebook está "aberto" enquanto NENHUM dos 6 estiver no lugar; assim que UM parafuso volta,
+///    a tampa está presa de novo (fechado) e a parte de dentro (RAM/SSD) fica inacessível.
 ///  - Sem memória RAM o botão Power não liga.
 ///  - Ligado com RAM e sem SSD: BIOS "nenhum armazenamento". Com SSD sem sistema: "sem sistema".
 ///  - Com SSD sem sistema + pendrive na lateral: ao ligar, dá boot pelo pendrive, instala e vai para o sistema.
@@ -63,7 +64,13 @@ public class NotebookSession
     /// <summary>Quantas etapas visuais a instalação tem.</summary>
     public int EtapasInstalacao { get; set; } = 5;
 
-    public NotebookEstado Estado { get; private set; } = NotebookEstado.Fechado;
+    /// <summary>
+    /// A tampa de baixo está aberta? Sai direto dos parafusos: com NENHUM dos 6 no lugar a tampa sai (e a
+    /// parte de dentro, RAM/SSD, fica acessível); com qualquer parafuso preso, está fechada. Dá para tirar e
+    /// pôr os parafusos quantas vezes quiser — o estado acompanha sozinho.
+    /// </summary>
+    public NotebookEstado Estado =>
+        TodosParafusosRemovidos ? NotebookEstado.Aberto : NotebookEstado.Fechado;
     /// <summary>Memória SO-DIMM instalada.</summary>
     public bool TemRam { get; private set; }
     /// <summary>SSD instalado.</summary>
@@ -91,7 +98,6 @@ public class NotebookSession
     public bool TodosParafusosRemovidos => Removidos == removidos.Count;
     /// <summary>Todos os parafusos estão de volta na tampa de baixo (é o que fecha o notebook de novo).</summary>
     public bool TodosParafusosInstalados => Removidos == 0;
-    public bool PodeAbrir => Estado == NotebookEstado.Fechado && TodosParafusosRemovidos;
 
     /// <summary>Instalando o sistema pelo pendrive agora.</summary>
     public bool Instalando => instalacaoRestante >= 0f;
@@ -115,10 +121,9 @@ public class NotebookSession
         }
     }
 
-    /// <summary>Remove um parafuso da tampa de baixo (precisa da chave de fenda).</summary>
+    /// <summary>Remove um parafuso da tampa de baixo (precisa da chave de fenda). Dá para tirar e pôr quantas vezes quiser.</summary>
     public NotebookParafusoResultado RemoverParafuso(int indice, ToolType ferramenta)
     {
-        if (Estado == NotebookEstado.Aberto) return NotebookParafusoResultado.JaAberto;
         if (indice < 0 || indice >= removidos.Count) return NotebookParafusoResultado.Invalido;
         if (removidos[indice]) return NotebookParafusoResultado.JaRemovido;
         if (ferramenta != ToolType.Screwdriver) return NotebookParafusoResultado.FerramentaErrada;
@@ -128,9 +133,8 @@ public class NotebookSession
     }
 
     /// <summary>
-    /// Recoloca um parafuso no furo vazio (também precisa da chave de fenda). Igual ao gabinete do PC: vale
-    /// também com o notebook já aberto — é assim que a tampa volta a ser presa. Com TODOS os parafusos de
-    /// volta, o notebook fecha (dá para entregar montado).
+    /// Recoloca um parafuso no furo vazio (também precisa da chave de fenda). Livre a qualquer momento: com o
+    /// último parafuso de volta o notebook fecha de novo (é o que permite entregar montado).
     /// </summary>
     public NotebookParafusoResultado InstalarParafuso(int indice, ToolType ferramenta)
     {
@@ -139,18 +143,16 @@ public class NotebookSession
         if (ferramenta != ToolType.Screwdriver) return NotebookParafusoResultado.FerramentaErrada;
 
         removidos[indice] = false;
-        if (Estado == NotebookEstado.Aberto && TodosParafusosInstalados) Estado = NotebookEstado.Fechado;
         return NotebookParafusoResultado.Instalado;
     }
 
-    /// <summary>Abre o notebook (só com todos os parafusos removidos).</summary>
+    /// <summary>
+    /// Confirma que a tampa de baixo saiu. Como o estado sai dos próprios parafusos (ver
+    /// <see cref="Estado"/>), isto só responde: com todos os parafusos fora, está aberto.
+    /// </summary>
     public NotebookAberturaResultado Abrir()
     {
-        if (Estado == NotebookEstado.Aberto) return NotebookAberturaResultado.JaAberto;
-        if (!TodosParafusosRemovidos) return NotebookAberturaResultado.ParafusosFaltando;
-
-        Estado = NotebookEstado.Aberto;
-        return NotebookAberturaResultado.Aberto;
+        return TodosParafusosRemovidos ? NotebookAberturaResultado.Aberto : NotebookAberturaResultado.ParafusosFaltando;
     }
 
     /// <summary>

@@ -39,6 +39,7 @@ public class ImpressoraTela : MonoBehaviour
     private static readonly string[] Teclas = { "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "Apagar" };
 
     private bool construido;
+    private bool vistaInicial;      // já escolheu a vista da primeira abertura? (depois a vista é lembrada)
     private UIScreen tela;
 
     private ImpressoraVista vista = ImpressoraVista.Toner;
@@ -60,15 +61,21 @@ public class ImpressoraTela : MonoBehaviour
     private void OnEnable()
     {
         if (tela == null) tela = GetComponent<UIScreen>();
-        ImpressoraEstacao est = Estacao();
-        if (est != null)
+        // A vista é LEMBRADA entre as aberturas (a tela é o mesmo objeto: só desliga e liga de novo). Saiu do
+        // painel do IP? Ao voltar, volta no painel do IP. Na primeira vez, abre na vista que ainda falta
+        // resolver; se estiver tudo pronto, vai direto ao painel.
+        if (!vistaInicial)
         {
-            // Abre na vista que ainda falta resolver; se estiver tudo pronto, vai direto ao painel.
-            if (!est.Sessao.TemToner) vista = ImpressoraVista.Toner;
-            else if (!est.Sessao.TemPapel) vista = ImpressoraVista.Papel;
-            else vista = ImpressoraVista.Painel;
+            ImpressoraEstacao est = Estacao();
+            if (est != null)
+            {
+                if (!est.Sessao.TemToner) vista = ImpressoraVista.Toner;
+                else if (!est.Sessao.TemPapel) vista = ImpressoraVista.Papel;
+                else vista = ImpressoraVista.Painel;
+            }
+            else vista = ImpressoraVista.Toner;
+            vistaInicial = true;
         }
-        else vista = ImpressoraVista.Toner;
 
         Mensagem("", TextoFraco);
         Atualizar();
