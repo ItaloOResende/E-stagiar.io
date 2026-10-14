@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85f0ba56fa892af4293ac2e2dbc4e937, type: 3}
+  m_Name: Ticket_ComputadorNaoLiga
+  m_EditorClassIdentifier: Assembly-CSharp::TicketDefinition
+  ticketId: pc-nao-liga
+  title: "Computador n\xE3o liga"
+  description: "Meu computador n\xE3o est\xE1 ligando. Precusi de ajuda!"
+  requester: "\xC1tila"
+  department: Financeiro
+  minimumStage: 1
+  tutorialOnly: 0
+  steps:
+  - id: verificar-pc
+    description: verificar o computador
+    weight: 1
+  - id: abrir-gabinete
+    description: abrir o gabinete
+    weight: 1
+  - id: resolver-problema
+    description: Realizar o reparo
+    weight: 1
