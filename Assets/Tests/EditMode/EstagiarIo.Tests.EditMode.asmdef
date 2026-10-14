@@ -4,7 +4,8 @@
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "EstagiarIo.Computer"
+        "EstagiarIo.Computer",
+        "EstagiarIo.Rede"
     ],
     "includePlatforms": [
         "Editor"
