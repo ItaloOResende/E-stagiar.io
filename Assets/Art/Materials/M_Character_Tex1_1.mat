@@ -28,7 +28,7 @@ Material:
   - _EMISSIVE_SIMPLE
   - _IS_CLIPPING_OFF
   - _IS_OUTLINE_CLIPPING_NO
-  - _OUTLINE_NML
+  - _OUTLINE_POS
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
@@ -248,7 +248,7 @@ Material:
     m_Floats:
     - _1st2nd_Shades_Feather: 0.161
     - _1st_ShadeColor_Feather: 0.168
-    - _1st_ShadeColor_Step: 0.5
+    - _1st_ShadeColor_Step: 0.642
     - _2nd_ShadeColor_Feather: 0.161
     - _2nd_ShadeColor_Step: 0
     - _AORemapMax: 1
@@ -279,7 +279,7 @@ Material:
     - _AutoRenderQueue: 1
     - _BaseColorOverridden: 0
     - _BaseColorVisible: 1
-    - _BaseColor_Step: 0.5
+    - _BaseColor_Step: 0.642
     - _BaseShade_Feather: 0.168
     - _Base_Speed: 0
     - _Blend: 0
@@ -352,7 +352,7 @@ Material:
     - _Is_BakedNormal: 0
     - _Is_BlendAddToHiColor: 0
     - _Is_BlendAddToMatCap: 1
-    - _Is_BlendBaseColor: 0
+    - _Is_BlendBaseColor: 1
     - _Is_ColorShift: 0
     - _Is_Filter_HiCutPointLightColor: 1
     - _Is_Filter_LightColor: 1
@@ -385,7 +385,7 @@ Material:
     - _Nearest_Distance: 0.5
     - _NormalMapSpace: 0
     - _NormalScale: 1
-    - _OUTLINE: 0
+    - _OUTLINE: 1
     - _ObjectSpaceUVMapping: 0
     - _OcclusionStrength: 1
     - _Offset_X_Axis_BLD: -0.05
@@ -478,7 +478,7 @@ Material:
     - _simpleUI: 0
     - _utsTechnique: 0
     m_Colors:
-    - _1st_ShadeColor: {r: 0.7, g: 0.7, b: 0.7, a: 1}
+    - _1st_ShadeColor: {r: 0.38620856, g: 0.43141893, b: 0.7132075, a: 1}
     - _2nd_ShadeColor: {r: 0.48999998, g: 0.48999998, b: 0.48999998, a: 1}
     - _AngelRingMaskColor: {r: 0, g: 1, b: 0, a: 1}
     - _AngelRing_Color: {r: 1, g: 1, b: 1, a: 1}
