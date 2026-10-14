@@ -315,6 +315,7 @@ public class RedeRackScreen : MonoBehaviour
             pontaEhPatch = ehPatch;
             pontaPorta = porta;
             Escolher(ehPatch, porta);
+            InteractionSounds.Raise(InteractionSound.CablePlugged);   // primeira ponta encaixada
             Atualizar();
             return;
         }
@@ -355,6 +356,7 @@ public class RedeRackScreen : MonoBehaviour
 
         if (ok)
         {
+            InteractionSounds.Raise(InteractionSound.CablePlugged);   // par ligado: a outra ponta encaixou
             RedeGame.Garantir().RegistrarParLigado(porta);
             pontaItem = null;        // o cabo ficou no rack (gasto)
             pontaPorta = 0;
@@ -379,6 +381,7 @@ public class RedeRackScreen : MonoBehaviour
         pontaPorta = 0;
         pontaEhPatch = false;
         temCabo = true;
+        InteractionSounds.Raise(InteractionSound.CableUnplugged);
         if (sessao != null) sessao.LimparEscolhas();
         Atualizar();
     }

@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>Vistas do notebook (a mesma tela, trocando de vista pelos botões Anterior/Próxima).</summary>
@@ -87,6 +88,14 @@ public class NotebookTela : MonoBehaviour
     private void Update()
     {
         if (!construido || gameObject.activeInHierarchy == false) return;
+
+        // As setas do teclado fazem o MESMO que os botões ◄ ► (que continuam funcionando).
+        Keyboard teclado = Keyboard.current;
+        if (teclado != null)
+        {
+            if (teclado.leftArrowKey.wasPressedThisFrame) TrocarVista(-1);
+            else if (teclado.rightArrowKey.wasPressedThisFrame) TrocarVista(1);
+        }
 
         bool precisa = false;
         for (int i = 0; i < parafusoFlash.Length; i++)
@@ -325,6 +334,7 @@ public class NotebookTela : MonoBehaviour
             switch (est.InstalarParafuso(indice, ferramenta))
             {
                 case NotebookParafusoResultado.Instalado:
+                    InteractionSounds.Raise(InteractionSound.ScrewInstalled);
                     Mensagem("Parafuso " + (indice + 1) + " de volta no lugar.", TextoFraco);
                     break;
                 case NotebookParafusoResultado.FerramentaErrada:
@@ -346,9 +356,11 @@ public class NotebookTela : MonoBehaviour
         switch (r)
         {
             case NotebookParafusoResultado.Removido:
+                InteractionSounds.Raise(InteractionSound.ScrewRemoved);
                 if (est.Sessao.TodosParafusosRemovidos)
                 {
                     est.Abrir();
+                    InteractionSounds.Raise(InteractionSound.CaseOpened);   // a tampa abriu (como o gabinete do PC)
                     Mensagem("Tampa solta — o notebook abriu. Use a seta \u25BA e instale a memória e o SSD.", Verde);
                 }
                 else Mensagem("Parafuso " + (indice + 1) + " removido.", TextoFraco);
@@ -380,10 +392,12 @@ public class NotebookTela : MonoBehaviour
         {
             case NotebookEncaixeResultado.Instalado:
                 if (mao != null) mao.Stow(est.transform.position);
+                InteractionSounds.Raise(InteractionSound.PartInstalled);
                 Mensagem(encaixe == NotebookParte.Ram ? "Memória SO-DIMM instalada." : "SSD instalado.", Verde);
                 break;
             case NotebookEncaixeResultado.Removido:
                 if (mao != null && devolver != null) mao.Retrieve(devolver);
+                InteractionSounds.Raise(InteractionSound.PartRemoved);
                 Mensagem("Peça retirada.", TextoFraco);
                 break;
             case NotebookEncaixeResultado.PrecisaPeca:
@@ -417,10 +431,12 @@ public class NotebookTela : MonoBehaviour
         {
             case NotebookUsbResultado.Conectado:
                 if (mao != null) mao.Stow(est.transform.position);
+                InteractionSounds.Raise(InteractionSound.PendrivePlugged);
                 Mensagem("Pendrive conectado. Ligue o notebook na tela da frente para instalar o sistema.", Verde);
                 break;
             case NotebookUsbResultado.Devolvido:
                 if (mao != null && devolver != null) mao.Retrieve(devolver);
+                InteractionSounds.Raise(InteractionSound.PendriveUnplugged);
                 Mensagem("Pendrive retirado.", TextoFraco);
                 break;
             case NotebookUsbResultado.PrecisaPendrive:
@@ -442,6 +458,7 @@ public class NotebookTela : MonoBehaviour
         if (est == null) return;
 
         NotebookBotaoResultado r = est.PressPower();
+        InteractionSounds.Raise(InteractionSound.PowerButton);
         if (r == NotebookBotaoResultado.FaltamRequisitos)
             Mensagem("Não liga sem memória RAM instalada.", Vermelho);
         else if (r == NotebookBotaoResultado.Desligou)

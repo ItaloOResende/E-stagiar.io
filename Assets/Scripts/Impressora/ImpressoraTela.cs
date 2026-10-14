@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>Vistas da impressora (a mesma tela, trocando de vista pelos botões Anterior/Próxima).</summary>
@@ -75,7 +76,17 @@ public class ImpressoraTela : MonoBehaviour
 
     private void Update()
     {
-        if (construido && vista == ImpressoraVista.Painel) Atualizar();
+        if (!construido) return;
+
+        // As setas do teclado fazem o MESMO que os botões ◄ ► (que continuam funcionando).
+        Keyboard teclado = Keyboard.current;
+        if (teclado != null)
+        {
+            if (teclado.leftArrowKey.wasPressedThisFrame) TrocarVista(-1);
+            else if (teclado.rightArrowKey.wasPressedThisFrame) TrocarVista(1);
+        }
+
+        if (vista == ImpressoraVista.Painel) Atualizar();
     }
 
     private ImpressoraEstacao Estacao()
@@ -212,7 +223,7 @@ public class ImpressoraTela : MonoBehaviour
             tecla.anchoredPosition = new Vector2(-160f + coluna * 160f, 20f - linha * 100f);
         }
 
-        RectTransform limpar = RedeUi.Botao(vista, "Limpar", "Limpar", new Color(0.35f, 0.26f, 0.26f), () => { ImpressoraEstacao e = Estacao(); if (e != null) e.Sessao.Limpar(); Mensagem("Campo do IP limpo.", TextoFraco); Atualizar(); }, 24);
+        RectTransform limpar = RedeUi.Botao(vista, "Limpar", "Limpar", new Color(0.35f, 0.26f, 0.26f), () => { ImpressoraEstacao e = Estacao(); if (e != null) e.Sessao.Limpar(); InteractionSounds.Raise(InteractionSound.PowerButton); Mensagem("Campo do IP limpo.", TextoFraco); Atualizar(); }, 24);
         RedeUi.Ancorar(limpar, new Vector2(0.5f, 0.5f), new Vector2(200f, 64f), new Vector2(0.5f, 0.5f));
         limpar.anchoredPosition = new Vector2(440f, -370f);
 
@@ -266,10 +277,12 @@ public class ImpressoraTela : MonoBehaviour
         {
             case ImpressoraEncaixeResultado.Instalado:
                 if (mao != null) mao.Stow(est.transform.position);
+                InteractionSounds.Raise(InteractionSound.PartInstalled);
                 Mensagem(encaixe == ImpressoraParte.Toner ? "Cartucho de toner instalado." : "Papel carregado na bandeja.", Verde);
                 break;
             case ImpressoraEncaixeResultado.Removido:
                 if (mao != null && devolver != null) mao.Retrieve(devolver);
+                InteractionSounds.Raise(InteractionSound.PartRemoved);
                 Mensagem("Peça retirada.", TextoFraco);
                 break;
             case ImpressoraEncaixeResultado.PrecisaPeca:
@@ -294,6 +307,7 @@ public class ImpressoraTela : MonoBehaviour
 
         if (tecla == "Apagar") est.Sessao.Apagar();
         else est.Sessao.Digitar(tecla);
+        InteractionSounds.Raise(InteractionSound.PowerButton);   // tecla do painel: mesmo "clique" dos botões do PC
 
         if (est.Sessao.TemIp) Mensagem("", TextoFraco);
         Atualizar();
@@ -305,7 +319,10 @@ public class ImpressoraTela : MonoBehaviour
         if (est == null) return;
 
         if (est.Sessao.ConfirmarIp())
+        {
+            InteractionSounds.Raise(InteractionSound.PowerButton);
             Mensagem("IP " + est.Sessao.IpSalvo + " configurado.", Verde);
+        }
         else
             Mensagem("IP inválido. Use 4 números de 0 a 255 (ex.: 192.168.0.10).", Vermelho);
         Atualizar();

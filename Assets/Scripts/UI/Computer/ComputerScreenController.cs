@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 public enum ComputerView { Front, Rear, Interior }
@@ -209,6 +210,15 @@ public class ComputerScreenController : MonoBehaviour
         UICursor.Reset();
         nextRoutine = null;                                        // corrotinas param junto com o objeto
         if (nextRect != null) { nextRect.anchoredPosition = nextRestPosition; nextRect.localScale = Vector3.one; }
+    }
+
+    /// <summary>As setas do teclado fazem o MESMO que os botões ◄ ► da tela (Voltar/Avançar).</summary>
+    private void Update()
+    {
+        Keyboard teclado = Keyboard.current;
+        if (teclado == null || boundCase == null) return;
+        if (teclado.leftArrowKey.wasPressedThisFrame) Back();
+        else if (teclado.rightArrowKey.wasPressedThisFrame) Next();
     }
 
     private void Subscribe()

@@ -77,7 +77,7 @@ public class RedeCrimpScreen : MonoBehaviour
 
     private Text msgTxt;
     private RectTransform faseCortar, faseDescascar, faseFileira;
-    private RectTransform caboTela, capaCabo, faixaCabo, marcaCorte, fiosCabo, tabelaPainel, pontaMao;
+    private RectTransform caboTela, capaCabo, faixaCabo, marcaCorte, fiosCabo, tabelaPainel, pontaMao, botaoCelular;
     private RectTransform alvoCorte, alvoCapa;
     private Image faixaAlvoImg, sinalCapaImg, sinalRjVazioImg;
     private readonly Image[] fiosImg = new Image[8];
@@ -95,6 +95,7 @@ public class RedeCrimpScreen : MonoBehaviour
     {
         sessao.Reset();
         EmbaralharFios();
+        mostrarTabela = false;   // o celular (padrão de cores) sempre começa fechado
         Mensagem("", TextoClaro);
         Atualizar();
     }
@@ -297,7 +298,7 @@ public class RedeCrimpScreen : MonoBehaviour
         // CORTAR não tem botão: o ponto certo é a faixa amarela que pulsa sobre o cabo.
         alvoCorte = Botao(faseCortar, "PontoCorte", "", Transparente, () =>
         {
-            if (sessao.Cortar()) { Mensagem("", TextoClaro); Atualizar(); }
+            if (sessao.Cortar()) { InteractionSounds.Raise(InteractionSound.CableUnplugged); Mensagem("", TextoClaro); Atualizar(); }
         }, 16, new Vector2(0.5f, 0.5f), new Vector2(PontoCorteX, SaidaCaixaY), new Vector2(210f, 260f));
 
         faixaAlvoImg = RedeUi.Imagem(alvoCorte, "FaixaCorte", new Color(0.97f, 0.84f, 0.30f)).GetComponent<Image>();
@@ -313,7 +314,7 @@ public class RedeCrimpScreen : MonoBehaviour
         // DESCASCAR também não tem botão: clica-se na "saliência" azul (acima da marca) e é UM puxão só.
         alvoCapa = Botao(faseDescascar, "PontoCapa", "", Transparente, () =>
         {
-            if (sessao.Descascar()) { Mensagem("", TextoClaro); Atualizar(); }
+            if (sessao.Descascar()) { InteractionSounds.Raise(InteractionSound.CableUnplugged); Mensagem("", TextoClaro); Atualizar(); }
         }, 16, new Vector2(0.5f, 0.5f), new Vector2(0f, centroSali), new Vector2(LarguraCapa + 40f, TopoCapaInteira - BaseFios + 40f));
 
         // Brilho suave sobre a saliência, só para o jogador achar onde clicar (nenhum texto).
@@ -332,33 +333,32 @@ public class RedeCrimpScreen : MonoBehaviour
         ConstruirCelular();
     }
 
-    /// <summary>Botão do celular (canto inferior direito, sem texto): abre/fecha a tabela do padrão T568B.</summary>
+    /// <summary>Botão do celular (canto inferior direito, sem texto): abre a tabela do padrão T568B.</summary>
     private void ConstruirCelular()
     {
-        RectTransform botao = Botao(faseFileira, "BotaoCelular", "", new Color(0.22f, 0.25f, 0.3f, 0.95f),
-            () => { mostrarTabela = !mostrarTabela; Atualizar(); }, 22,
+        botaoCelular = Botao(faseFileira, "BotaoCelular", "", new Color(0.22f, 0.25f, 0.3f, 0.95f),
+            () => { mostrarTabela = true; Atualizar(); }, 22,
             new Vector2(1f, 0f), new Vector2(-16f, 16f), new Vector2(96f, 150f));
 
         // Desenho do aparelho: corpo escuro, a "tela" e o alto-falante (nada de texto).
-        RectTransform tela = RedeUi.Imagem(botao, "TelaCelular", new Color(0.13f, 0.16f, 0.21f));
+        RectTransform tela = RedeUi.Imagem(botaoCelular, "TelaCelular", new Color(0.13f, 0.16f, 0.21f));
         RedeUi.Ancorar(tela, new Vector2(0.5f, 0.5f), new Vector2(78f, 122f), new Vector2(0.5f, 0.5f));
         tela.anchoredPosition = new Vector2(0f, -5f);
 
-        RectTransform altoFalante = RedeUi.Imagem(botao, "AltoFalante", new Color(0.55f, 0.6f, 0.68f));
+        RectTransform altoFalante = RedeUi.Imagem(botaoCelular, "AltoFalante", new Color(0.55f, 0.6f, 0.68f));
         RedeUi.Ancorar(altoFalante, new Vector2(0.5f, 1f), new Vector2(34f, 7f), new Vector2(0.5f, 1f));
         altoFalante.anchoredPosition = new Vector2(0f, -12f);
     }
 
     /// <summary>
-    /// O celular com a ordem e as cores do RJ45 (1 a 8): fica no canto inferior direito, fechado por padrão,
-    /// e o botão do celular o abre logo acima. A "tela" do aparelho é o antigo painel de referência.
+    /// O celular com a ordem e as cores do RJ45 (1 a 8). Ele abre NO MESMO LUGAR do botão (mesmo canto e mesmo
+    /// pivô, só maior): cobre o botão e, clicado de novo (em qualquer ponto), fecha e o botão volta a aparecer.
     /// </summary>
     private void ConstruirTabela()
     {
-        tabelaPainel = Caixa(faseFileira, "Celular", new Color(0.10f, 0.12f, 0.16f, 0.98f), Vector2.zero, new Vector2(430f, 640f));
-        tabelaPainel.anchorMin = tabelaPainel.anchorMax = new Vector2(1f, 0f);
-        tabelaPainel.pivot = new Vector2(1f, 0f);
-        tabelaPainel.anchoredPosition = new Vector2(-16f, 178f);
+        tabelaPainel = Botao(faseFileira, "Celular", "", new Color(0.10f, 0.12f, 0.16f, 0.98f),
+            () => { mostrarTabela = false; Atualizar(); }, 22,
+            new Vector2(1f, 0f), new Vector2(-16f, 16f), new Vector2(430f, 640f));
 
         RectTransform tela = RedeUi.Imagem(tabelaPainel, "Tela", new Color(0.13f, 0.15f, 0.20f));
         RedeUi.Esticar(tela, 16f);
@@ -402,12 +402,14 @@ public class RedeCrimpScreen : MonoBehaviour
             if (pegou)
             {
                 origemColuna = i;
+                InteractionSounds.Raise(InteractionSound.ItemPickedUp);
                 Mensagem("Fio na mão — clique na posição onde ele deve ficar.", TextoClaro);
             }
         }
         else
         {
             sessao.ColocarNaPosicao(i);
+            InteractionSounds.Raise(InteractionSound.ItemPlaced);
             Mensagem("", TextoClaro);
         }
 
@@ -522,6 +524,7 @@ public class RedeCrimpScreen : MonoBehaviour
         if (resultado == RedeCrimpResultado.Ok)
         {
             // Deu certo: NÃO aparece tela de "deu certo" — o cabo vai para a mão e a tela fecha na hora.
+            InteractionSounds.Raise(InteractionSound.CablePlugged);
             RedeGame.Garantir().RegistrarCabo();
             EntregarCaboNaMao();
             Fechar();
@@ -594,6 +597,10 @@ public class RedeCrimpScreen : MonoBehaviour
         faseDescascar.gameObject.SetActive(sessao.Etapa == RedeCrimpEtapa.Descascar);
         faseFileira.gameObject.SetActive(descascado);
 
+        // O celular fica no lugar do botão: aberto, ele cobre o botão; fechado, só o botão aparece.
+        tabelaPainel.gameObject.SetActive(mostrarTabela);
+        botaoCelular.gameObject.SetActive(!mostrarTabela);
+
         if (faseDoCabo)
         {
             float topo = descascado ? BaseFios : TopoCapaInteira;   // topo da capa
@@ -638,7 +645,6 @@ public class RedeCrimpScreen : MonoBehaviour
                 // O soquete aparece só nas posições que ainda estão vazias.
                 fiosSoquete[i].gameObject.SetActive(!tem);
             }
-            tabelaPainel.gameObject.SetActive(mostrarTabela);
         }
 
         // O RJ45 vazio só "acende" quando os 8 fios já estão na fileira: é o ponto certo para fechar o cabo.
