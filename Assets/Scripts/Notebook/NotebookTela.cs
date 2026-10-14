@@ -177,6 +177,21 @@ public class NotebookTela : MonoBehaviour
             RectTransform rt = (RectTransform)parafuso.transform;
             rt.anchoredPosition = new Vector2(PosicaoParafusos[i].x * TamanhoTampa.x, PosicaoParafusos[i].y * TamanhoTampa.y);
 
+            // Círculo amarelo IGUAL ao do parafuso do PC (ScrewView.prefab): quem pinta é o próprio botão —
+            // o anel é o alvo da transição de cor (normal transparente, com o mouse em cima amarelo).
+            Image anel = MiniUi.ImagemCircular(rt, "Anel", Color.white, 82f);
+            Button botaoParafuso = parafuso.GetComponent<Button>();
+            botaoParafuso.targetGraphic = anel;
+            ColorBlock cores = botaoParafuso.colors;
+            cores.normalColor = new Color(1f, 1f, 1f, 0f);
+            cores.highlightedColor = new Color(1f, 0.88f, 0.2f, 0.95f);
+            cores.pressedColor = Color.white;
+            cores.selectedColor = new Color(1f, 1f, 1f, 0f);
+            cores.disabledColor = new Color(1f, 1f, 1f, 0f);
+            cores.fadeDuration = 0.08f;
+            botaoParafuso.colors = cores;
+            anel.canvasRenderer.SetColor(cores.normalColor);   // já nasce invisível (sem piscar branco)
+
             // Fenda do parafuso (só decorativa, não clicável).
             RectTransform fenda = RedeUi.Imagem(rt, "Fenda", new Color(0.16f, 0.18f, 0.21f));
             RedeUi.Ancorar(fenda, new Vector2(0.5f, 0.5f), new Vector2(52f, 9f), new Vector2(0.5f, 0.5f));
@@ -331,18 +346,22 @@ public class NotebookTela : MonoBehaviour
         // Furo vazio (parafuso já removido) = recolocar; parafuso no lugar = soltar (estado real de cada um).
         if (est.Sessao.ParafusoRemovido(indice))
         {
+            bool estavaAberto = est.Sessao.Estado == NotebookEstado.Aberto;
             switch (est.InstalarParafuso(indice, ferramenta))
             {
                 case NotebookParafusoResultado.Instalado:
                     InteractionSounds.Raise(InteractionSound.ScrewInstalled);
-                    Mensagem("Parafuso " + (indice + 1) + " de volta no lugar.", TextoFraco);
+                    // Último parafuso de volta com o notebook aberto: a tampa fechou de novo (igual ao PC).
+                    if (estavaAberto && est.Sessao.Estado == NotebookEstado.Fechado)
+                    {
+                        InteractionSounds.Raise(InteractionSound.CaseClosed);
+                        Mensagem("Tampa de baixo presa de novo — o notebook está montado para entregar.", Verde);
+                    }
+                    else Mensagem("Parafuso " + (indice + 1) + " de volta no lugar.", TextoFraco);
                     break;
                 case NotebookParafusoResultado.FerramentaErrada:
                     Mensagem("Precisa de uma chave de fenda na mão.", Vermelho);
                     parafusoFlash[indice] = 0.45f;
-                    break;
-                case NotebookParafusoResultado.JaAberto:
-                    Mensagem("A tampa de baixo já saiu — o notebook está aberto.", Amarelo);
                     break;
                 default:
                     Mensagem("Não dá para recolocar esse parafuso agora.", Amarelo);

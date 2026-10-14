@@ -337,7 +337,7 @@ public class RedeCrimpScreen : MonoBehaviour
     private void ConstruirCelular()
     {
         botaoCelular = Botao(faseFileira, "BotaoCelular", "", new Color(0.22f, 0.25f, 0.3f, 0.95f),
-            () => { mostrarTabela = true; Atualizar(); }, 22,
+            () => { InteractionSounds.Raise(InteractionSound.DrawerOpened); mostrarTabela = true; Atualizar(); }, 22,
             new Vector2(1f, 0f), new Vector2(-16f, 16f), new Vector2(96f, 150f));
 
         // Desenho do aparelho: corpo escuro, a "tela" e o alto-falante (nada de texto).
@@ -357,7 +357,7 @@ public class RedeCrimpScreen : MonoBehaviour
     private void ConstruirTabela()
     {
         tabelaPainel = Botao(faseFileira, "Celular", "", new Color(0.10f, 0.12f, 0.16f, 0.98f),
-            () => { mostrarTabela = false; Atualizar(); }, 22,
+            () => { InteractionSounds.Raise(InteractionSound.DrawerClosed); mostrarTabela = false; Atualizar(); }, 22,
             new Vector2(1f, 0f), new Vector2(-16f, 16f), new Vector2(430f, 640f));
 
         RectTransform tela = RedeUi.Imagem(tabelaPainel, "Tela", new Color(0.13f, 0.15f, 0.20f));

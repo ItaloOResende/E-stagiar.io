@@ -37,7 +37,8 @@ public enum NotebookBotaoResultado { Ligou, Desligou, FaltamRequisitos }
 /// estado sobrevive a fechar e reabrir a tela.
 ///
 /// Regras (mesma espinha do PC, só com as peças do notebook):
-///  - A tampa de baixo só abre com TODOS os parafusos removidos (com a chave de fenda).
+///  - A tampa de baixo só abre com TODOS os parafusos removidos (com a chave de fenda) e volta a fechar
+///    recolocando todos eles — igual ao gabinete do PC (assim dá para entregar o notebook montado de novo).
 ///  - Sem memória RAM o botão Power não liga.
 ///  - Ligado com RAM e sem SSD: BIOS "nenhum armazenamento". Com SSD sem sistema: "sem sistema".
 ///  - Com SSD sem sistema + pendrive na lateral: ao ligar, dá boot pelo pendrive, instala e vai para o sistema.
@@ -88,6 +89,8 @@ public class NotebookSession
     }
 
     public bool TodosParafusosRemovidos => Removidos == removidos.Count;
+    /// <summary>Todos os parafusos estão de volta na tampa de baixo (é o que fecha o notebook de novo).</summary>
+    public bool TodosParafusosInstalados => Removidos == 0;
     public bool PodeAbrir => Estado == NotebookEstado.Fechado && TodosParafusosRemovidos;
 
     /// <summary>Instalando o sistema pelo pendrive agora.</summary>
@@ -125,17 +128,18 @@ public class NotebookSession
     }
 
     /// <summary>
-    /// Recoloca um parafuso no furo vazio (também precisa da chave de fenda). Só com a tampa de baixo ainda
-    /// fechada: depois de aberta, os parafusos saíram de vez.
+    /// Recoloca um parafuso no furo vazio (também precisa da chave de fenda). Igual ao gabinete do PC: vale
+    /// também com o notebook já aberto — é assim que a tampa volta a ser presa. Com TODOS os parafusos de
+    /// volta, o notebook fecha (dá para entregar montado).
     /// </summary>
     public NotebookParafusoResultado InstalarParafuso(int indice, ToolType ferramenta)
     {
-        if (Estado == NotebookEstado.Aberto) return NotebookParafusoResultado.JaAberto;
         if (indice < 0 || indice >= removidos.Count) return NotebookParafusoResultado.Invalido;
         if (!removidos[indice]) return NotebookParafusoResultado.JaNoLugar;
         if (ferramenta != ToolType.Screwdriver) return NotebookParafusoResultado.FerramentaErrada;
 
         removidos[indice] = false;
+        if (Estado == NotebookEstado.Aberto && TodosParafusosInstalados) Estado = NotebookEstado.Fechado;
         return NotebookParafusoResultado.Instalado;
     }
 
