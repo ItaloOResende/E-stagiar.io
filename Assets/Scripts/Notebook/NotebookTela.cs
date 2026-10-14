@@ -88,6 +88,8 @@ public class NotebookTela : MonoBehaviour
             vista = est != null && est.Sessao.Estado == NotebookEstado.Aberto ? NotebookVista.Aberto : NotebookVista.Baixo;
             vistaInicial = true;
         }
+        // A vista lembrada pode ser a de dentro (Aberto) e a tampa ter sido presa de novo: cai para a tampa de baixo.
+        if (!PodeVer(vista)) vista = NotebookVista.Baixo;
         Mensagem("", TextoFraco);
         Atualizar();
     }
@@ -337,10 +339,31 @@ public class NotebookTela : MonoBehaviour
 
     private void TrocarVista(int passo)
     {
-        int n = 4;
-        vista = (NotebookVista)(((int)vista + passo % n + n) % n);
+        if (passo == 0) return;
+        int direcao = passo > 0 ? 1 : -1;
+        int atual = (int)vista;
+        // Anda de vista em vista pulando as bloqueadas: sem a tampa solta (nenhum parafuso preso), a vista
+        // de dentro (Aberto, onde vão a RAM e o SSD) sai do giro das setas.
+        for (int i = 0; i < 4; i++)
+        {
+            atual = ((atual + direcao) % 4 + 4) % 4;
+            if (PodeVer((NotebookVista)atual)) break;
+        }
+        vista = (NotebookVista)atual;
         Mensagem("", TextoFraco);
         Atualizar();
+    }
+
+    /// <summary>
+    /// A vista <see cref="NotebookVista.Aberto"/> (parte de dentro, onde vão a memória e o SSD) só pode ser
+    /// vista com a tampa solta — quer dizer, com NENHUM dos 6 parafusos na traseira. Com qualquer parafuso
+    /// preso, ela fica bloqueada (as setas a pulam).
+    /// </summary>
+    private bool PodeVer(NotebookVista v)
+    {
+        if (v != NotebookVista.Aberto) return true;
+        NotebookEstacao est = Estacao();
+        return est != null && est.Sessao.Estado == NotebookEstado.Aberto;
     }
 
     private void ClicarParafuso(int indice)
@@ -509,6 +532,8 @@ public class NotebookTela : MonoBehaviour
     private void Atualizar()
     {
         if (!construido) return;
+        // Proteção: a vista de dentro (Aberto) não pode aparecer com a tampa presa — cai para a tampa de baixo.
+        if (!PodeVer(vista)) vista = NotebookVista.Baixo;
         NotebookEstacao est = Estacao();
 
         for (int i = 0; i < 4; i++) vistas[i].gameObject.SetActive(i == (int)vista);
