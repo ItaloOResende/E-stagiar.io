@@ -51,6 +51,22 @@ public class NotebookTela : MonoBehaviour
     private static readonly Vector2 TamanhoFuroRam = new Vector2(430f, 120f);
     private static readonly Vector2 TamanhoFuroSsd = new Vector2(400f, 150f);
 
+    [Header("Mesmo padrão da tela do gabinete (UI_Screen_Gabinete)")]
+    [Tooltip("Parafuso do gabinete (Prefabs/UI/ScrewView): botão, furo, brilho e animações de tirar/recolocar/recusar. " +
+             "Vazio = parafusos desenhados por código (versão antiga).")]
+    [SerializeField] private ScrewView parafusoPrefab;
+    [Tooltip("Cursor de chave de fenda (o mesmo da Traseira do gabinete), na tampa de baixo com a chave na mão.")]
+    [SerializeField] private Texture2D cursorChave;
+    [SerializeField] private Vector2 cursorChaveHotspot;
+    [Tooltip("Altura do cursor em relação ao parafuso na tela (igual ao gabinete).")]
+    [SerializeField] private float chaveParafusoProporcao = 4f;
+    [Tooltip("Telas do monitor do PC reaproveitadas: BIOS sem armazenamento, sem sistema, instalando (por etapa) e sistema. " +
+             "Vazias = texto (versão antiga).")]
+    [SerializeField] private Sprite telaSemArmazenamento;
+    [SerializeField] private Sprite telaSemSistema;
+    [SerializeField] private Sprite[] telaInstalando = new Sprite[0];
+    [SerializeField] private Sprite telaSistema;
+
     private bool construido;
     private bool vistaInicial;      // já escolheu a vista da primeira abertura? (depois a vista é lembrada)
     private UIScreen tela;
@@ -63,6 +79,9 @@ public class NotebookTela : MonoBehaviour
     private Image[] parafusoImg;
     private RectTransform[] parafusoFenda;
     private float[] parafusoFlash;
+    private ScrewView[] parafusoViews;      // com o prefab do gabinete
+    private bool[] parafusoEstado;          // último estado desenhado (para animar só quando muda)
+    private bool cursorDeChave;
 
     // Vista "Aberto".
     private Image ramMiolo, ramPeca, ssdMiolo, ssdPeca;
@@ -90,6 +109,8 @@ public class NotebookTela : MonoBehaviour
         }
         // A vista lembrada pode ser a de dentro (Aberto) e a tampa ter sido presa de novo: cai para a tampa de baixo.
         if (!PodeVer(vista)) vista = NotebookVista.Baixo;
+        parafusoEstado = null;   // ao abrir, desenha o estado atual sem animar
+        cursorDeChave = false;
         Mensagem("", TextoFraco);
         Atualizar();
     }
@@ -116,6 +137,26 @@ public class NotebookTela : MonoBehaviour
             }
         }
         if (vista == NotebookVista.Frente || vista == NotebookVista.Aberto || precisa) Atualizar();
+        AtualizarCursor();
+    }
+
+    /// <summary>
+    /// Igual à Traseira do gabinete: na tampa de baixo, com a chave de fenda na mão, o cursor vira a chave (do tamanho
+    /// proporcional aos parafusos); fora disso, o cursor padrão das telas (mãozinha).
+    /// </summary>
+    private void AtualizarCursor()
+    {
+        bool chave = vista == NotebookVista.Baixo && cursorChave != null && parafusoViews != null &&
+                     FerramentaNaMao() == ToolType.Screwdriver;
+        if (chave == cursorDeChave) return;
+        cursorDeChave = chave;
+        if (chave)
+        {
+            ScrewView v = parafusoViews.Length > 0 ? parafusoViews[0] : null;
+            UICursor.Set(cursorChave, cursorChaveHotspot, ScrewView.CursorHeight(v, chaveParafusoProporcao));
+        }
+        else if (tela != null && tela.Owner != null) tela.Owner.ApplyDefaultCursor();
+        else UICursor.Reset();
     }
 
     private NotebookEstacao Estacao()
@@ -178,6 +219,43 @@ public class NotebookTela : MonoBehaviour
         parafusoImg = new Image[PosicaoParafusos.Length];
         parafusoFenda = new RectTransform[PosicaoParafusos.Length];
         parafusoFlash = new float[PosicaoParafusos.Length];
+
+        if (parafusoPrefab != null)
+        {
+            // Os mesmos parafusos do gabinete, posicionados por âncora (o ScrewView volta à âncora ao animar).
+            parafusoViews = new ScrewView[PosicaoParafusos.Length];
+            Vector2 tam = TamanhoTampa - new Vector2(20f, 20f);   // "Dentro" tem 10 px de borda
+            for (int i = 0; i < PosicaoParafusos.Length; i++)
+            {
+                Vector2 ancora = new Vector2(0.5f + PosicaoParafusos[i].x * TamanhoTampa.x / tam.x,
+                                             0.5f + PosicaoParafusos[i].y * TamanhoTampa.y / tam.y);
+                // Cabeça Phillips desenhada POR BAIXO do ScrewView, como o parafuso que está no render da traseira do
+                // gabinete: o furo do ScrewView (30 px) a cobre quando o parafuso sai.
+                Image aro = MiniUi.ImagemCircular(dentro, "Cabeca" + i, new Color(0.38f, 0.41f, 0.46f), 28f);
+                RectTransform art = (RectTransform)aro.transform;
+                art.anchorMin = art.anchorMax = ancora;
+                art.anchoredPosition = Vector2.zero;
+                aro.raycastTarget = false;
+                Image cabeca = MiniUi.ImagemCircular(art, "Metal", CorMetal, 23f);
+                cabeca.raycastTarget = false;
+                for (int k = 0; k < 2; k++)
+                {
+                    RectTransform fenda = RedeUi.Imagem(cabeca.transform, "Fenda" + k, new Color(0.22f, 0.24f, 0.28f));
+                    RedeUi.Ancorar(fenda, new Vector2(0.5f, 0.5f), new Vector2(14f, 3.5f), new Vector2(0.5f, 0.5f));
+                    fenda.localRotation = Quaternion.Euler(0f, 0f, 20f + k * 90f);
+                    fenda.GetComponent<Image>().raycastTarget = false;
+                }
+
+                ScrewView v = Instantiate(parafusoPrefab, dentro, false);
+                v.name = "Parafuso" + i;
+                var rt = (RectTransform)v.transform;
+                rt.anchorMin = rt.anchorMax = ancora;
+                rt.anchoredPosition = Vector2.zero;
+                v.Init(i, ClicarParafuso);
+                parafusoViews[i] = v;
+            }
+            return;
+        }
 
         for (int i = 0; i < PosicaoParafusos.Length; i++)
         {
@@ -390,7 +468,7 @@ public class NotebookTela : MonoBehaviour
                     break;
                 case NotebookParafusoResultado.FerramentaErrada:
                     Mensagem("Precisa de uma chave de fenda na mão.", Vermelho);
-                    parafusoFlash[indice] = 0.45f;
+                    Recusar(indice);
                     break;
                 default:
                     Mensagem("Não dá para recolocar esse parafuso agora.", Amarelo);
@@ -414,7 +492,7 @@ public class NotebookTela : MonoBehaviour
                 break;
             case NotebookParafusoResultado.FerramentaErrada:
                 Mensagem("Precisa de uma chave de fenda na mão.", Vermelho);
-                parafusoFlash[indice] = 0.45f;
+                Recusar(indice);
                 break;
             case NotebookParafusoResultado.JaRemovido:
                 Mensagem("Esse parafuso já saiu.", Amarelo);
@@ -460,6 +538,9 @@ public class NotebookTela : MonoBehaviour
                 break;
             case NotebookEncaixeResultado.Fechado:
                 Mensagem("A tampa de baixo ainda está fechada.", Amarelo);
+                break;
+            case NotebookEncaixeResultado.PecaQuebrada:
+                Mensagem("Essa peça quebrou na queda: pegue outra.", Vermelho);
                 break;
         }
         Atualizar();
@@ -519,6 +600,13 @@ public class NotebookTela : MonoBehaviour
         Atualizar();
     }
 
+    /// <summary>Recusa (ferramenta errada): o parafuso do gabinete treme; na versão antiga, pisca vermelho.</summary>
+    private void Recusar(int indice)
+    {
+        if (parafusoViews != null) parafusoViews[indice].PlayRejected();
+        else parafusoFlash[indice] = 0.45f;
+    }
+
     private ToolType FerramentaNaMao()
     {
         ItemHolder mao = Mao();
@@ -540,7 +628,19 @@ public class NotebookTela : MonoBehaviour
 
         if (est == null) return;
 
-        if (vista == NotebookVista.Baixo)
+        if (vista == NotebookVista.Baixo && parafusoViews != null)
+        {
+            bool primeira = parafusoEstado == null;
+            if (primeira) parafusoEstado = new bool[parafusoViews.Length];
+            for (int i = 0; i < parafusoViews.Length; i++)
+            {
+                bool removido = est.Sessao.ParafusoRemovido(i);
+                if (!primeira && removido == parafusoEstado[i]) continue;
+                parafusoViews[i].SetRemoved(removido, animate: !primeira);   // anima só o que acabou de mudar
+                parafusoEstado[i] = removido;
+            }
+        }
+        else if (vista == NotebookVista.Baixo)
         {
             for (int i = 0; i < parafusoImg.Length; i++)
             {
@@ -578,6 +678,19 @@ public class NotebookTela : MonoBehaviour
         telaFundo.color = ligado ? new Color(0.08f, 0.1f, 0.14f) : CorTela;
         telaPower.color = ligado ? Verde : CorMetal;
 
+        // Mesmas telas do monitor do PC (BIOS, sem sistema, instalando por etapa, sistema), quando configuradas.
+        // Desligado = tela preta, como o monitor (screenOffColor do gabinete).
+        Sprite imagem = ImagemDaTela(s);
+        if (telaSistema != null)
+        {
+            telaFundo.sprite = imagem;
+            telaFundo.color = imagem != null ? Color.white : Color.black;
+            telaTxt.text = "";
+            ((RectTransform)barraFill.transform.parent).gameObject.SetActive(false);
+            etapaTxt.text = "";
+            return;
+        }
+
         string texto;
         switch (s.Tela)
         {
@@ -607,6 +720,19 @@ public class NotebookTela : MonoBehaviour
             etapaTxt.text = "Etapa " + (s.EtapaInstalacao + 1) + " de " + s.EtapasInstalacao;
         }
         else etapaTxt.text = "";
+    }
+
+    private Sprite ImagemDaTela(NotebookSession s)
+    {
+        switch (s.Tela)
+        {
+            case NotebookEstadoTela.SemArmazenamento: return telaSemArmazenamento;
+            case NotebookEstadoTela.SemSistema: return telaSemSistema != null ? telaSemSistema : telaSemArmazenamento;
+            case NotebookEstadoTela.Instalando:
+                return telaInstalando.Length > 0 ? telaInstalando[Mathf.Clamp(s.EtapaInstalacao, 0, telaInstalando.Length - 1)] : null;
+            case NotebookEstadoTela.Sistema: return telaSistema;
+            default: return null;
+        }
     }
 
     private void Mensagem(string texto, Color cor)

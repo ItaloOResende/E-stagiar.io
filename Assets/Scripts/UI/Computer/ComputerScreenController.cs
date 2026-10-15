@@ -128,7 +128,7 @@ public class ComputerScreenController : MonoBehaviour
     private bool InteriorLocked => boundCase != null && boundCase.State == CaseState.Closed && !boundCase.CanOpen;
 
     /// <summary>O monitor deste PC aparece na tela agora (perto do gabinete; a distância do jogador não importa).</summary>
-    public bool MonitorVisible => boundPower == null || boundPower.MonitorInRange;
+    public bool MonitorVisible => boundPower == null || boundPower.MonitorAvailable;   // perto e não quebrado
 
     /// <summary>Vista de frente (pelo lado da tela do monitor): o gabinete está à esquerda do monitor no mundo.</summary>
     public bool CaseLeftOfMonitor
@@ -472,22 +472,7 @@ public class ComputerScreenController : MonoBehaviour
     }
 
     /// <summary>Altura (px) do cursor de chave de fenda: proporcional ao parafuso como aparece na tela agora.</summary>
-    public int ScrewdriverCursorHeight()
-    {
-        float screwPx = 24f;
-        ScrewView v = views.Count > 0 ? views[0] : null;
-        if (v != null)
-        {
-            Canvas.ForceUpdateCanvases();
-            var corners = new Vector3[4];
-            ((RectTransform)v.transform).GetWorldCorners(corners);
-            Canvas canvas = v.GetComponentInParent<Canvas>();
-            Camera cam = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
-            float h = (RectTransformUtility.WorldToScreenPoint(cam, corners[1]) - RectTransformUtility.WorldToScreenPoint(cam, corners[0])).magnitude;
-            if (h > 1f) screwPx = h;
-        }
-        return Mathf.Clamp(Mathf.RoundToInt(screwPx * screwdriverToScrewRatio), 48, 320);
-    }
+    public int ScrewdriverCursorHeight() => ScrewView.CursorHeight(views.Count > 0 ? views[0] : null, screwdriverToScrewRatio);
 
     private ToolItem GetHeldToolItem()
     {

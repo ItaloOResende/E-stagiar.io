@@ -12,7 +12,8 @@ public class ItemHolder : MonoBehaviour
     [SerializeField] private bool showArmOnlyWhileHolding = false;
 
     [Header("Soltar (clique esquerdo com item na mão)")]
-    [Tooltip("Alcance (m) da mira para guardar numa gaveta ou colocar numa superfície.")]
+    [Tooltip("Alcance (m) da mira para guardar numa gaveta ou colocar numa superfície, SÓ sem InteractionDetector no " +
+             "mesmo objeto. Com ele (o Player), vale o alcance único do InteractionDetector.")]
     [SerializeField] private float placeReach = 2.5f;
     [Tooltip("Inclinação mínima da superfície mirada (normal.y) para colocar o item nela (1 = plana).")]
     [Range(0f, 1f)] [SerializeField] private float minSurfaceUp = 0.6f;
@@ -21,6 +22,18 @@ public class ItemHolder : MonoBehaviour
     [SerializeField] private float releaseAhead = 0.6f;
     [Tooltip("Soltar sem destino: quanto abaixo dos olhos (m) o item começa a cair.")]
     [SerializeField] private float releaseBelowEyes = 0.3f;
+
+    private InteractionDetector detector;
+
+    /// <summary>Alcance para guardar/colocar: o mesmo de todas as interações (InteractionDetector), senão o próprio.</summary>
+    public float PlaceReach
+    {
+        get
+        {
+            if (detector == null) detector = GetComponent<InteractionDetector>();
+            return detector != null ? detector.InteractionDistance : placeReach;
+        }
+    }
 
     public PickupInteractable Current { get; private set; }
     public bool IsHolding => Current != null;
@@ -95,7 +108,7 @@ public class ItemHolder : MonoBehaviour
     {
         drawer = null;
         hit = default;
-        RaycastHit[] hits = Physics.RaycastAll(cam.position, cam.forward, placeReach, placementMask, QueryTriggerInteraction.Collide);
+        RaycastHit[] hits = Physics.RaycastAll(cam.position, cam.forward, PlaceReach, placementMask, QueryTriggerInteraction.Collide);
         System.Array.Sort(hits, (x, y) => x.distance.CompareTo(y.distance));
         foreach (RaycastHit h in hits)
         {

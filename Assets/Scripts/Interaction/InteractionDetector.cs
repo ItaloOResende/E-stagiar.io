@@ -18,7 +18,10 @@ using UnityEngine.InputSystem;
 [DefaultExecutionOrder(50)]
 public class InteractionDetector : MonoBehaviour
 {
-    [SerializeField] private float interactionDistance = 3f;
+    [Tooltip("Alcance (m) de TODAS as interações em 1ª pessoa, medido dos olhos até o ponto mirado: pegar, abrir " +
+             "gavetas, abrir telas (manutenção, estações dos minigames) e também guardar/colocar o item da mão " +
+             "(o ItemHolder usa este mesmo valor). 2 m ≈ objetos a ~1,4 m de distância no chão, à frente na mesa ou na gaveta.")]
+    [Min(0.5f)] [SerializeField] private float interactionDistance = 2f;
     [SerializeField] private Camera playerCamera;
     [SerializeField] private LayerMask interactionMask = ~0;
     [Tooltip("Opcional (legado): mãozinha 2D mostrada quando há algo interagível sob a mira. " +
@@ -43,6 +46,8 @@ public class InteractionDetector : MonoBehaviour
     private readonly RaycastHit[] sphereHits = new RaycastHit[16];
 
     public ItemHolder Holder => holder;
+    /// <summary>Alcance único das interações em 1ª pessoa (ver Inspector).</summary>
+    public float InteractionDistance => interactionDistance;
     public Camera PlayerCamera => playerCamera;
     public UIScreenManager Screens => screens;
     /// <summary>Alvo do clique esquerdo sob a mira (null se não houver).</summary>

@@ -28,6 +28,26 @@ public class ScrewView : MonoBehaviour
     public int Index => index;
     public bool Removed { get; private set; }
 
+    /// <summary>
+    /// Altura (px) do cursor de chave de fenda proporcional a este parafuso como aparece na tela agora (gabinete e
+    /// notebook usam a mesma regra). Sem parafuso, usa 24 px.
+    /// </summary>
+    public static int CursorHeight(ScrewView v, float screwdriverToScrewRatio)
+    {
+        float screwPx = 24f;
+        if (v != null)
+        {
+            Canvas.ForceUpdateCanvases();
+            var corners = new Vector3[4];
+            ((RectTransform)v.transform).GetWorldCorners(corners);
+            Canvas canvas = v.GetComponentInParent<Canvas>();
+            Camera cam = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
+            float h = (RectTransformUtility.WorldToScreenPoint(cam, corners[1]) - RectTransformUtility.WorldToScreenPoint(cam, corners[0])).magnitude;
+            if (h > 1f) screwPx = h;
+        }
+        return Mathf.Clamp(Mathf.RoundToInt(screwPx * screwdriverToScrewRatio), 48, 320);
+    }
+
     /// <summary>Liga a vista ao parafuso de índice <paramref name="screwIndex"/> e ao callback de clique.</summary>
     public void Init(int screwIndex, Action<int> onClick)
     {

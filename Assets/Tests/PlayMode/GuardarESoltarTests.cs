@@ -219,8 +219,24 @@ public class GuardarESoltarTests
     }
 
     [UnityTest]
+    // Ângulos dentro do alcance único de 2 m (olhos a 1,573 m: a partir de ~52° para baixo o chão está a ≤ 2 m).
     public IEnumerator Mira_NaoEBloqueadaPeloProprioJogador_ObjetosNoChaoSaoSelecionados(
-        [Values(40f, 55f, 70f)] float pitch)
+        [Values(55f, 65f, 75f)] float pitch)
+    {
+        yield return MiraNoChao(pitch);
+        Assert.AreSame(lastItem, Get(lastDetector, "CurrentTarget"), $"cabo no chão selecionado olhando {pitch}° para baixo");
+    }
+
+    [UnityTest]
+    public IEnumerator Alcance_ObjetoNoChaoAlemDoAlcance_NaoESelecionado()
+    {
+        yield return MiraNoChao(40f);                                        // a 2,45 m dos olhos (> 2 m)
+        Assert.IsNull(Get(lastDetector, "CurrentTarget"), "longe demais: não pega de longe");
+    }
+
+    private Component lastDetector, lastItem;
+
+    private IEnumerator MiraNoChao(float pitch)
     {
         AddPlayerCapsule();
         var capsule = player.AddComponent<CapsuleCollider>();               // a cápsula que sobrou do placeholder
@@ -237,7 +253,8 @@ public class GuardarESoltarTests
         Vector3 aim = WorldBounds(item).center;
         cam.transform.rotation = Quaternion.LookRotation(aim - cam.transform.position);
         det.GetType().GetMethod("FindTargets", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(det, new object[] { false });
-        Assert.AreSame(item, Get(det, "CurrentTarget"), $"cabo no chão selecionado olhando {pitch}° para baixo");
+        lastDetector = det;
+        lastItem = item;
     }
 
     // ---- quedas e dano --------------------------------------------------------------------------------------------

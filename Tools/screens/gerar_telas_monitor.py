@@ -5,6 +5,10 @@ sistema pelo pendrive em etapas (PH_ui_tela_instalando_0..4), sistema sem rede /
 e "Sem sinal" do monitor sem cabo de vídeo (PH_ui_tela_sem_sinal),
 640 x 320, pixel art (desenhado em 320 x 160 e ampliado 2x sem filtro).
 
+Perfil "notebook" (PH_ui_tela_notebook_*): as MESMAS telas com a terminologia do notebook do minigame — SSD (M.2) no
+lugar do HD, memória SO-DIMM, tela integrada no lugar da saída VGA/HDMI, boot pelo pendrive (USB) e, no sistema, sem
+aviso de cabo de rede (o notebook não tem porta de rede nem mecânica de Wi-Fi: o ícone da bandeja é o de Wi-Fi, neutro).
+
 Criadas para o projeto, sem arte de terceiros. Fonte: DejaVu Sans Mono (licença livre Bitstream Vera/DejaVu,
 permite uso e redistribuição), a cópia que acompanha o Blender; só os pixels do texto vão para a imagem. Marcas e nomes são fictícios (sem logotipos reais de BIOS ou sistema operacional).
 
@@ -32,13 +36,29 @@ def canvas(color):
     return img, d
 
 
+# Terminologia por equipamento. "pc" = telas do gabinete (inalteradas); "notebook" = minigame do notebook.
+PERFIS = {
+    "pc": dict(
+        prefixo="PH_ui_tela_", ventoinha=("Cooler da CPU", "1200 RPM  OK"), memoria=("Memória RAM", "4096 MB  OK"),
+        video=("Saída de vídeo", "VGA/HDMI  OK"), disco="Disco rígido (HD)", disco_ok="DETECTADO  500 GB",
+        ordem="Ordem de inicialização:  1. HD   2. Rede", sigla="HD", maquina="o computador",
+        destino="HD 500 GB", pecas_ok="Placa-mãe, memória, vídeo e HD: OK"),
+    "notebook": dict(
+        prefixo="PH_ui_tela_notebook_", ventoinha=("Ventoinha", "2400 RPM  OK"), memoria=("Memória RAM (SO-DIMM)", "8192 MB  OK"),
+        video=("Tela integrada", "OK"), disco="SSD (M.2)", disco_ok="DETECTADO  256 GB",
+        ordem="Ordem de inicialização:  1. SSD   2. USB", sigla="SSD", maquina="o notebook",
+        destino="SSD 256 GB", pecas_ok="Memória, tela e SSD: OK"),
+}
+
+
 def save(img, folder, name):
     img.resize((W * 2, H * 2), Image.NEAREST).save(os.path.join(folder, name), optimize=True)
     print("gerado", name)
 
 
-def bios(folder, hd_detectado=False):
-    """Sem HD: 'nenhum dispositivo de armazenamento'. HD vazio: detectado, mas 'No bootable device found'."""
+def bios(folder, hd_detectado=False, perfil="pc"):
+    """Sem HD/SSD: 'nenhum dispositivo de armazenamento'. Vazio: detectado, mas 'No bootable device found'."""
+    t = PERFIS[perfil]
     azul, cinza, branco, amarelo, vermelho = (0, 0, 170), (170, 170, 170), (255, 255, 255), (255, 255, 85), (255, 85, 85)
     verde = (85, 255, 85)
     img, d = canvas(azul)
@@ -50,36 +70,37 @@ def bios(folder, hd_detectado=False):
     linhas = [
         ("Processador", "OK", branco),
         ("Placa-mãe", "OK", branco),
-        ("Cooler da CPU", "1200 RPM  OK", branco),
-        ("Memória RAM", "4096 MB  OK", branco),
-        ("Saída de vídeo", "VGA/HDMI  OK", branco),
-        ("Disco rígido (HD)", "DETECTADO  500 GB" if hd_detectado else "NÃO ENCONTRADO", verde if hd_detectado else vermelho),
+        (t["ventoinha"][0], t["ventoinha"][1], branco),
+        (t["memoria"][0], t["memoria"][1], branco),
+        (t["video"][0], t["video"][1], branco),
+        (t["disco"], t["disco_ok"] if hd_detectado else "NÃO ENCONTRADO", verde if hd_detectado else vermelho),
     ]
     y = 24
     for nome, valor, cor in linhas:
         d.text((12, y), nome, font=f, fill=cinza)
         d.text((150, y), valor, font=f, fill=cor)
         y += 13
-    d.text((12, y + 1), "Ordem de inicialização:  1. HD   2. Rede", font=f, fill=cinza)
+    d.text((12, y + 1), t["ordem"], font=f, fill=cinza)
     d.rectangle([0, 118, W, H], fill=(0, 0, 120))
     if hd_detectado:
         d.text((8, 121), "No bootable device found.", font=f, fill=amarelo)
-        d.text((8, 134), "HD detectado, mas sem sistema operacional.", font=f, fill=branco)
+        d.text((8, 134), t["sigla"] + " detectado, mas sem sistema operacional.", font=f, fill=branco)
         d.text((8, 147), "Conecte o pendrive de instalação e reinicie.", font=f, fill=cinza)
-        save(img, folder, "PH_ui_tela_bios_sem_sistema.png")
+        save(img, folder, t["prefixo"] + "bios_sem_sistema.png")
     else:
         d.text((8, 121), "Nenhum dispositivo de armazenamento detectado.", font=f, fill=amarelo)
-        d.text((8, 134), "Instale um HD e reinicie o computador.", font=f, fill=branco)
+        d.text((8, 134), "Instale um " + t["sigla"] + " e reinicie " + t["maquina"] + ".", font=f, fill=branco)
         d.text((8, 147), "F10: Salvar e sair    Esc: Sair", font=f, fill=cinza)
-        save(img, folder, "PH_ui_tela_bios.png")
+        save(img, folder, t["prefixo"] + "bios.png")
 
 
 ETAPAS = ["Preparando a instalação...", "Copiando arquivos para o HD...", "Instalando recursos...",
           "Configurando o sistema...", "Concluindo a instalação..."]
 
 
-def instalando(folder, etapa):
+def instalando(folder, etapa, perfil="pc"):
     """Instalação do EstagiOS pelo pendrive: mesma janela, barra e texto da etapa mudam (uma imagem por etapa)."""
+    t = PERFIS[perfil]
     img, d = canvas((20, 60, 110))
     f, fb = font(9), font(10)
     x0, y0, x1, y1 = 30, 26, W - 30, H - 30
@@ -88,7 +109,7 @@ def instalando(folder, etapa):
     d.rectangle([x0, y0, x1, y0 + 13], fill=(40, 90, 170))
     d.text((x0 + 5, y0 + 1), "Instalação do EstagiOS", font=fb, fill=(255, 255, 255))
     d.text((x0 + 10, y0 + 22), "Instalando o sistema operacional...", font=fb, fill=(20, 40, 60))
-    d.text((x0 + 10, y0 + 38), "Origem: pendrive (USB)   Destino: HD 500 GB", font=f, fill=(70, 80, 90))
+    d.text((x0 + 10, y0 + 38), "Origem: pendrive (USB)   Destino: " + t["destino"], font=f, fill=(70, 80, 90))
     n = len(ETAPAS)
     pct = int(round((etapa + 1) * 100 / n))
     bx0, by0, bx1, by1 = x0 + 10, y0 + 58, x1 - 10, y0 + 70
@@ -97,9 +118,9 @@ def instalando(folder, etapa):
     for i in range(0, fill_w, 6):                       # barra em blocos (pixel art)
         d.rectangle([bx0 + 2 + i, by0 + 2, min(bx0 + 2 + i + 4, bx0 + 1 + fill_w), by1 - 2], fill=(60, 160, 90))
     d.text((bx1 - 22, by1 + 3), f"{pct}%", font=f, fill=(20, 40, 60))
-    d.text((x0 + 10, by1 + 3), ETAPAS[etapa], font=f, fill=(50, 60, 70))
-    d.text((x0 + 10, y1 - 13), "Não retire o pendrive nem desligue o computador.", font=font(8), fill=(170, 60, 50))
-    save(img, folder, f"PH_ui_tela_instalando_{etapa}.png")
+    d.text((x0 + 10, by1 + 3), ETAPAS[etapa].replace("o HD", "o " + t["sigla"]), font=f, fill=(50, 60, 70))
+    d.text((x0 + 10, y1 - 13), "Não retire o pendrive nem desligue " + t["maquina"] + ".", font=font(8), fill=(170, 60, 50))
+    save(img, folder, t["prefixo"] + f"instalando_{etapa}.png")
 
 
 SEM_SINAL_W, SEM_SINAL_H = 320, 232  # proporção da tela do monitor (2D ~1,35, 3D ~1,41): o texto não deforma
@@ -126,7 +147,8 @@ def sem_sinal(folder):
     print("gerado PH_ui_tela_sem_sinal.png")
 
 
-def sistema(folder, rede=False):
+def sistema(folder, rede=False, perfil="pc"):
+    termos = PERFIS[perfil]
     img, d = canvas((40, 120, 160))
     for y in range(H):  # papel de parede em degradê, em faixas (pixel art)
         t = (y // 8) * 8 / H
@@ -152,7 +174,7 @@ def sistema(folder, rede=False):
     d.text((x0 + 5, y0 + 1), "EstagiOS", font=fb, fill=(255, 255, 255))
     d.rectangle([x1 - 11, y0 + 2, x1 - 3, y0 + 10], fill=(220, 80, 70))
     d.text((x0 + 8, y0 + 20), "Sistema iniciado com sucesso!", font=font(9), fill=(20, 40, 60))
-    d.text((x0 + 8, y0 + 34), "Placa-mãe, memória, vídeo e HD: OK", font=f, fill=(50, 60, 70))
+    d.text((x0 + 8, y0 + 34), termos["pecas_ok"], font=f, fill=(50, 60, 70))
     d.rectangle([x0 + 85, y0 + 56, x0 + 139, y0 + 70], fill=(40, 90, 170))
     d.text((x0 + 105, y0 + 57), "OK", font=fb, fill=(255, 255, 255))
 
@@ -163,6 +185,16 @@ def sistema(folder, rede=False):
     d.rectangle([54, H - 12, 110, H - 2], fill=(55, 65, 85))
     d.text((58, H - 11), "EstagiOS", font=f, fill=(220, 225, 235))
     d.text((W - 34, H - 12), "09:00", font=fb, fill=(255, 255, 255))
+
+    if perfil == "notebook":
+        # Notebook: sem porta de rede e sem mecânica de Wi-Fi. Ícone de Wi-Fi neutro na bandeja e nenhum aviso de cabo
+        # (não há o que o jogador corrigir aqui); o resto da tela é igual à do PC.
+        nx, ny = W - 66, H - 4
+        for r_ in (8, 5, 2):
+            d.arc([nx - r_, ny - r_, nx + r_, ny + r_], 225, 315, fill=(200, 205, 215), width=1)
+        d.rectangle([nx - 1, ny - 1, nx, ny], fill=(200, 205, 215))
+        save(img, folder, termos["prefixo"] + "sistema.png")
+        return
 
     # ícone de rede na bandeja: conectado (verde) ou sem rede (X vermelho)
     nx = W - 66
@@ -188,3 +220,9 @@ if __name__ == "__main__":
     sistema(pasta)
     sistema(pasta, rede=True)
     sem_sinal(pasta)
+    # notebook (minigame): BIOS, sem sistema, instalação e sistema com a terminologia dele
+    bios(pasta, perfil="notebook")
+    bios(pasta, hd_detectado=True, perfil="notebook")
+    for i in range(len(ETAPAS)):
+        instalando(pasta, i, perfil="notebook")
+    sistema(pasta, perfil="notebook")
