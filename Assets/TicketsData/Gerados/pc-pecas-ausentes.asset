@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85f0ba56fa892af4293ac2e2dbc4e937, type: 3}
+  m_Name: pc-pecas-ausentes
+  m_EditorClassIdentifier: Assembly-CSharp::TicketDefinition
+  ticketId: pc-pecas-ausentes
+  title: Computador com pecas ausentes
+  description: Recebemos um gabinete incompleto. Precisamos identificar as pecas
+    faltantes e coloca-lo para funcionar.
+  requester: Rodolfo
+  department: Administrativo
+  minimumStage: 3
+  tutorialOnly: 0
+  steps:
+  - id: inspecionar-pc
+    description: Identificar os componentes ausentes
+    weight: 1
+  - id: abrir-gabinete
+    description: Abrir o gabinete
+    weight: 1
+  - id: instalar-ram
+    description: Instalar a memoria RAM
+    weight: 1
+  - id: instalar-hd
+    description: Instalar o armazenamento
+    weight: 1
+  - id: ligar-pc
+    description: Ligar o computador
+    weight: 2
+  - id: validar-funcionamento
+    description: Confirmar funcionamento
+    weight: 1

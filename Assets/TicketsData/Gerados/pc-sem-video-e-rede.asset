@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85f0ba56fa892af4293ac2e2dbc4e937, type: 3}
+  m_Name: pc-sem-video-e-rede
+  m_EditorClassIdentifier: Assembly-CSharp::TicketDefinition
+  ticketId: pc-sem-video-e-rede
+  title: Estacao sem monitor e internet
+  description: Meu computador liga, mas o monitor fica sem imagem e tambem nao consigo
+    usar a rede.
+  requester: Carina
+  department: Financeiro
+  minimumStage: 3
+  tutorialOnly: 0
+  steps:
+  - id: conectar-video
+    description: Restabelecer o sinal de video
+    weight: 2
+  - id: validar-imagem
+    description: Confirmar que o monitor funciona
+    weight: 1
+  - id: conectar-rede
+    description: Restabelecer a ligacao de rede
+    weight: 2
+  - id: validar-rede
+    description: Confirmar que a rede funciona
+    weight: 1

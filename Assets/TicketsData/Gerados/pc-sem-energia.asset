@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85f0ba56fa892af4293ac2e2dbc4e937, type: 3}
+  m_Name: pc-sem-energia
+  m_EditorClassIdentifier: Assembly-CSharp::TicketDefinition
+  ticketId: pc-sem-energia
+  title: Meu computador nao liga
+  description: Bom dia! Aperto o botao para ligar o computador e nada acontece. Conseguem
+    verificar, por favor?
+  requester: Carina
+  department: Financeiro
+  minimumStage: 1
+  tutorialOnly: 0
+  steps:
+  - id: inspecionar-pc
+    description: Verificar a alimentacao do computador
+    weight: 1
+  - id: conectar-energia
+    description: Corrigir a conexao de energia
+    weight: 2
+  - id: ligar-pc
+    description: Ligar o computador e confirmar o funcionamento
+    weight: 1

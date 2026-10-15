@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85f0ba56fa892af4293ac2e2dbc4e937, type: 3}
+  m_Name: monitor-sem-imagem
+  m_EditorClassIdentifier: Assembly-CSharp::TicketDefinition
+  ticketId: monitor-sem-imagem
+  title: Monitor sem imagem
+  description: O computador parece ligado, mas a tela nao mostra nada. Preciso voltar
+    ao trabalho.
+  requester: Rodolfo
+  department: Administrativo
+  minimumStage: 1
+  tutorialOnly: 0
+  steps:
+  - id: inspecionar-video
+    description: Verificar cabos e entradas de video
+    weight: 1
+  - id: conectar-video
+    description: Conectar corretamente o cabo de video
+    weight: 2
+  - id: validar-imagem
+    description: Confirmar imagem no monitor
+    weight: 1

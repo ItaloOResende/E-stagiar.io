@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85f0ba56fa892af4293ac2e2dbc4e937, type: 3}
+  m_Name: impressora-sem-impressao
+  m_EditorClassIdentifier: Assembly-CSharp::TicketDefinition
+  ticketId: impressora-sem-impressao
+  title: Impressora nao imprime
+  description: Estou tentando imprimir documentos e nada sai da impressora. Pode
+    verificar?
+  requester: Ivan
+  department: Administrativo
+  minimumStage: 2
+  tutorialOnly: 0
+  steps:
+  - id: inspecionar-impressora
+    description: Verificar o estado da impressora
+    weight: 1
+  - id: corrigir-impressora
+    description: Corrigir o problema de impressao
+    weight: 2
+  - id: teste-impressao
+    description: Realizar um teste de impressao
+    weight: 1
