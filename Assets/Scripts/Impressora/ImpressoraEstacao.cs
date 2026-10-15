@@ -19,6 +19,23 @@ public class ImpressoraEstacao : MonoBehaviour
     /// <summary>O objeto da resma guardada (null se não houver).</summary>
     public GameObject PapelGuardado => papelGuardado;
 
+    private ImpressoraVista? vistaPedida;
+
+    /// <summary>
+    /// Pede que a próxima abertura da tela 2D comece nesta vista (ex.: clicar no painel 3D abre direto no teclado do
+    /// IP). Vale uma vez: a <see cref="ImpressoraTela"/> consome o pedido ao abrir.
+    /// </summary>
+    public void PedirVista(ImpressoraVista vista) => vistaPedida = vista;
+
+    /// <summary>Entrega (e apaga) a vista pedida, se houver.</summary>
+    public bool ConsumirVistaPedida(out ImpressoraVista vista)
+    {
+        vista = vistaPedida ?? default;
+        bool havia = vistaPedida.HasValue;
+        vistaPedida = null;
+        return havia;
+    }
+
     /// <summary>
     /// Clique num encaixe (toner ou bandeja de papel). Com a peça certa na mão instala (o chamador guarda o
     /// objeto na mão com <c>ItemHolder.Stow</c>); com o encaixe ocupado e a mão livre retira e devolve o objeto
@@ -28,6 +45,10 @@ public class ImpressoraEstacao : MonoBehaviour
     {
         devolver = null;
         ImpressoraPartItem peca = itemNaMao != null ? itemNaMao.GetComponentInParent<ImpressoraPartItem>() : null;
+
+        // Peça quebrada na queda não é instalada (retirar a que já está continua valendo).
+        bool ocupado = encaixe == ImpressoraParte.Toner ? Sessao.TemToner : encaixe == ImpressoraParte.Papel && Sessao.TemPapel;
+        if (!ocupado && peca != null && peca.IsBroken) return ImpressoraEncaixeResultado.PecaQuebrada;
 
         ImpressoraEncaixeResultado resultado = Sessao.UsarEncaixe(
             encaixe, itemNaMao != null, peca != null ? peca.Parte : ImpressoraParte.Nenhuma);

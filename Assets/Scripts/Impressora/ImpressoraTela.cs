@@ -77,6 +77,10 @@ public class ImpressoraTela : MonoBehaviour
             vistaInicial = true;
         }
 
+        // Aberta pelo painel 3D da impressora: começa no teclado do IP (pedido feito pela própria estação).
+        ImpressoraEstacao pedida = Estacao();
+        if (pedida != null && pedida.ConsumirVistaPedida(out ImpressoraVista vistaPedida)) vista = vistaPedida;
+
         Mensagem("", TextoFraco);
         Atualizar();
     }
@@ -302,6 +306,9 @@ public class ImpressoraTela : MonoBehaviour
                 break;
             case ImpressoraEncaixeResultado.MaoCheia:
                 Mensagem("Tire a peça da mão para retirar esta.", Amarelo);
+                break;
+            case ImpressoraEncaixeResultado.PecaQuebrada:
+                Mensagem("Esse cartucho quebrou na queda: pegue outro.", Vermelho);
                 break;
         }
         Atualizar();

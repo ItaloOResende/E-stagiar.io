@@ -24,7 +24,9 @@ public enum NotebookEncaixeResultado
     /// <summary>Encaixe vazio e a peça da mão é de outro tipo (ex.: SSD no encaixe da RAM).</summary>
     PecaErrada,
     /// <summary>Encaixe inválido.</summary>
-    EncaixeVazio
+    EncaixeVazio,
+    /// <summary>Encaixe vazio e a peça da mão está QUEBRADA (caiu): não é instalada.</summary>
+    PecaQuebrada
 }
 
 public enum NotebookUsbResultado { Conectado, Desconectado, Devolvido, MaoCheia, PrecisaPendrive, ItemErrado }

@@ -8,7 +8,7 @@ public enum NotebookParte { Nenhuma, Ram, Ssd }
 /// junto do <see cref="PickupInteractable"/>. Instalar guarda ESTE objeto dentro do notebook (desativado, nunca
 /// destruído); retirar devolve o mesmo objeto à mão.
 /// </summary>
-public class NotebookPartItem : MonoBehaviour
+public class NotebookPartItem : MonoBehaviour, IBreakable
 {
     [Tooltip("Qual peça do notebook este item é (uma só).")]
     [SerializeField] private NotebookParte parte = NotebookParte.Ram;
@@ -25,5 +25,21 @@ public class NotebookPartItem : MonoBehaviour
     {
         get => temSistema;
         set => temSistema = value;
+    }
+
+    /// <summary>Quedas reais sofridas (registradas pelo <see cref="PartFallDamage"/>, como nas peças do PC).</summary>
+    public int DropCount { get; private set; }
+    public PartCondition Condition { get; private set; } = PartCondition.Intact;
+    /// <summary>Quebrada: não é instalada (o encaixe recusa) e não volta para gaveta.</summary>
+    public bool IsBroken => Condition == PartCondition.Broken;
+    public event System.Action<IBreakable> BreakableChanged;
+
+    public void RegisterDrop(int dropsToBreak)
+    {
+        if (IsBroken) return;
+        DropCount++;
+        Condition = Breakables.AfterDrop(DropCount, dropsToBreak);
+        BreakableChanged?.Invoke(this);
+        Breakables.Raise(this);
     }
 }

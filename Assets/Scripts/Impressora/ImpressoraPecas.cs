@@ -8,7 +8,7 @@ public enum ImpressoraParte { Nenhuma, Toner, Papel }
 /// item, junto do <see cref="PickupInteractable"/>. Instalar guarda ESTE objeto na impressora (desativado,
 /// nunca destruído); retirar devolve o mesmo objeto à mão.
 /// </summary>
-public class ImpressoraPartItem : MonoBehaviour
+public class ImpressoraPartItem : MonoBehaviour, IBreakable
 {
     [Tooltip("Qual peça da impressora este item é (uma só).")]
     [SerializeField] private ImpressoraParte parte = ImpressoraParte.Toner;
@@ -17,4 +17,20 @@ public class ImpressoraPartItem : MonoBehaviour
 
     public ImpressoraParte Parte => parte;
     public string DisplayName => displayName;
+
+    /// <summary>Quedas reais sofridas (registradas pelo <see cref="PartFallDamage"/>, como nas peças do PC).</summary>
+    public int DropCount { get; private set; }
+    public PartCondition Condition { get; private set; } = PartCondition.Intact;
+    /// <summary>Quebrada: não é instalada (o encaixe recusa) e não volta para gaveta.</summary>
+    public bool IsBroken => Condition == PartCondition.Broken;
+    public event System.Action<IBreakable> BreakableChanged;
+
+    public void RegisterDrop(int dropsToBreak)
+    {
+        if (IsBroken) return;
+        DropCount++;
+        Condition = Breakables.AfterDrop(DropCount, dropsToBreak);
+        BreakableChanged?.Invoke(this);
+        Breakables.Raise(this);
+    }
 }

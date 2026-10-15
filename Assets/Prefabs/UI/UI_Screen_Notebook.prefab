@@ -1,0 +1,83 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &565977322461449735
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3748407225226056651}
+  - component: {fileID: 4367188481490875051}
+  - component: {fileID: 490263935631448682}
+  m_Layer: 0
+  m_Name: UI_Screen_Notebook
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!224 &3748407225226056651
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 565977322461449735}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &4367188481490875051
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 565977322461449735}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d12a97eb09320d340be139f80c583e7a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIScreen
+  screenName: Notebook
+  onOpened:
+    m_PersistentCalls:
+      m_Calls: []
+  onClosed:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &490263935631448682
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 565977322461449735}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c01d74d7f569b654e9e3acc602c878d0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NotebookTela
+  parafusoPrefab: {fileID: 7953477932183138149, guid: 12772b0ebb1747a4195b8615b5b85743, type: 3}
+  cursorChave: {fileID: 2800000, guid: 3227945b84be3874c8be2a8e896fd18a, type: 3}
+  cursorChaveHotspot: {x: 10, y: 246}
+  chaveParafusoProporcao: 4
+  telaSemArmazenamento: {fileID: 21300000, guid: fff02c153eaaa754c9de89f4b2a59f0a, type: 3}
+  telaSemSistema: {fileID: 21300000, guid: 09a3f68615511ec4db7461e2718a50bb, type: 3}
+  telaInstalando:
+  - {fileID: 21300000, guid: 94173dfd0e917634bbd675e0e4b12627, type: 3}
+  - {fileID: 21300000, guid: b3814e966450c1748adf68e2756968ed, type: 3}
+  - {fileID: 21300000, guid: efcbe0272df81eb40a6ae87c16f21292, type: 3}
+  - {fileID: 21300000, guid: 04e706498b594a24390efbb21628f8f5, type: 3}
+  - {fileID: 21300000, guid: b7e2b224845447a46911cde145c74a1f, type: 3}
+  telaSistema: {fileID: 21300000, guid: a371600863440cc4488dac5b51747162, type: 3}

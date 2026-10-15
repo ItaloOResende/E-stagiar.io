@@ -10,7 +10,9 @@ public enum ImpressoraEncaixeResultado
     /// <summary>Encaixe vazio e a peça da mão é de outro tipo.</summary>
     PecaErrada,
     /// <summary>Para retirar uma peça, a mão precisa estar livre.</summary>
-    MaoCheia
+    MaoCheia,
+    /// <summary>Encaixe vazio e a peça da mão está QUEBRADA (caiu): não é instalada.</summary>
+    PecaQuebrada
 }
 
 /// <summary>

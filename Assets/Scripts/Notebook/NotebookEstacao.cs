@@ -69,6 +69,11 @@ public class NotebookEstacao : MonoBehaviour
         NotebookPartItem peca = itemNaMao != null ? itemNaMao.GetComponentInParent<NotebookPartItem>() : null;
         bool tinhaSistema = Sessao.SsdTemSistema;
 
+        // Peça quebrada na queda não é instalada (o encaixe vazio recusa; retirar a que já está continua valendo).
+        bool ocupado = encaixe == NotebookParte.Ram ? Sessao.TemRam : encaixe == NotebookParte.Ssd && Sessao.TemSsd;
+        if (!ocupado && peca != null && peca.IsBroken && Sessao.Estado == NotebookEstado.Aberto)
+            return NotebookEncaixeResultado.PecaQuebrada;
+
         NotebookEncaixeResultado resultado = Sessao.UsarEncaixe(
             encaixe, itemNaMao != null, peca != null ? peca.Parte : NotebookParte.Nenhuma);
 

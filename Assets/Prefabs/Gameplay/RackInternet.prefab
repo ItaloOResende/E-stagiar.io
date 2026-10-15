@@ -1,0 +1,100 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &8487587553684973220
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 6935341289918017399, guid: 6e7936ca6ff38c94daea67d98bd4a76a, type: 3}
+      propertyPath: m_Name
+      value: RackInternet
+      objectReference: {fileID: 0}
+    - target: {fileID: 7742981355937068493, guid: 6e7936ca6ff38c94daea67d98bd4a76a, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 6.4
+      objectReference: {fileID: 0}
+    - target: {fileID: 7742981355937068493, guid: 6e7936ca6ff38c94daea67d98bd4a76a, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7742981355937068493, guid: 6e7936ca6ff38c94daea67d98bd4a76a, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -2.4
+      objectReference: {fileID: 0}
+    - target: {fileID: 7742981355937068493, guid: 6e7936ca6ff38c94daea67d98bd4a76a, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 7742981355937068493, guid: 6e7936ca6ff38c94daea67d98bd4a76a, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7742981355937068493, guid: 6e7936ca6ff38c94daea67d98bd4a76a, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 7742981355937068493, guid: 6e7936ca6ff38c94daea67d98bd4a76a, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7742981355937068493, guid: 6e7936ca6ff38c94daea67d98bd4a76a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7742981355937068493, guid: 6e7936ca6ff38c94daea67d98bd4a76a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7742981355937068493, guid: 6e7936ca6ff38c94daea67d98bd4a76a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 6935341289918017399, guid: 6e7936ca6ff38c94daea67d98bd4a76a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1382708236116695642}
+    - targetCorrespondingSourceObject: {fileID: 6935341289918017399, guid: 6e7936ca6ff38c94daea67d98bd4a76a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 68665728096409255}
+  m_SourcePrefab: {fileID: 100100000, guid: 6e7936ca6ff38c94daea67d98bd4a76a, type: 3}
+--- !u!1 &1582663156004735443 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6935341289918017399, guid: 6e7936ca6ff38c94daea67d98bd4a76a, type: 3}
+  m_PrefabInstance: {fileID: 8487587553684973220}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1382708236116695642
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1582663156004735443}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 75082bb817a437147b2423ae7827a29f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIScreenInteractable
+  interactionMessage: Ligar o cabo no rack
+  promptIcon: {fileID: 0}
+  screen: {fileID: 855027200443036060, guid: db3a86c4e85dc1042b972be777145ab6, type: 3}
+--- !u!114 &68665728096409255
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1582663156004735443}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 113b9336eaeaa8f4689050ca3df6e1a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RedeEstacaoInteractable
+  interactionMessage: Ligar o cabo no rack
+  promptIcon: {fileID: 0}
+  screen: {fileID: 855027200443036060, guid: db3a86c4e85dc1042b972be777145ab6, type: 3}
