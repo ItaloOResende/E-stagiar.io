@@ -29,7 +29,7 @@ public class GaveteirosTests
     private static Type T(string name) => Type.GetType(name + ", Assembly-CSharp", true);
 
     [TestCase("Assets/Prefabs/Gameplay/Gaveteiro_Hardware.prefab",
-        "MemoriaRAM,MemoriaRAM,MemoriaRAM,Cooler,Cooler|PlacaMae,PlacaMae|HD,HD,Fonte,Fonte|Ferramenta,Ferramenta,Pendrive", ExpectedResult = null)]
+        "MemoriaRAM,MemoriaRAM,MemoriaRAM,Cooler,Cooler|PlacaMae,PlacaMae|HD,HD,Fonte,Fonte|Ferramenta,Ferramenta,Pendrive,Alicate", ExpectedResult = null)]
     [TestCase("Assets/Prefabs/Gameplay/Gaveteiro_Cabos.prefab",
         "CaboEnergia,CaboEnergia|CaboVideo,CaboVideo|CaboHDMI,CaboHDMI|CaboRede,CaboRede", ExpectedResult = null)]
     public IEnumerator TodasAsPecas_FicamDentroDaGaveta_ComAGavetaAberta(string path, string expected)

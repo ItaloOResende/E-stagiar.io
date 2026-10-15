@@ -1,7 +1,9 @@
 using UnityEngine;
 
 /// <summary>
-/// Quedas de uma peça (<see cref="ComputerPartItem"/>) no mundo. Vai no ROOT LÓGICO do item, junto do Rigidbody.
+/// Quedas de algo quebrável (<see cref="IBreakable"/>: peça <see cref="ComputerPartItem"/> ou equipamento
+/// <see cref="BreakableEquipment"/>, como monitor e gabinete) no mundo. Vai no ROOT LÓGICO do item, junto do Rigidbody
+/// e do componente que implementa <see cref="IBreakable"/>.
 ///
 /// Queda = impacto físico REAL: colisão com velocidade relativa de pelo menos <see cref="minImpactSpeed"/>
 /// (~2,2 m/s = cair de uns 25 cm). Por isso não contam: colocar a peça numa superfície (ela é apoiada 1 cm acima),
@@ -9,23 +11,29 @@ using UnityEngine;
 /// Uma queda conta UMA vez (os quiques seguintes não), até a peça ser pega de novo ou parar.
 ///
 /// <see cref="dropsToBreak"/> &gt; 0: na N-ésima queda a peça quebra (troca para <see cref="brokenVisual"/> e toca um
-/// estalo): placa-mãe e RAM = 1 (frágeis), HD, fonte e cooler = 2 (a 1ª queda só é registrada). 0 = nunca quebra.
+/// estalo): placa-mãe e RAM = 1 (frágeis), HD, fonte e cooler = 2 (a 1ª queda só é registrada); monitor = 1 (tela),
+/// gabinete = 2. 0 = nunca quebra.
+/// <para>
+/// Visual quebrado: com <see cref="intactVisual"/> e <see cref="brokenVisual"/> os dois se alternam (peças: malha
+/// partida). Só com <see cref="brokenVisual"/> ele é uma CAMADA por cima do visual normal (equipamentos: rachaduras
+/// sobre o modelo oficial, sem trocar a malha nem mexer nas âncoras de cabos).
+/// </para>
 /// </summary>
-[RequireComponent(typeof(ComputerPartItem), typeof(Rigidbody))]
+[RequireComponent(typeof(Rigidbody))]
 public class PartFallDamage : MonoBehaviour
 {
-    [Tooltip("Quedas até quebrar (placa-mãe e RAM: 1; HD, fonte e cooler: 2). 0 = nunca quebra.")]
+    [Tooltip("Quedas até quebrar (placa-mãe, RAM e monitor: 1; HD, fonte, cooler e gabinete: 2). 0 = nunca quebra.")]
     [Min(0)] [SerializeField] private int dropsToBreak = 2;
     [Tooltip("Velocidade mínima do impacto (m/s) para contar como queda.")]
     [SerializeField] private float minImpactSpeed = 2.2f;
-    [Tooltip("Visual da peça inteira (filho 'Visual').")]
+    [Tooltip("Visual inteiro (filho 'Visual'), trocado pelo quebrado. Vazio = o quebrado é só uma camada por cima.")]
     [SerializeField] private GameObject intactVisual;
-    [Tooltip("Visual da peça quebrada (filho desativado, ex.: 'Visual_Quebrado').")]
+    [Tooltip("Visual quebrado (filho desativado, ex.: 'Visual_Quebrado').")]
     [SerializeField] private GameObject brokenVisual;
     [Tooltip("Som da quebra. Vazio = um estalo curto gerado por código.")]
     [SerializeField] private AudioClip breakSound;
 
-    private ComputerPartItem part;
+    private IBreakable part;
     private Rigidbody body;
     private bool countedThisFall;
     private float restingTime;
@@ -34,17 +42,20 @@ public class PartFallDamage : MonoBehaviour
 
     private void Awake()
     {
-        part = GetComponent<ComputerPartItem>();
+        part = GetComponent<IBreakable>();
         body = GetComponent<Rigidbody>();
+        if (part == null)
+            Debug.LogWarning("PartFallDamage: falta um componente quebrável (ComputerPartItem ou BreakableEquipment) " +
+                             "no mesmo objeto; as quedas não serão registradas.", this);
         ApplyVisual();
     }
 
-    private void OnEnable() => part.ConditionChanged += OnConditionChanged;
-    private void OnDisable() => part.ConditionChanged -= OnConditionChanged;
+    private void OnEnable() { if (part != null) part.BreakableChanged += OnConditionChanged; }
+    private void OnDisable() { if (part != null) part.BreakableChanged -= OnConditionChanged; }
 
     private void OnCollisionEnter(Collision collision)
     {
-        if (body.isKinematic || countedThisFall) return;
+        if (part == null || body.isKinematic || countedThisFall) return;
         if (collision.relativeVelocity.magnitude < minImpactSpeed) return;
         countedThisFall = true;
         restingTime = 0f;
@@ -60,7 +71,7 @@ public class PartFallDamage : MonoBehaviour
         if (restingTime > 0.3f) countedThisFall = false;
     }
 
-    private void OnConditionChanged(ComputerPartItem p)
+    private void OnConditionChanged(IBreakable p)
     {
         ApplyVisual();
         if (p.IsBroken) PlayBreakSound();

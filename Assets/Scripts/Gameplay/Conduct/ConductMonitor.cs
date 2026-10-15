@@ -4,15 +4,18 @@ using UnityEngine;
 /// <summary>
 /// Detecta as infrações que ACONTECEM (sem saber se alguém viu) e as registra no <see cref="InfractionLog"/>. Um por cena
 /// (objeto <c>Conduta</c>). Reaproveita o que já existe:
-///  - queda/quebra: o evento de dano das peças (<see cref="ComputerPartItem.AnyConditionChanged"/>, disparado pelo
-///    <see cref="PartFallDamage"/> só em impactos reais). Queda sem quebra = <see cref="InfractionKind.ComponentDropped"/>
-///    (a peça continua funcionando); quebra = <see cref="InfractionKind.ComponentBroken"/> (estado de dano mantido).
+///  - queda/quebra: o evento de dano de QUALQUER quebrável (<see cref="Breakables.AnyConditionChanged"/>: peças do PC e
+///    equipamentos como monitor e gabinete, disparado pelo <see cref="PartFallDamage"/> só em impactos reais). Queda sem
+///    quebra = <see cref="InfractionKind.ComponentDropped"/> (continua funcionando); quebra =
+///    <see cref="InfractionKind.ComponentBroken"/> (estado de dano mantido).
 ///    São instantâneas: o supervisor só pode percebê-las por <see cref="witnessWindow"/> segundos; depois, despercebidas.
-///  - item largado no chão: peça, ferramenta, cabo ou pendrive solto (<see cref="PickupInteractable.Placement"/> caído ou
-///    colocado), parado, com a base perto do chão e sem mesa/bancada (<see cref="WorkSurface"/>) embaixo, por mais de
-///    <see cref="abandonDelay"/> segundos. Uma infração por "abandono": só volta a contar depois de o item sair do chão.
-///    Monitor, teclado, mouse e gabinete NÃO entram (são equipamentos carregados e apoiados durante o trabalho).
-/// Itens que nunca saíram do lugar inicial da cena não contam (decoração/teste).
+///  - item largado no chão: peça (do PC, do notebook ou da impressora), ferramenta, cabo ou pendrive solto
+///    (<see cref="PickupInteractable.Placement"/> caído ou colocado), parado, com a base perto do chão e sem mesa/bancada
+///    (<see cref="WorkSurface"/>) embaixo, por mais de <see cref="abandonDelay"/> segundos. Uma infração por "abandono":
+///    só volta a contar depois de o item sair do chão. Monitor, teclado, mouse e gabinete NÃO entram (são equipamentos
+///    carregados e apoiados durante o trabalho; a queda deles conta pelo dano).
+/// Itens que nunca saíram do lugar inicial (<see cref="ItemPlacement.Initial"/>: cabos e caixas que a cena já começa no
+/// chão, itens criados pelo jogo e postos no lugar por ele) não contam; o que o JOGADOR soltou ou largou, conta.
 /// </summary>
 public class ConductMonitor : MonoBehaviour
 {
@@ -28,6 +31,8 @@ public class ConductMonitor : MonoBehaviour
     [Tooltip("Velocidade (m/s) abaixo da qual o item é considerado parado.")]
     [SerializeField] private float restSpeed = 0.1f;
     [SerializeField] private bool trackParts = true, trackTools = true, trackCables = true, trackPendrives = true;
+    [Tooltip("Peças e consumíveis dos minigames: memória SO-DIMM e SSD do notebook, toner e papel da impressora.")]
+    [SerializeField] private bool trackMinigameParts = true;
     [Tooltip("Intervalo (s) entre verificações do chão.")]
     [Min(0.05f)] [SerializeField] private float scanInterval = 0.25f;
 
@@ -39,10 +44,10 @@ public class ConductMonitor : MonoBehaviour
     public float AbandonDelay { get => abandonDelay; set => abandonDelay = Mathf.Max(0f, value); }
     public float WitnessWindow { get => witnessWindow; set => witnessWindow = Mathf.Max(0f, value); }
 
-    private void OnEnable() => ComputerPartItem.AnyConditionChanged += OnPartCondition;
-    private void OnDisable() => ComputerPartItem.AnyConditionChanged -= OnPartCondition;
+    private void OnEnable() => Breakables.AnyConditionChanged += OnPartCondition;
+    private void OnDisable() => Breakables.AnyConditionChanged -= OnPartCondition;
 
-    private void OnPartCondition(ComputerPartItem part)
+    private void OnPartCondition(IBreakable part)
     {
         InfractionKind kind = part.IsBroken ? InfractionKind.ComponentBroken : InfractionKind.ComponentDropped;
         InfractionLog.Report(kind, part.gameObject, part.DisplayName, part.transform.position);
@@ -102,7 +107,8 @@ public class ConductMonitor : MonoBehaviour
     {
         GameObject g = item.gameObject;
         return trackParts && g.GetComponent<ComputerPartItem>() != null || trackTools && g.GetComponent<ToolItem>() != null ||
-               trackCables && g.GetComponent<CableItem>() != null || trackPendrives && g.GetComponent<PendriveItem>() != null;
+               trackCables && g.GetComponent<CableItem>() != null || trackPendrives && g.GetComponent<PendriveItem>() != null ||
+               trackMinigameParts && (g.GetComponent<NotebookPartItem>() != null || g.GetComponent<ImpressoraPartItem>() != null);
     }
 
     /// <summary>O item está largado no chão agora (parado, base baixa, sem mesa/bancada embaixo, fora da mão e de gavetas).</summary>
@@ -126,7 +132,9 @@ public class ConductMonitor : MonoBehaviour
         if (g.TryGetComponent(out ComputerPartItem p)) return p.DisplayName;
         if (g.TryGetComponent(out ToolItem t)) return t.DisplayName;
         if (g.TryGetComponent(out CableItem c)) return c.DisplayName;
-        if (g.TryGetComponent(out PendriveItem _)) return "pendrive";
+        if (g.TryGetComponent(out PendriveItem pen)) return pen.DisplayName;
+        if (g.TryGetComponent(out NotebookPartItem n)) return n.DisplayName;
+        if (g.TryGetComponent(out ImpressoraPartItem i)) return i.DisplayName;
         return "objeto";
     }
 }

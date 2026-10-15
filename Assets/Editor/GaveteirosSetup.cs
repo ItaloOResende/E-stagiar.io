@@ -51,7 +51,8 @@ public static class GaveteirosSetup
         ("ram_cooler", new[] { new Item("Pickup_MemoriaRAM", 3, -0.15f, 0.19f, 0f, -0.07f), new Item("Pickup_Cooler", 2, 0.10f, 0.12f, 0.11f) }),
         ("placa_mae", new[] { new Item("Pickup_PlacaMae", 2, -0.135f, 0.016f, 0.27f) }),
         ("hd_fonte", new[] { new Item("Pickup_HD", 2, -0.22f, 0.10f, 0.12f), new Item("Pickup_Fonte", 2, 0.05f, 0.10f, 0.16f) }),
-        ("ferramentas", new[] { new Item("Pickup_Ferramenta", 2, -0.14f, 0.09f, 0.28f), new Item("Pickup_Pendrive", 1, 0f, 0.09f) }),
+        ("ferramentas", new[] { new Item("Pickup_Ferramenta", 2, -0.14f, 0.09f, 0.28f), new Item("Pickup_Pendrive", 1, 0f, 0.09f),
+                                new Item("Pickup_Alicate", 1, 0f, -0.07f) }),
     };
     private static readonly (string label, Item[] items)[] CableDrawers =
     {

@@ -18,8 +18,8 @@ public static class ItemKind
         if (g.TryGetComponent(out PendriveItem _)) return "pendrive";
         // Peças dos minigames novos (notebook e impressora) também têm tipo próprio, para uma gaveta
         // só aceitar o que é dela — e para nunca caírem como item "sem tipo".
-        if (g.TryGetComponent(out NotebookPartItem notebookPart)) return "notebook:" + notebookPart.Parte;
-        if (g.TryGetComponent(out ImpressoraPartItem impressoraPart)) return "impressora:" + impressoraPart.Parte;
+        if (g.TryGetComponent(out NotebookPartItem notebookPart)) return notebookPart.IsBroken ? null : "notebook:" + notebookPart.Parte;
+        if (g.TryGetComponent(out ImpressoraPartItem impressoraPart)) return impressoraPart.IsBroken ? null : "impressora:" + impressoraPart.Parte;
         return null;
     }
 }

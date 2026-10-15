@@ -13,6 +13,11 @@ Funções: cada uma devolve UM objeto (já juntado) em "coordenadas da peça":
               (boca 9 x 16 mm, gabinete_v2_build.usb_t) indo para -Y; a boca da porta fica em y = 0, o conector
               metálico ocupa y < 0 (dentro da porta) e o corpo fica em y > 0 (fora do gabinete).
   chave_de_fenda(): chave de fenda (Phillips) deitada ao longo de X, ponta em -X, eixo em z = 0.
+  ssd(): SSD M.2 2280 do notebook, deitado (contatos em -X). memoria_sodimm(): memória SO-DIMM do notebook.
+              Versões quebradas: Item_Ssd_Quebrado, Item_MemoriaSodimm_Quebrada.
+  alicate_crimpar(): alicate de crimpar RJ45 deitado ao longo de X, cabeça em -X, cabos em V para +X.
+  painel_impressora(): painel de controle (visor + botões + LED) deitado com a face para +Z; vai por cima do modelo
+              oficial da impressora (impressora.fbx, Matheus), sem alterá-lo. PAINEL_LCD = posição do visor.
   quebrada(o, ...): versão QUEBRADA de um item deitado (placa-mãe, RAM): a própria malha cortada em diagonal,
               uma metade afastada e entortada (dobrada para cima) e algumas lascas soltas; exportada como
               Item_PlacaMae_Quebrada / Item_MemoriaRAM_Quebrada / Item_HD_Quebrado / Item_Fonte_Quebrada /
@@ -106,17 +111,24 @@ def placa_mae():
     return done(p, "Comp_PlacaMae")
 
 
-def memoria_ram():
-    L, Hh, t = 0.133, 0.031, 0.0012
+def memoria_ram(L=0.133, Hh=0.031, chips=8, etiqueta=(0.040, -0.035), entalhe=0.010, nome="Comp_MemoriaRAM"):
+    """Pente de memória. Padrão = DIMM do PC (13,3 cm, 8 chips por lado); memoria_sodimm() = SO-DIMM do notebook."""
+    t = 0.0012
     p = [box((t, L, Hh), (0, 0, Hh / 2), M["pcb_ram"], bevel=0.0003)]
     for s in (-1, 1):
-        for i in range(8):
-            y = -L / 2 + 0.010 + i * (L - 0.020) / 7
+        for i in range(chips):
+            y = -L / 2 + 0.010 + i * (L - 0.020) / (chips - 1)
             p.append(box((0.0012, 0.011, 0.011), (s * 0.0011, y, Hh * 0.55), M["chip"]))
         p.append(box((0.0006, L * 0.96, 0.0035), (s * 0.0008, 0, 0.0022), M["dourado"]))     # contatos
-        p.append(box((0.0005, 0.040, 0.006), (s * 0.0009, -0.035, Hh - 0.006), M["etiqueta"]))
-    p.append(box((t + 0.0003, 0.004, 0.0045), (0, 0.010, 0.0022), M["pcb_ram"]))            # entalhe (marcador)
-    return done(p, "Comp_MemoriaRAM")
+        p.append(box((0.0005, etiqueta[0], 0.006), (s * 0.0009, etiqueta[1], Hh - 0.006), M["etiqueta"]))
+    p.append(box((t + 0.0003, 0.004, 0.0045), (0, entalhe, 0.0022), M["pcb_ram"]))          # entalhe (marcador)
+    return done(p, nome)
+
+
+def memoria_sodimm():
+    """Memória SO-DIMM do notebook (6,8 x 3,0 cm, 4 chips por lado, entalhe fora do centro): a mesma construção da RAM
+    do PC em tamanho de notebook (substitui o bloco provisório do Pickup_RamSodimm)."""
+    return memoria_ram(L=0.0676, Hh=0.030, chips=4, etiqueta=(0.022, -0.014), entalhe=-0.006, nome="Comp_MemoriaSodimm")
 
 
 def cooler():
@@ -204,6 +216,73 @@ def chave_de_fenda():
     return done(p, "Comp_ChaveDeFenda")
 
 
+def ssd():
+    """SSD M.2 2280 do notebook (8 x 2,2 cm), deitado: contatos dourados em -X (chave M), furo do parafuso em +X.
+    PCB na cor do encaixe da tela do notebook (NotebookTela.CorSsd, azul-acinzentado escuro = MAT_Gabinete_Painel)."""
+    L, W, t = 0.080, 0.022, 0.0012
+    p = [box((L, W, t), (0, 0, t / 2), M["painel"], bevel=0.0003)]
+    z = t
+    p.append(box((0.011, 0.011, 0.0012), (-0.022, 0, z + 0.0006), M["chip"], bevel=0.0003))   # controlador
+    for x in (-0.004, 0.016):                                                                  # 2 chips NAND
+        p.append(box((0.016, 0.014, 0.0014), (x, 0, z + 0.0007), M["chip"], bevel=0.0003))
+    p.append(box((0.030, 0.0165, 0.0003), (0.006, 0, z + 0.0016), M["etiqueta"]))             # etiqueta por cima
+    p.append(box((0.030, 0.004, 0.00035), (0.006, 0.0045, z + 0.00175), M["fan"]))            # faixa da marca
+    for i in range(12):                                                                        # contatos (chave M)
+        y = -W / 2 + 0.0015 + i * (W - 0.003) / 11
+        if 0.0045 < y < 0.0075:
+            continue
+        p.append(box((0.0035, 0.0011, 0.00015), (-L / 2 + 0.002, y, z + 0.00008), M["dourado"]))
+    p.append(cyl(0.0022, 0.00025, (L / 2 - 0.0015, 0, z + 0.0001), M["dourado"], verts=14))    # anel do parafuso
+    p.append(cyl(0.0011, 0.0004, (L / 2 - 0.0015, 0, z + 0.0002), M["chip"], verts=10))
+    return done(p, "Comp_Ssd")
+
+
+def alicate_crimpar():
+    """Alicate de crimpar RJ45 deitado ao longo de X: cabeça metálica (matrizes RJ45/RJ11 e lâmina) em -X, cabos
+    vermelhos (mesma pega da chave de fenda) abertos em V para +X. Eixo/pivô na origem."""
+    T = 0.011                                                                                  # espessura
+    p = [box((0.050, 0.030, T), (-0.026, 0, T / 2), M["aluminio"], bevel=0.002)]              # cabeça
+    p.append(box((0.030, 0.010, T + 0.0006), (-0.034, 0.0035, T / 2), M["chip"]))             # boca (matriz)
+    p.append(box((0.013, 0.006, T + 0.0010), (-0.042, -0.0085, T / 2), M["slot"]))            # matriz RJ45 (8P)
+    p.append(box((0.009, 0.005, T + 0.0010), (-0.027, -0.0085, T / 2), M["slot"]))            # matriz RJ11 (6P)
+    p.append(box((0.014, 0.0016, T + 0.0012), (-0.012, -0.0105, T / 2), M["parafuso"]))       # lâmina de corte
+    for x in (-0.005, -0.040):                                                                 # pinos/rebites
+        p.append(cyl(0.0035, T + 0.002, (x, 0.0095, T / 2), M["parafuso"], verts=14))
+    p.append(box((0.016, 0.012, T * 0.8), (0.006, 0.0, T / 2), M["chapa"], bevel=0.001))      # catraca
+    for s in (-1, 1):                                                                          # dois cabos em V
+        ang = math.radians(7 * s)
+        parts = [box((0.140, 0.012, T * 0.9), (0.064, 0, T / 2), M["chapa"], bevel=0.0015)]  # haste de aço (do pivô)
+        parts.append(box((0.100, 0.0165, T + 0.002), (0.084, 0, T / 2), M["vermelho"], bevel=0.004))  # pega
+        for x in (0.050, 0.070, 0.090, 0.110):
+            parts.append(box((0.004, 0.0172, T + 0.0026), (x, 0, T / 2), M["chip"]))        # frisos
+        parts.append(box((0.010, 0.0172, T + 0.0026), (0.131, 0, T / 2), M["chip"], bevel=0.003))  # ponteira
+        h = done(parts, "cabo")                                                                # origem no pivô
+        h.matrix_world = Matrix.Translation((0.0, 0.0045 * s, 0)) @ Matrix.Rotation(ang, 4, 'Z')
+        p.append(h)
+    return done(p, "Comp_AlicateCrimpar")
+
+
+# Visor do painel da impressora (centro, em coordenadas do item já centrado): usado pelo setup da Unity para
+# posicionar o texto ao vivo (ImpressoraPainel3D) sobre ele.
+PAINEL_LCD = (-0.019, 0.0, 0.058, 0.026)      # x, y do centro; largura, altura
+
+
+def painel_impressora():
+    """Painel de controle da impressora (autoria própria), DEITADO com a face para +Z: moldura escura, visor (LCD)
+    à esquerda, botões redondos e LED à direita. Encaixa por cima do modelo oficial da impressora (Matheus), sem
+    alterá-lo; na Unity é inclinado na borda da frente."""
+    w, h, t = 0.110, 0.050, 0.008
+    p = [box((w, h, t), (0, 0, t / 2), M["corpo"], bevel=0.003)]                              # moldura
+    lx, ly, lw, lh = PAINEL_LCD
+    p.append(box((lw + 0.004, lh + 0.004, 0.0012), (lx, ly, t + 0.0003), M["chip"], bevel=0.0006))  # borda do visor
+    p.append(box((lw, lh, 0.0010), (lx, ly, t + 0.0008), M["preto"]))                         # visor
+    for (x, y, mat) in ((0.022, 0.010, "branco"), (0.038, 0.010, "branco"), (0.022, -0.010, "branco"),
+                        (0.038, -0.010, "vermelho")):
+        p.append(cyl(0.0055, 0.004, (x, y, t + 0.002), M[mat], verts=20, bevel=0.0012))       # botões
+    p.append(cyl(0.0022, 0.0016, (0.046, 0.019, t + 0.0008), M["led"], verts=12))            # LED
+    return done(p, "Comp_PainelImpressora")
+
+
 def quebrada(src, nome, normal, gap, tilt_deg, lascas):
     """Corta 'src' (item deitado, base em z = 0) por um plano vertical pelo centro, separa as metades e dobra uma."""
     import bmesh
@@ -240,7 +319,8 @@ def quebrada(src, nome, normal, gap, tilt_deg, lascas):
 def build_all():
     mats()
     return {"PlacaMae": placa_mae(), "MemoriaRAM": memoria_ram(), "Cooler": cooler(), "HD": hd(), "Fonte": fonte(),
-            "Pendrive": pendrive(), "ChaveDeFenda": chave_de_fenda()}
+            "Pendrive": pendrive(), "ChaveDeFenda": chave_de_fenda(), "Ssd": ssd(), "MemoriaSodimm": memoria_sodimm(), "AlicateCrimpar": alicate_crimpar(),
+            "PainelImpressora": painel_impressora()}
 
 
 if __name__ == "__main__" and "--" in sys.argv and os.path.basename(sys.argv[sys.argv.index("--") - 1]).startswith("componentes_build"):
@@ -278,15 +358,20 @@ if __name__ == "__main__" and "--" in sys.argv and os.path.basename(sys.argv[sys
     bpy.ops.object.select_all(action='DESELECT'); pd.select_set(True); bpy.context.view_layer.objects.active = pd
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     # itens deitados: RAM de pé vira deitada (face para cima); demais já estão deitados; base em z = 0
-    ram = objs["MemoriaRAM"]
-    ram.matrix_world = Matrix.Rotation(math.radians(90), 4, 'Z') @ Matrix.Rotation(math.radians(90), 4, 'Y') @ ram.matrix_world  # comprimento em X
-    bpy.ops.object.select_all(action='DESELECT'); ram.select_set(True); bpy.context.view_layer.objects.active = ram
-    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    for ram in (objs["MemoriaRAM"], objs["MemoriaSodimm"]):
+        ram.matrix_world = Matrix.Rotation(math.radians(90), 4, 'Z') @ Matrix.Rotation(math.radians(90), 4, 'Y') @ ram.matrix_world  # comprimento em X
+        bpy.ops.object.select_all(action='DESELECT'); ram.select_set(True); bpy.context.view_layer.objects.active = ram
+        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     # versões quebradas (depois da RAM deitada, para cortar já na posição de item)
     objs["PlacaMae_Quebrada"] = quebrada(objs["PlacaMae"], "Comp_PlacaMae_Quebrada", (1.0, 0.45, 0), 0.010, 9,
                                          [(0.03, -0.09, 0.014, 0.009, 20), (-0.02, 0.10, 0.010, 0.012, -35), (0.05, 0.07, 0.008, 0.006, 60)])
     objs["MemoriaRAM_Quebrada"] = quebrada(objs["MemoriaRAM"], "Comp_MemoriaRAM_Quebrada", (1.0, 0.30, 0), 0.006, 14,
                                            [(0.012, -0.024, 0.006, 0.004, 30), (-0.010, 0.022, 0.005, 0.004, -20)])
+    # peças do notebook (frágeis, como a RAM do PC: quebram na 1ª queda)
+    objs["Ssd_Quebrado"] = quebrada(objs["Ssd"], "Comp_Ssd_Quebrado", (1.0, 0.35, 0), 0.004, 12,
+                                    [(0.008, -0.009, 0.004, 0.003, 25), (-0.006, 0.010, 0.003, 0.003, -30)])
+    objs["MemoriaSodimm_Quebrada"] = quebrada(objs["MemoriaSodimm"], "Comp_MemoriaSodimm_Quebrada", (1.0, 0.30, 0), 0.005, 14,
+                                              [(0.008, -0.020, 0.005, 0.004, 30), (-0.008, 0.019, 0.004, 0.004, -20)])
     # resistentes (quebram só na 2ª queda): carcaça partida, uma metade afastada e inclinada
     objs["HD_Quebrado"] = quebrada(objs["HD"], "Comp_HD_Quebrado", (1.0, 0.55, 0), 0.008, 7,
                                    [(0.02, -0.03, 0.008, 0.006, 25), (-0.015, 0.035, 0.006, 0.005, -40)])

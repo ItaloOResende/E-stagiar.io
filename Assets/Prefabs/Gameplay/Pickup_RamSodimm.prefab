@@ -27,8 +27,8 @@ Transform:
   m_GameObject: {fileID: 319459128557260433}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.002, z: 0}
-  m_LocalScale: {x: 0.067, y: 0.004, z: 0.03}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 8984251439756302770}
@@ -40,7 +40,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 319459128557260433}
-  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+  m_Mesh: {fileID: -5056914204964922739, guid: 81facda8346da5044a1057e444459b35, type: 3}
 --- !u!23 &7345006287991885467
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -66,7 +66,10 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: c7ac551be903a0f48beb0909213c807c, type: 2}
+  - {fileID: 2100000, guid: 71e6b4e0642a3e04dbcc764c7a93fef3, type: 2}
+  - {fileID: 2100000, guid: b2c0bb4d979ab8449bba03921a344098, type: 2}
+  - {fileID: 2100000, guid: a2eb6e894e85ddf4c94812e7bfc5738e, type: 2}
+  - {fileID: 2100000, guid: ba5950dd27eca0c4f906cab380f13fd6, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -76,6 +79,99 @@ MeshRenderer:
   m_ScaleInLightmap: 1
   m_ReceiveGI: 1
   m_PreserveUVs: 1
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &4706715309535924661
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2826549281253947585}
+  - component: {fileID: 3800976300109806933}
+  - component: {fileID: 2248559629455466182}
+  m_Layer: 0
+  m_Name: Visual_Quebrado
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &2826549281253947585
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4706715309535924661}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8984251439756302770}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!33 &3800976300109806933
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4706715309535924661}
+  m_Mesh: {fileID: -5359600256897758670, guid: 81facda8346da5044a1057e444459b35, type: 3}
+--- !u!23 &2248559629455466182
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4706715309535924661}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 71e6b4e0642a3e04dbcc764c7a93fef3, type: 2}
+  - {fileID: 2100000, guid: a2eb6e894e85ddf4c94812e7bfc5738e, type: 2}
+  - {fileID: 2100000, guid: b2c0bb4d979ab8449bba03921a344098, type: 2}
+  - {fileID: 2100000, guid: ba5950dd27eca0c4f906cab380f13fd6, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
   m_IgnoreNormalsForChartDetection: 0
   m_ImportantGI: 0
   m_StitchLightmapSeams: 1
@@ -102,6 +198,8 @@ GameObject:
   - component: {fileID: 161042102607302406}
   - component: {fileID: 7540138738170759764}
   - component: {fileID: 5087967779321790998}
+  - component: {fileID: 2654110405755785842}
+  - component: {fileID: 9002427975856205827}
   m_Layer: 0
   m_Name: Pickup_RamSodimm
   m_TagString: Untagged
@@ -123,6 +221,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2589156814143153534}
+  - {fileID: 2826549281253947585}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!54 &161042102607302406
@@ -168,6 +267,8 @@ MonoBehaviour:
   promptIcon: {fileID: 0}
   holdPositionOffset: {x: 0, y: 0, z: 0}
   holdEulerOffset: {x: 0, y: 0, z: 0}
+  holdScale: 1
+  placedYawOffset: 0
   startsFrozen: 1
 --- !u!114 &5087967779321790998
 MonoBehaviour:
@@ -184,3 +285,41 @@ MonoBehaviour:
   parte: 1
   displayName: "mem\xF3ria SO-DIMM"
   temSistema: 0
+--- !u!65 &2654110405755785842
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6495865664642062047}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.077599995, y: 0.02, z: 0.04005}
+  m_Center: {x: 0, y: 0.01, z: 0}
+--- !u!114 &9002427975856205827
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6495865664642062047}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f3a4f88f622107d448c8dd2930235eff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EstagiarIo.Computer::PartFallDamage
+  dropsToBreak: 1
+  minImpactSpeed: 2.2
+  intactVisual: {fileID: 319459128557260433}
+  brokenVisual: {fileID: 4706715309535924661}
+  breakSound: {fileID: 0}

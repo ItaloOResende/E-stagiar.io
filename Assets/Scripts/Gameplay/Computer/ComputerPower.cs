@@ -139,6 +139,8 @@ public class ComputerPower : MonoBehaviour
     private Transform wallPoint;
     private float wallPointRange;
     private bool lastInRange = true;
+    private BreakableEquipment caseCondition;     // estado físico do próprio gabinete (opcional)
+    private BreakableEquipment monitorCondition;  // estado físico do monitor associado (opcional)
 
     /// <summary>Disparado quando o PC liga, desliga ou muda de tela.</summary>
     public event Action<PcPowerState> PowerStateChanged;
@@ -194,7 +196,7 @@ public class ComputerPower : MonoBehaviour
     /// as do gabinete, sempre. Não depende de onde o jogador está.
     /// </summary>
     public bool CanReachPort(PcPort port) =>
-        IsWallPort(port) ? IsWallPointInRange : !IsMonitorPort(port) || MonitorInRange;
+        IsWallPort(port) ? IsWallPointInRange : !IsMonitorPort(port) || MonitorAvailable;
 
     /// <summary>
     /// A imagem chega ao monitor: cabo de vídeo (VGA ou HDMI) nas duas pontas. Só o estado físico do cabo conta; a
@@ -229,8 +231,33 @@ public class ComputerPower : MonoBehaviour
     /// monitor mostra "Sem sinal" (<see cref="HasVideoSignal"/>).
     /// </summary>
     public bool CanReachBios =>
-        PowerConnected && MonitorPowerConnected && Case.HasComponent(PcComponent.Psu) &&
+        !CaseBroken && PowerConnected && MonitorPowerConnected && Case.HasComponent(PcComponent.Psu) &&
         Case.HasComponent(PcComponent.Motherboard) && Case.HasComponent(PcComponent.Ram) && Case.HasComponent(PcComponent.CpuCooler);
+
+    /// <summary>
+    /// O gabinete quebrou numa queda (<see cref="BreakableEquipment"/> no mesmo objeto): não liga mais e, se estava
+    /// ligado, desliga. Sem o componente, nunca quebra.
+    /// </summary>
+    public bool CaseBroken
+    {
+        get
+        {
+            _ = Case;   // garante a assinatura do estado físico (também em Edit Mode, sem OnEnable)
+            return caseCondition != null && caseCondition.IsBroken;
+        }
+    }
+
+    /// <summary>
+    /// O monitor associado quebrou numa queda: a tela dele fica apagada (<see cref="Screen"/> = Off), mesmo com o PC
+    /// ligado. O PC em si continua funcionando.
+    /// </summary>
+    public bool MonitorBroken => monitor != null && monitorCondition != null && monitorCondition.IsBroken;
+
+    /// <summary>
+    /// O monitor pode ser alvo de manutenção agora: perto do gabinete (<see cref="MonitorInRange"/>) e NÃO quebrado.
+    /// Quebrado, ele some da tela 2D e as portas dele (energia, VGA, HDMI) recusam (<see cref="CanReachPort"/>).
+    /// </summary>
+    public bool MonitorAvailable => MonitorInRange && !MonitorBroken;
 
     /// <summary>Requisitos para ligar e chegar ao sistema operacional (HD com o sistema gravado).</summary>
     public bool CanReachOperatingSystem => CanReachBios && Case.HddHasOperatingSystem;
@@ -262,7 +289,7 @@ public class ComputerPower : MonoBehaviour
     {
         get
         {
-            if (state == PcPowerState.Off) return PcScreen.Off;
+            if (state == PcPowerState.Off || MonitorBroken) return PcScreen.Off;
             if (!HasVideoSignal) return PcScreen.NoSignal;
             if (state == PcPowerState.OperatingSystem) return PcScreen.OperatingSystem;
             if (IsInstallingOperatingSystem) return PcScreen.Installing;
@@ -274,6 +301,7 @@ public class ComputerPower : MonoBehaviour
     private void OnDisable()
     {
         if (subscribed && pcCase != null) pcCase.ComponentsChanged -= Revalidate;
+        if (subscribed && caseCondition != null) caseCondition.BreakableChanged -= OnCaseCondition;
         subscribed = false;
     }
 
@@ -282,7 +310,24 @@ public class ComputerPower : MonoBehaviour
     {
         if (subscribed || pcCase == null) return;
         pcCase.ComponentsChanged += Revalidate;
+        caseCondition = GetComponent<BreakableEquipment>();
+        if (caseCondition != null) caseCondition.BreakableChanged += OnCaseCondition;
         subscribed = true;
+    }
+
+    // Gabinete quebrou: o Revalidate desliga (CanReachBios deixa de valer).
+    private void OnCaseCondition(IBreakable _) => Revalidate();
+
+    // Monitor quebrou: a tela dele apaga (Screen = Off).
+    private void OnMonitorCondition(IBreakable _) => CheckMonitorRange(force: true);
+
+    private void SetMonitorCondition(Transform screen)
+    {
+        BreakableEquipment next = screen != null ? screen.GetComponentInParent<BreakableEquipment>(true) : null;
+        if (next == monitorCondition) return;
+        if (monitorCondition != null) monitorCondition.BreakableChanged -= OnMonitorCondition;
+        monitorCondition = next;
+        if (monitorCondition != null) monitorCondition.BreakableChanged += OnMonitorCondition;
     }
 
     // ------------------------------------------------------------------ monitor associado
@@ -291,6 +336,7 @@ public class ComputerPower : MonoBehaviour
     public void AttachMonitor(Transform screen)
     {
         monitor = screen;
+        SetMonitorCondition(screen);
         CheckMonitorRange(force: true);
     }
 
@@ -299,6 +345,7 @@ public class ComputerPower : MonoBehaviour
     {
         if (monitor != screen) return;
         monitor = null;
+        SetMonitorCondition(null);
         CheckMonitorRange(force: true);
     }
 
@@ -319,7 +366,7 @@ public class ComputerPower : MonoBehaviour
     // O gabinete pode ser carregado: avisa a tela quando o monitor entra ou sai do alcance.
     private void CheckMonitorRange(bool force = false)
     {
-        bool near = MonitorInRange;
+        bool near = MonitorAvailable;
         if (!force && near == lastInRange) return;
         lastInRange = near;
         DisplayChanged?.Invoke();
@@ -665,6 +712,7 @@ public class ComputerPower : MonoBehaviour
     public List<string> MissingForBios()
     {
         var missing = new List<string>();
+        if (CaseBroken) missing.Add("gabinete em bom estado (este quebrou na queda)");
         if (!IsEndPlugged(PcLink.Power, true)) missing.Add("cabo de energia na tomada");
         if (!IsEndPlugged(PcLink.Power, false)) missing.Add("cabo de energia no gabinete");
         if (!IsEndPlugged(PcLink.MonitorPower, true)) missing.Add("cabo de energia do monitor na tomada");

@@ -174,6 +174,88 @@ public class InfracoesTests
     }
 
     [UnityTest]
+    public IEnumerator ItensDosMinigames_LargadosPeloJogador_Contam_OsQueJaComecaramNoChaoNao()
+    {
+        Set(monitor, "abandonDelay", 1f);
+        Supervisor();
+        var largados = new List<GameObject>();
+        foreach (string p in new[] { "Pickup_Ssd", "Pickup_RamSodimm", "Pickup_Toner", "Pickup_ResmaPapel", "Pickup_Alicate", "Pickup_CaboRede" })
+        {
+            GameObject g = Object.Instantiate(Prefab(p), Vector3.down * 5f, Quaternion.identity);
+            created.Add(g);
+            largados.Add(g);
+        }
+        // cabo de cenário: começa no chão (posição inicial da cena), nunca foi mexido pelo jogador
+        GameObject cenario = Object.Instantiate(Prefab("Pickup_CaboRede"), new Vector3(1.5f, 0.02f, 3f), Quaternion.identity);
+        created.Add(cenario);
+        // cabo posto pelo JOGO (ex.: crimpado com a mão ocupada, apoiado na caixa): também não é "largado"
+        GameObject doJogo = Object.Instantiate(Prefab("Pickup_CaboRede"), Vector3.down * 9f, Quaternion.identity);
+        created.Add(doJogo);
+        yield return null;
+        for (int i = 0; i < largados.Count; i++)
+            Call(largados[i].GetComponent(T("PickupInteractable")), "OnPlaced", new Vector3(-1.5f + i * 0.6f, 0f, 3.5f), 0f, null);
+        Call(doJogo.GetComponent(T("PickupInteractable")), "OnDropped", new Vector3(2.2f, 0f, 3f), 0f);
+        yield return Wait(2.2f);
+        Assert.AreEqual(largados.Count, Occ("ItemLeftOnFloor"), "peças do notebook, consumíveis da impressora, alicate e cabo largados");
+        Assert.AreEqual(largados.Count, Seen("ItemLeftOnFloor"), "o supervisor está olhando para lá");
+
+        // o cabo de cenário, depois de pego e largado pelo jogador, passa a contar
+        Call(cenario.GetComponent(T("PickupInteractable")), "OnPlaced", new Vector3(1.5f, 0f, 3f), 0f, null);
+        yield return Wait(1.6f);
+        Assert.AreEqual(largados.Count + 1, Occ("ItemLeftOnFloor"));
+    }
+
+    [UnityTest]
+    public IEnumerator PecasDoNotebook_QuebramNaPrimeiraQueda_ComOModeloQuebrado()
+    {
+        Supervisor();
+        GameObject ssd = Drop("Pickup_Ssd", new Vector3(-0.5f, 0f, 4f));
+        GameObject ram = Drop("Pickup_RamSodimm", new Vector3(0.5f, 0f, 4f));
+        yield return Wait(2f);
+        foreach (GameObject g in new[] { ssd, ram })
+        {
+            var peca = (IBreakable)g.GetComponent(T("NotebookPartItem"));
+            Assert.IsTrue(peca.IsBroken, g.name + ": frágil, quebra na 1ª queda (estado da lógica)");
+            Assert.IsTrue(g.transform.Find("Visual_Quebrado").gameObject.activeSelf, g.name + ": modelo quebrado");
+            Assert.IsFalse(g.transform.Find("Visual").gameObject.activeSelf);
+        }
+        Assert.AreEqual(2, Occ("ComponentBroken"), "as duas quebras viram infração");
+    }
+
+    [UnityTest]
+    public IEnumerator Equipamentos_GabineteRegistraAQueda_MonitorQuebraNaPrimeira()
+    {
+        Supervisor();
+        GameObject gabinete = Drop("Gabinete", new Vector3(-1f, 0f, 4f));
+        yield return Wait(2f);
+        Assert.AreEqual(1, Occ("ComponentDropped"), "gabinete: 1ª queda registrada, ainda funciona");
+        Assert.AreEqual(0, Occ("ComponentBroken"));
+        Assert.IsFalse(gabinete.GetComponent<BreakableEquipment>().IsBroken);
+
+        // monitor: BreakableEquipment + PartFallDamage (quebra na 1ª queda) com a camada de rachaduras
+        GameObject mon = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        created.Add(mon);
+        mon.transform.localScale = new Vector3(0.5f, 0.35f, 0.05f);
+        mon.AddComponent(T("PickupInteractable"));
+        var eq = mon.AddComponent<BreakableEquipment>();
+        eq.GetType().GetField("displayName", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(eq, "monitor");
+        var rachaduras = new GameObject("Visual_Quebrado");
+        rachaduras.transform.SetParent(mon.transform, false);
+        rachaduras.SetActive(false);
+        var dano = mon.AddComponent<PartFallDamage>();
+        Set(dano, "dropsToBreak", 1);
+        Set(dano, "brokenVisual", rachaduras);
+        mon.transform.position = new Vector3(1f, 1.2f, 4f);
+        Call(mon.GetComponent(T("PickupInteractable")), "OnReleased", new Vector3(1f, 3f, 4f), null, (Vector3?)new Vector3(1f, 1.2f, 4f));
+        yield return Wait(2f);
+        Assert.IsTrue(eq.IsBroken, "monitor quebra na 1ª queda");
+        Assert.IsTrue(rachaduras.activeSelf, "camada de rachaduras aparece por cima do modelo");
+        Assert.IsTrue(mon.GetComponent<Renderer>().enabled, "o modelo oficial continua (só ganha as rachaduras)");
+        Assert.AreEqual(1, Occ("ComponentBroken"));
+        Assert.AreEqual(1, Seen("ComponentBroken"));
+    }
+
+    [UnityTest]
     public IEnumerator Reacao_InterrompeARonda_OlhaEReprova_EDepoisRetoma()
     {
         GameObject floor = created[0];

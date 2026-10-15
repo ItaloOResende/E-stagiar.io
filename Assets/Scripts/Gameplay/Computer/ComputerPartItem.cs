@@ -9,7 +9,7 @@ public enum PartCondition { Intact, Damaged, Broken }
 /// Fica no ROOT LÓGICO do item, junto do PickupInteractable. Instalar a peça num gabinete guarda ESTE objeto
 /// dentro do <see cref="ComputerCase"/> (desativado, nunca destruído); retirá-la devolve o mesmo objeto à mão.
 /// </summary>
-public class ComputerPartItem : MonoBehaviour
+public class ComputerPartItem : MonoBehaviour, IBreakable
 {
     [Tooltip("Qual componente esta peça é (um só).")]
     [SerializeField] private PcComponent component = PcComponent.Ram;
@@ -35,6 +35,8 @@ public class ComputerPartItem : MonoBehaviour
     /// <summary>Igual a <see cref="ConditionChanged"/>, para QUALQUER peça (ex.: registro de infrações, sem precisar
     /// achar e assinar cada peça da cena, inclusive as criadas depois pelas gavetas).</summary>
     public static event Action<ComputerPartItem> AnyConditionChanged;
+    /// <summary>Mesmo aviso de <see cref="ConditionChanged"/>, pela interface comum (<see cref="IBreakable"/>).</summary>
+    public event Action<IBreakable> BreakableChanged;
 
     /// <summary>
     /// Registra uma queda. <paramref name="dropsToBreak"/> &gt; 0: quebra ao atingir esse número de quedas
@@ -44,8 +46,10 @@ public class ComputerPartItem : MonoBehaviour
     {
         if (IsBroken) return;
         DropCount++;
-        Condition = dropsToBreak > 0 && DropCount >= dropsToBreak ? PartCondition.Broken : PartCondition.Damaged;
+        Condition = Breakables.AfterDrop(DropCount, dropsToBreak);
         ConditionChanged?.Invoke(this);
+        BreakableChanged?.Invoke(this);
         AnyConditionChanged?.Invoke(this);
+        Breakables.Raise(this);
     }
 }

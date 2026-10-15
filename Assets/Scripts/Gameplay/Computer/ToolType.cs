@@ -7,6 +7,8 @@ public enum ToolType
     /// <summary>Mãos vazias ou item que não é ferramenta.</summary>
     None = 0,
     Screwdriver = 1,
+    /// <summary>Alicate de crimpar (RJ45): corta, descasca e crimpa o cabo de rede no minigame de crimpagem.</summary>
+    CrimpingTool = 2,
     /// <summary>Qualquer outra ferramenta (não serve para parafusos).</summary>
     Other = 99
 }

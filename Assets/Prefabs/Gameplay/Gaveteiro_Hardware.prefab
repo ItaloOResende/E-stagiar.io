@@ -517,6 +517,12 @@ MonoBehaviour:
     localPosition: {x: 0, y: -0.071, z: 0.09}
     localEuler: {x: 0, y: 0, z: 0}
     step: {x: 0, y: 0, z: 0}
+  - prefab: {fileID: 510554786042142268, guid: 337b9d917401be74ca8d9e4d6ad601ca, type: 3}
+    quantity: 1
+    delivery: 0
+    localPosition: {x: 0, y: -0.071, z: -0.07}
+    localEuler: {x: 0, y: 0, z: 0}
+    step: {x: 0, y: 0, z: 0}
   hideContentsWhenClosed: 1
   storageArea: {fileID: 4231710680133591554}
   onEmptied:

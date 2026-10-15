@@ -75,6 +75,10 @@ public class RedeCrimpScreen : MonoBehaviour
     [Tooltip("Prefab do cabo que aparece na mão do jogador quando a crimpagem dá certo (ex.: Pickup_CaboRede).")]
     [SerializeField] private GameObject caboPrefab;
 
+    [Tooltip("Cortar, descascar e crimpar pedem o alicate de crimpar na mão (item com ToolItem do tipo Crimping Tool), " +
+             "como os parafusos pedem a chave de fenda. Desligado = mãos livres bastam.")]
+    [SerializeField] private bool exigirAlicate = true;
+
     private Text msgTxt;
     private RectTransform faseCortar, faseDescascar, faseFileira;
     private RectTransform caboTela, capaCabo, faixaCabo, marcaCorte, fiosCabo, tabelaPainel, pontaMao, botaoCelular;
@@ -298,6 +302,7 @@ public class RedeCrimpScreen : MonoBehaviour
         // CORTAR não tem botão: o ponto certo é a faixa amarela que pulsa sobre o cabo.
         alvoCorte = Botao(faseCortar, "PontoCorte", "", Transparente, () =>
         {
+            if (!ConferirAlicate()) return;
             if (sessao.Cortar()) { InteractionSounds.Raise(InteractionSound.CableUnplugged); Mensagem("", TextoClaro); Atualizar(); }
         }, 16, new Vector2(0.5f, 0.5f), new Vector2(PontoCorteX, SaidaCaixaY), new Vector2(210f, 260f));
 
@@ -314,6 +319,7 @@ public class RedeCrimpScreen : MonoBehaviour
         // DESCASCAR também não tem botão: clica-se na "saliência" azul (acima da marca) e é UM puxão só.
         alvoCapa = Botao(faseDescascar, "PontoCapa", "", Transparente, () =>
         {
+            if (!ConferirAlicate()) return;
             if (sessao.Descascar()) { InteractionSounds.Raise(InteractionSound.CableUnplugged); Mensagem("", TextoClaro); Atualizar(); }
         }, 16, new Vector2(0.5f, 0.5f), new Vector2(0f, centroSali), new Vector2(LarguraCapa + 40f, TopoCapaInteira - BaseFios + 40f));
 
@@ -511,6 +517,7 @@ public class RedeCrimpScreen : MonoBehaviour
             return;
         }
 
+        if (!ConferirAlicate()) return;
         if (!sessao.EncaixarRj45()) return;
         Crimpar();
     }
@@ -570,8 +577,40 @@ public class RedeCrimpScreen : MonoBehaviour
 
         if (mao.Pick(item)) return;
 
+        // Mão ocupada (em geral pelo próprio alicate): o cabo pronto fica EM CIMA da caixa de cabo. Foi o jogo que o
+        // pôs ali (não o jogador), então continua "no lugar inicial" e não conta como item largado.
+        if (tela.Source != null && ColocarSobre(tela.Source, item)) return;
+
         Transform olhos = mao.HoldPoint != null && mao.HoldPoint.parent != null ? mao.HoldPoint.parent : null;
         if (olhos != null) item.OnReleased(olhos.position);
+    }
+
+    /// <summary>Apoia o item no topo do objeto da estação (sem mudar o <see cref="PickupInteractable.Placement"/>).</summary>
+    private static bool ColocarSobre(GameObject estacao, PickupInteractable item)
+    {
+        Renderer[] rs = estacao.GetComponentsInChildren<Renderer>();
+        if (rs.Length == 0) return false;
+        Bounds b = rs[0].bounds;
+        foreach (Renderer r in rs) b.Encapsulate(r.bounds);
+        item.OnDropped(new Vector3(b.center.x, b.max.y, b.center.z), estacao.transform.eulerAngles.y);
+        return true;
+    }
+
+    /// <summary>O jogador está com o alicate de crimpar na mão?</summary>
+    private bool TemAlicate()
+    {
+        UIScreen tela = GetComponent<UIScreen>();
+        ItemHolder mao = tela != null && tela.Interactor != null ? tela.Interactor.Holder : null;
+        ToolItem ferramenta = mao != null && mao.Current != null ? mao.Current.GetComponentInParent<ToolItem>() : null;
+        return ferramenta != null && ferramenta.Type == ToolType.CrimpingTool;
+    }
+
+    /// <summary>Cortar, descascar e crimpar só com o alicate na mão (se <see cref="exigirAlicate"/>); senão avisa.</summary>
+    private bool ConferirAlicate()
+    {
+        if (!exigirAlicate || TemAlicate()) return true;
+        Mensagem("Pegue o alicate de crimpar para trabalhar no cabo.", VermelhoErro);
+        return false;
     }
 
     private void Fechar()

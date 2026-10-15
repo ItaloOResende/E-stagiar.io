@@ -733,4 +733,90 @@ public class ComputerPowerTests
         Assert.AreEqual(PartSlotResult.Removed, pcCase.UsePartSlot(PcComponent.Hdd, null, false, out _));
         Assert.AreEqual(PartSlotResult.BrokenPart, pcCase.UsePartSlot(PcComponent.Hdd, blankHdd, true, out _), "HD quebrado não é instalado");
     }
+
+    // ---- equipamentos quebráveis (monitor, gabinete) -----------------------------------------------------------
+
+    [Test]
+    public void Equipment_FirstDropDamages_SecondBreaks_AndEveryChangeIsAnnouncedOnce()
+    {
+        var eq = new GameObject("Teclado").AddComponent<BreakableEquipment>();
+        created.Add(eq.gameObject);
+        int local = 0, global = 0;
+        eq.BreakableChanged += _ => local++;
+        System.Action<IBreakable> any = b => { if (ReferenceEquals(b, eq)) global++; };
+        Breakables.AnyConditionChanged += any;
+        try
+        {
+            eq.RegisterDrop(2);
+            Assert.AreEqual(PartCondition.Damaged, eq.Condition);
+            eq.RegisterDrop(2);
+            Assert.IsTrue(eq.IsBroken);
+            eq.RegisterDrop(2);
+            Assert.AreEqual(2, eq.DropCount, "quebrado não muda mais");
+            Assert.AreEqual(2, local);
+            Assert.AreEqual(2, global, "o registro de infrações ouve qualquer quebrável");
+
+            int parts = 0;
+            System.Action<IBreakable> anyPart = b => { if (ReferenceEquals(b, ram)) parts++; };
+            Breakables.AnyConditionChanged += anyPart;
+            ram.RegisterDrop(1);
+            Breakables.AnyConditionChanged -= anyPart;
+            Assert.AreEqual(1, parts, "peças do PC usam o mesmo aviso (uma vez por queda)");
+        }
+        finally { Breakables.AnyConditionChanged -= any; }
+    }
+
+    [Test]
+    public void BrokenCase_DoesNotTurnOn_AndTurnsOffIfItBreaksWhileOn()
+    {
+        var caseState = pc.AddComponent<BreakableEquipment>();
+        ReadyForBios();
+        Install(hdd);
+        Assert.AreEqual(PowerButtonResult.TurnedOn, power.PressPower());
+        caseState.RegisterDrop(1);
+        Assert.IsTrue(power.CaseBroken);
+        Assert.AreEqual(PcPowerState.Off, power.State, "gabinete quebrou ligado: desliga");
+        Assert.AreEqual(PowerButtonResult.MissingRequirements, power.PressPower(), "quebrado não liga mais");
+        Assert.AreEqual(1, power.MissingForBios().Count, "só falta um gabinete em bom estado");
+    }
+
+    [Test]
+    public void BrokenMonitor_StaysDark_ButThePcKeepsRunning()
+    {
+        var monitor = new GameObject("Monitor");
+        created.Add(monitor);
+        var monitorState = monitor.AddComponent<BreakableEquipment>();
+        var screen = new GameObject("Tela").transform;
+        screen.SetParent(monitor.transform, false);
+        power.AttachMonitor(screen);
+        ReadyForBios();
+        Install(hdd);
+        power.PressPower();
+        Assert.AreEqual(PcScreen.OperatingSystem, power.Screen);
+
+        int display = 0;
+        power.DisplayChanged += () => display++;
+        monitorState.RegisterDrop(1);
+        Assert.IsTrue(power.MonitorBroken);
+        Assert.AreEqual(PcScreen.Off, power.Screen, "monitor quebrado: tela apagada");
+        Assert.AreEqual(PcPowerState.OperatingSystem, power.State, "o PC continua ligado");
+        Assert.GreaterOrEqual(display, 1, "a tela 2D/3D é avisada");
+
+        Assert.IsFalse(power.MonitorAvailable, "quebrado não é mais alvo de manutenção");
+        Assert.AreEqual(PortResult.OutOfReach, power.UsePort(PcPort.MonitorPower, null, false, out _),
+            "as portas do monitor quebrado recusam (nem retirar cabo dele)");
+        Assert.IsTrue(power.CanReachPort(PcPort.CasePower), "as do gabinete continuam");
+
+        power.DetachMonitor(screen);
+        Assert.IsFalse(power.MonitorBroken, "sem monitor associado não há monitor quebrado");
+    }
+
+    [Test]
+    public void BrokenEquipment_BlocksItsMaintenanceScreen_WorkingOneDoesNot()
+    {
+        var eq = pc.AddComponent<BreakableEquipment>();
+        Assert.IsFalse(((IScreenBlocker)eq).BlocksScreen, "funcionando: a manutenção abre normalmente");
+        eq.RegisterDrop(1);
+        Assert.IsTrue(((IScreenBlocker)eq).BlocksScreen, "quebrado: a tela de manutenção não abre");
+    }
 }
