@@ -4,6 +4,16 @@ using UnityEngine;
 [RequireComponent(typeof(BoxCollider), typeof(Rigidbody), typeof(AudioSource))]
 public class ObstaclePuddle : MonoBehaviour
 {
+    [Header("Ciclo da poca")]
+    [Tooltip("Tempo aleatorio de espera enquanto a poca esta oculta.")]
+    [SerializeField, Range(0.1f, 60f)] private float minInactiveTime = 10f;
+    [SerializeField, Range(0.1f, 60f)] private float maxInactiveTime = 15f;
+    [Tooltip("Tempo aleatorio durante o qual a poca fica visivel e causa escorregao.")]
+    [SerializeField, Range(0.1f, 60f)] private float minActiveTime = 5f;
+    [SerializeField, Range(0.1f, 60f)] private float maxActiveTime = 10f;
+    [Tooltip("Opcional: objeto filho que contem apenas o visual da poca. Nao coloque o objeto deste script aqui. Se vazio, controla os Renderers deste objeto e dos filhos.")]
+    [SerializeField] private GameObject puddleVisual;
+
     [Header("Escorregao")]
     [SerializeField, Min(0.1f)] private float duration = 3f;
     [SerializeField, Min(0f)] private float slideSpeed = 7f;
@@ -19,6 +29,11 @@ public class ObstaclePuddle : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float volume = 1f;
 
     private AudioSource audioSource;
+    private BoxCollider puddleTrigger;
+    private Renderer[] visualRenderers;
+    private bool[] originalRendererStates;
+    private bool isPuddleActive;
+    private float timeRemaining;
 
     private void Reset()
     {
@@ -33,6 +48,66 @@ public class ObstaclePuddle : MonoBehaviour
         ConfigurePhysics();
         audioSource = GetComponent<AudioSource>();
         audioSource.playOnAwake = false;
+        puddleTrigger = GetComponent<BoxCollider>();
+
+        if (puddleVisual != null &&
+            (puddleVisual == gameObject || !puddleVisual.transform.IsChildOf(transform)))
+        {
+            Debug.LogWarning("ObstaclePuddle: Puddle Visual deve ser um objeto filho. Usando os Renderers da poca.", this);
+            puddleVisual = null;
+        }
+
+        visualRenderers = GetComponentsInChildren<Renderer>(true);
+        originalRendererStates = new bool[visualRenderers.Length];
+        for (int i = 0; i < visualRenderers.Length; i++)
+            originalRendererStates[i] = visualRenderers[i].enabled;
+    }
+
+    private void OnEnable()
+    {
+        SetPuddleActive(false);
+        timeRemaining = RandomTime(minInactiveTime, maxInactiveTime);
+    }
+
+    private void Update()
+    {
+        timeRemaining -= Time.deltaTime;
+        if (timeRemaining > 0f) return;
+
+        SetPuddleActive(!isPuddleActive);
+        timeRemaining = isPuddleActive
+            ? RandomTime(minActiveTime, maxActiveTime)
+            : RandomTime(minInactiveTime, maxInactiveTime);
+    }
+
+    private void OnDisable()
+    {
+        SetPuddleActive(false);
+    }
+
+    private static float RandomTime(float minimum, float maximum)
+    {
+        float low = Mathf.Max(0.1f, Mathf.Min(minimum, maximum));
+        float high = Mathf.Max(low, Mathf.Max(minimum, maximum));
+        return Random.Range(low, high);
+    }
+
+    private void SetPuddleActive(bool active)
+    {
+        isPuddleActive = active;
+        if (puddleTrigger != null) puddleTrigger.enabled = active;
+
+        // Keep the script's GameObject enabled so the timer can keep running.
+        if (puddleVisual != null)
+        {
+            puddleVisual.SetActive(active);
+        }
+        else if (visualRenderers != null)
+        {
+            for (int i = 0; i < visualRenderers.Length; i++)
+                if (visualRenderers[i] != null)
+                    visualRenderers[i].enabled = active && originalRendererStates[i];
+        }
     }
 
     private void ConfigurePhysics()
@@ -45,7 +120,7 @@ public class ObstaclePuddle : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (!isActiveAndEnabled) return;
+        if (!isActiveAndEnabled || !isPuddleActive) return;
         PlayerMovement player = other.GetComponentInParent<PlayerMovement>();
         if (player == null) return;
 

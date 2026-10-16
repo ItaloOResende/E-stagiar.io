@@ -72,3 +72,5 @@ MonoBehaviour:
   spritePlug: {fileID: 21300000, guid: d7cc4d0fa5b34cd1beac4434b8ae2ac3, type: 3}
   spriteFundo: {fileID: 21300000, guid: 0a166f1bf1e3b864ca22d1a4e23a9622, type: 3}
   veuDoFundo: 0.62
+  espessuraCabo: 26
+  ladoMacho: 82
