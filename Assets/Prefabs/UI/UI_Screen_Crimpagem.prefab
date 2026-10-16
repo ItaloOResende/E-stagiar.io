@@ -70,3 +70,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RedeCrimpScreen
   caboPrefab: {fileID: 7637889831506734561, guid: 54007f1ad99c84249a1be5cb1267f296, type: 3}
   exigirAlicate: 1
+  spriteFundo: {fileID: 21300000, guid: 0a166f1bf1e3b864ca22d1a4e23a9622, type: 3}
+  spriteCaixa: {fileID: 21300000, guid: 04727cc064d512f44a85c4be94ce53ab, type: 3}
+  spriteCapa: {fileID: 21300000, guid: 73048ce2ccd19d54fb5fbe999485cacb, type: 3}
+  spriteRj45: {fileID: 21300000, guid: acca54c5acf050d4d9e4b09c6c878159, type: 3}
+  spriteBotao: {fileID: 21300000, guid: 7031391d33e2e8c49b9e37d4ede23d5a, type: 3}
+  spriteBotaoApertado: {fileID: 21300000, guid: 5515f30457bfd384dbfb0e18e7b4d34a, type: 3}
+  spritePainel: {fileID: 21300000, guid: 9d55130e354e9ea49a05e3a5b5259c0c, type: 3}
+  veuDoFundo: 0.62
+  spriteAlicateAberto: {fileID: 21300000, guid: 01632ca016c9fe449bdda81b8979dc30, type: 3}
+  spriteAlicateFechado: {fileID: 21300000, guid: 9cf13508befbde14faf8257dce2c4950, type: 3}
+  alicatePonta: {x: 118, y: 96}
+  alicateAltura: 128
+  listrarFios: 1
+  somCorte: {fileID: 8300000, guid: 6bd9a89af65178f4a9083c8819a24b83, type: 3}
+  somDescascar: {fileID: 8300000, guid: f0cad834d3126c847b6da4c044cea2c0, type: 3}
+  somErro: {fileID: 8300000, guid: afa5cf30efd0c1f4cac63aa38ad02721, type: 3}

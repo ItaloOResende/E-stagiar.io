@@ -55,6 +55,31 @@ namespace EstagiarIo.Rede
             return Color.magenta;
         }
 
+        /// <summary>
+        /// Cor FORTE do par. Os fios "branco-X" são desenhados com a cor cheia do par + listras brancas, como num
+        /// cabo de verdade (e como no protótipo da cena MinigameTest): o branco-laranja sai laranja listrado de
+        /// branco, o branco-verde sai verde listrado, e assim por diante. Os fios cheios devolvem a própria cor.
+        /// </summary>
+        public static Color CorDaListra(RedeFio fio)
+        {
+            switch (fio)
+            {
+                case RedeFio.BrancoLaranja: return Cor(RedeFio.Laranja);
+                case RedeFio.BrancoVerde: return Cor(RedeFio.Verde);
+                case RedeFio.BrancoAzul: return Cor(RedeFio.Azul);
+                case RedeFio.BrancoMarrom: return Cor(RedeFio.Marrom);
+            }
+            return Cor(fio);
+        }
+
+        /// <summary>É um dos 4 fios listrados (branco com a cor do par)?</summary>
+        public static bool EhListrado(RedeFio fio) =>
+            fio == RedeFio.BrancoLaranja || fio == RedeFio.BrancoVerde ||
+            fio == RedeFio.BrancoAzul || fio == RedeFio.BrancoMarrom;
+
+        /// <summary>Cor do fio no desenho da tela: o listrado usa a cor cheia do par (as listras vão por cima).</summary>
+        public static Color CorDoDesenho(RedeFio fio) => EhListrado(fio) ? CorDaListra(fio) : Cor(fio);
+
         /// <summary>Nome falado do fio.</summary>
         public static string Nome(RedeFio fio)
         {

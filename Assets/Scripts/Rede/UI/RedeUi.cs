@@ -42,6 +42,30 @@ public static class RedeUi
         return (RectTransform)go.transform;
     }
 
+    /// <summary>
+    /// Mesmo retângulo, mas com uma ARTE (sprite) por cima. Sprite nulo = só o retângulo colorido, como antes.
+    /// A arte é esticada no tamanho do retângulo (sem preservar proporção), como o protótipo da cena MinigameTest.
+    /// </summary>
+    public static RectTransform Imagem(Transform pai, string nome, Color cor, Sprite sprite)
+    {
+        RectTransform rt = Imagem(pai, nome, cor);
+        if (sprite != null)
+        {
+            Image img = rt.GetComponent<Image>();
+            img.sprite = sprite;
+            img.preserveAspect = false;
+        }
+        return rt;
+    }
+
+    /// <summary>Retângulo filho que ocupa todo o pai, com uma arte (sprite) opcional.</summary>
+    public static RectTransform Cheio(Transform pai, string nome, Color cor, Sprite sprite)
+    {
+        RectTransform rt = Imagem(pai, nome, cor, sprite);
+        Esticar(rt);
+        return rt;
+    }
+
     public static Image ImagemSprite(Transform pai, string nome, Sprite sprite, Color cor)
     {
         var go = new GameObject(nome, typeof(RectTransform));
@@ -70,14 +94,23 @@ public static class RedeUi
         return t;
     }
 
-    /// <summary>Cria um botão com rótulo e devolve o RectTransform dele (use GetComponent&lt;Button&gt;() se precisar).</summary>
-    public static RectTransform Botao(Transform pai, string nome, string rotulo, Color fundo, UnityAction aoClicar, int tamanhoFonte = 26)
+    /// <summary>
+    /// Cria um botão com rótulo e devolve o RectTransform dele (use GetComponent&lt;Button&gt;() se precisar).
+    /// Com uma arte (sprite), o botão vira a própria arte (e o "apertado" pode ser outro sprite).
+    /// </summary>
+    public static RectTransform Botao(Transform pai, string nome, string rotulo, Color fundo, UnityAction aoClicar,
+        int tamanhoFonte = 26, Sprite sprite = null, Sprite spriteApertado = null)
     {
         var go = new GameObject(nome, typeof(RectTransform));
         go.transform.SetParent(pai, false);
         var img = go.AddComponent<Image>();
         img.color = fundo;
         img.raycastTarget = true;
+        if (sprite != null)
+        {
+            img.sprite = sprite;
+            img.color = Color.white;   // a arte já vem colorida: nada de tingir por cima
+        }
         var b = go.AddComponent<Button>();
         b.targetGraphic = img;
         var cores = b.colors;
@@ -86,6 +119,13 @@ public static class RedeUi
         cores.pressedColor = new Color(0.82f, 0.82f, 0.82f);
         cores.selectedColor = Color.white;
         b.colors = cores;
+        if (spriteApertado != null)
+        {
+            SpriteState estados = b.spriteState;
+            estados.highlightedSprite = spriteApertado;
+            estados.pressedSprite = spriteApertado;
+            b.spriteState = estados;
+        }
         if (aoClicar != null) b.onClick.AddListener(aoClicar);
 
         Text t = Texto(go.transform, "Texto", rotulo, tamanhoFonte, TextAnchor.MiddleCenter, Color.white);

@@ -22,10 +22,36 @@ public static class RedeMinigameSetup
     private const string SpriteTomada = "Assets/Art/UI/ui_render_ponto_rede.png";
     private const string SpritePlug = "Assets/Art/UI/ui_render_plugue_rj45.png";
 
+    // Os PREFABS das duas telas: como as cenas usam esses prefabs por instância, preencher as artes aqui vale
+    // para todas elas de uma vez (Office_Placeholder, Escritorio_Teste e Fase_01), sem mexer em cena nenhuma.
+    private const string PrefabCrimp = "Assets/Prefabs/UI/UI_Screen_Crimpagem.prefab";
+    private const string PrefabRack = "Assets/Prefabs/UI/UI_Screen_Rack.prefab";
+
+    // As artes e os sons do PROTÓTIPO da cena MinigameTest (o mesmo desenho que o RedeCrimpMinigame usava).
+    private const string ArteFundo = "Assets/Art/Textures/Sprites/bg1.png";
+    private const string ArteCaixa = "Assets/Art/Textures/Sprites/caixa.png";
+    private const string ArteCapa = "Assets/Art/Textures/Sprites/capa.png";
+    private const string ArteRj45 = "Assets/Art/Textures/Sprites/conector.png";
+    private const string ArteBotao = "Assets/Art/Textures/Sprites/uibotao.png";
+    private const string ArteBotaoApertado = "Assets/Art/Textures/Sprites/uibotao2.png";
+    private const string ArtePainel = "Assets/Art/Textures/Sprites/uilista.png";
+    private const string ArteAlicate = "Assets/Art/Textures/Sprites/alicate1.png";
+    private const string ArteAlicateFechado = "Assets/Art/Textures/Sprites/alicate2.png";
+    private const string SomCorte = "Assets/Art/Sounds/corte.mp3";
+    private const string SomDescascar = "Assets/Art/Sounds/bip.mp3";
+    private const string SomErro = "Assets/Art/Sounds/erro.mp3";
+
+    // Marca (por usuário) de que as artes já foram aplicadas nos prefabs, para não repetir a cada reload.
+    private const string VersaoArtes = "rede-artes-v1";
+    private const string ChaveArtes = "E-stagiar.io.Rede.ArtesAplicadas";
+
     [MenuItem("Tools/E-stagiar.io/Configurar minigame de rede")]
     public static void Run()
     {
         AssetDatabase.Refresh();
+
+        // As artes/efeitos/sons do protótipo entram pelo PREFAB das telas (vale para todas as cenas de uma vez).
+        AplicarArtesNosPrefabs();
 
         // Em batch (linha de comando) não existe diálogo: não pergunta nada e segue direto.
         if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
@@ -79,28 +105,174 @@ public static class RedeMinigameSetup
     }
 
     /// <summary>
-    /// Aponte as MESMAS artes da conexão de rede do PC na tela do rack: a tomada (ponto de rede) e o
-    /// plugue RJ45. Sem elas a tela ainda funciona, mas desenha tomada/plugue simples de reserva.
+    /// Aponta na crimpagem as MESMAS artes, efeitos e sons do protótipo da cena MinigameTest. Sem eles a tela
+    /// continua funcionando com o desenho e os sons de reserva (cada campo é opcional).
     /// </summary>
-    private static void LigarArtesNoRack(GameObject tela)
+    private static void LigarArtesDaCrimpagem(RedeCrimpScreen comp)
     {
-        var comp = tela.GetComponent<RedeRackScreen>();
         if (comp == null) return;
 
         var so = new SerializedObject(comp);
         bool mudou = false;
 
-        Sprite tomada = AssetDatabase.LoadAssetAtPath<Sprite>(SpriteTomada);
-        if (tomada == null)
-            Debug.LogWarning("RedeMinigameSetup: não achei '" + SpriteTomada + "' — a tomada ficará no desenho de reserva.");
-        else mudou |= Atribuir(so, "spriteTomada", tomada);
+        mudou |= Arte(so, "spriteFundo", ArteFundo);
+        mudou |= Arte(so, "spriteCaixa", ArteCaixa);
+        mudou |= Arte(so, "spriteCapa", ArteCapa);
+        mudou |= Arte(so, "spriteRj45", ArteRj45);
+        mudou |= Arte(so, "spriteBotao", ArteBotao);
+        mudou |= Arte(so, "spriteBotaoApertado", ArteBotaoApertado);
+        mudou |= Arte(so, "spritePainel", ArtePainel);
+        mudou |= Arte(so, "spriteAlicateAberto", ArteAlicate);
+        mudou |= Arte(so, "spriteAlicateFechado", ArteAlicateFechado);
 
-        Sprite plug = AssetDatabase.LoadAssetAtPath<Sprite>(SpritePlug);
-        if (plug == null)
-            Debug.LogWarning("RedeMinigameSetup: não achei '" + SpritePlug + "' — o plugue ficará no desenho de reserva.");
-        else mudou |= Atribuir(so, "spritePlug", plug);
+        mudou |= Som(so, "somCorte", SomCorte);
+        mudou |= Som(so, "somDescascar", SomDescascar);
+        mudou |= Som(so, "somErro", SomErro);
 
         if (mudou) so.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void LigarArtesNoRack(GameObject tela)
+    {
+        if (tela == null) return;
+        LigarArtesNoRack(tela.GetComponent<RedeRackScreen>());
+    }
+
+    /// <summary>
+    /// Aponte as MESMAS artes da conexão de rede do PC na tela do rack: a tomada (ponto de rede) e o
+    /// plugue RJ45. Sem elas a tela ainda funciona, mas desenha tomada/plugue simples de reserva.
+    /// O fundo é o mesmo da crimpagem (bg1), para as duas telas do minigame combinarem.
+    /// </summary>
+    private static void LigarArtesNoRack(RedeRackScreen comp)
+    {
+        if (comp == null) return;
+
+        var so = new SerializedObject(comp);
+        bool mudou = false;
+
+        mudou |= Arte(so, "spriteTomada", SpriteTomada);
+        mudou |= Arte(so, "spritePlug", SpritePlug);
+        mudou |= Arte(so, "spriteFundo", ArteFundo);
+
+        if (mudou) so.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    /// <summary>Preenche um campo de sprite da tela (avisa no Console se a arte não existir no projeto).</summary>
+    private static bool Arte(SerializedObject so, string campo, string caminho)
+    {
+        var arte = AssetDatabase.LoadAssetAtPath<Sprite>(caminho);
+        if (arte == null)
+        {
+            Debug.LogWarning("RedeMinigameSetup: não achei a arte '" + caminho + "' — '" + campo + "' fica no desenho de reserva.");
+            return false;
+        }
+        return Atribuir(so, campo, arte);
+    }
+
+    /// <summary>Preenche um campo de som da tela (avisa no Console se o som não existir no projeto).</summary>
+    private static bool Som(SerializedObject so, string campo, string caminho)
+    {
+        var clipe = AssetDatabase.LoadAssetAtPath<AudioClip>(caminho);
+        if (clipe == null)
+        {
+            Debug.LogWarning("RedeMinigameSetup: não achei o som '" + caminho + "' — '" + campo + "' fica no som genérico.");
+            return false;
+        }
+        return Atribuir(so, campo, clipe);
+    }
+
+    // ------------------------------------------------------------------ artes do protótipo nos prefabs
+
+    /// <summary>
+    /// Aponta as artes/efeitos/sons do protótipo nos PREFABS das duas telas. Como as cenas usam esses prefabs por
+    /// instância, isto vale de uma vez para a Office_Placeholder, a Escritorio_Teste e a Fase_01, sem tocar em
+    /// nenhuma cena. Devolve quantos prefabs foram preenchidos (0 a 2).
+    /// </summary>
+    public static int AplicarArtesNosPrefabs()
+    {
+        int ok = 0;
+        if (AplicarArtesNoPrefab(PrefabCrimp)) ok++;
+        if (AplicarArtesNoPrefab(PrefabRack)) ok++;
+        if (ok > 0) AssetDatabase.SaveAssets();
+        return ok;
+    }
+
+    private static bool AplicarArtesNoPrefab(string caminho)
+    {
+        if (AssetDatabase.LoadAssetAtPath<GameObject>(caminho) == null)
+        {
+            Debug.LogWarning("RedeMinigameSetup: não achei o prefab '" + caminho + "'.");
+            return false;
+        }
+
+        // Não mexer num prefab que está aberto para edição (Prefab Mode): o Unity não gosta de salvar por baixo.
+        PrefabStage aberto = PrefabStageUtility.GetCurrentPrefabStage();
+        if (aberto != null && aberto.prefabAssetPath == caminho)
+        {
+            Debug.LogWarning("RedeMinigameSetup: o prefab '" + caminho + "' está aberto no modo Prefab — " +
+                             "feche essa aba e rode Tools > E-stagiar.io > Rede: aplicar as artes do protótipo.");
+            return false;
+        }
+
+        GameObject raiz = PrefabUtility.LoadPrefabContents(caminho);
+        try
+        {
+            var crimp = raiz.GetComponent<RedeCrimpScreen>();
+            var rack = raiz.GetComponent<RedeRackScreen>();
+            if (crimp == null && rack == null)
+            {
+                Debug.LogWarning("RedeMinigameSetup: o prefab '" + caminho + "' não tem as telas de rede — não mexi nele.");
+                return false;
+            }
+
+            LigarArtesDaCrimpagem(crimp);
+            LigarArtesNoRack(rack);
+            PrefabUtility.SaveAsPrefabAsset(raiz, caminho);
+            return true;
+        }
+        finally
+        {
+            PrefabUtility.UnloadPrefabContents(raiz);
+        }
+    }
+
+    [MenuItem("Tools/E-stagiar.io/Rede: aplicar as artes do protótipo")]
+    public static void AplicarArtesPeloMenu()
+    {
+        AssetDatabase.Refresh();
+        int n = AplicarArtesNosPrefabs();
+        EditorPrefs.SetString(ChaveArtes, VersaoArtes);
+        Debug.Log($"RedeMinigameSetup: artes do protótipo aplicadas em {n} de 2 prefab(s) de tela.");
+    }
+
+    /// <summary>
+    /// Ao abrir o editor (depois de compilar), aplica as artes do protótipo UMA vez nos prefabs das telas: assim o
+    /// minigame já abre com a arte do MinigameTest sem precisar rodar menu nenhum. Se não der certo, NÃO marca como
+    /// feito (tenta de novo no próximo reload) e o menu acima continua disponível para rodar à mão.
+    /// </summary>
+    [InitializeOnLoadMethod]
+    private static void AplicarArtesAoAbrirOEditor()
+    {
+        if (Application.isBatchMode) return;
+        if (EditorPrefs.GetString(ChaveArtes, string.Empty) == VersaoArtes) return;
+
+        EditorApplication.delayCall += () =>
+        {
+            if (EditorPrefs.GetString(ChaveArtes, string.Empty) == VersaoArtes) return;
+            // Em Play não se mexe em asset (fica para o próximo reload, ou para o menu).
+            if (EditorApplication.isPlayingOrWillChangePlaymode) return;
+            try
+            {
+                if (AplicarArtesNosPrefabs() == 2) EditorPrefs.SetString(ChaveArtes, VersaoArtes);
+                else Debug.LogWarning("RedeMinigameSetup: nem todos os prefabs das telas receberam as artes do " +
+                                      "protótipo. Rode Tools > E-stagiar.io > Rede: aplicar as artes do protótipo.");
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("RedeMinigameSetup: não deu para aplicar as artes do protótipo automaticamente (" +
+                                 e.Message + "). Rode Tools > E-stagiar.io > Rede: aplicar as artes do protótipo.");
+            }
+        };
     }
 
     private static bool Atribuir(SerializedObject so, string campo, UnityEngine.Object valor)

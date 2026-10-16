@@ -68,5 +68,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1ab7dbacd45504844b1804e5c5bb5eac, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RedeRackScreen
-  spriteTomada: {fileID: 0}
-  spritePlug: {fileID: 0}
+  spriteTomada: {fileID: 21300000, guid: 8c51ac7930e542a18fd9cee6771debb2, type: 3}
+  spritePlug: {fileID: 21300000, guid: d7cc4d0fa5b34cd1beac4434b8ae2ac3, type: 3}
+  spriteFundo: {fileID: 21300000, guid: 0a166f1bf1e3b864ca22d1a4e23a9622, type: 3}
+  veuDoFundo: 0.62

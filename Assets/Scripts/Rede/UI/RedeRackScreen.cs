@@ -35,6 +35,18 @@ public class RedeRackScreen : MonoBehaviour
     [SerializeField] private Sprite spriteTomada;
     [Tooltip("Plugue RJ45: Assets/Art/UI/ui_render_plugue_rj45.png")]
     [SerializeField] private Sprite spritePlug;
+    [Tooltip("Fundo da tela, o mesmo da crimpagem: Assets/Art/Textures/Sprites/bg1.png")]
+    [SerializeField] private Sprite spriteFundo;
+    [Tooltip("O quanto o fundo (bg1) é escurecido para os textos claros ficarem legíveis. 0 = arte pura, 1 = quase preto.")]
+    [Range(0f, 1f)] [SerializeField] private float veuDoFundo = 0.62f;
+
+    [Header("Grossuras (pixels da referência)")]
+    [Tooltip("Espessura do cabo de rede desenhado no rack. O 'macho' (plugue) fica com ~3x esta grossura, como um " +
+             "RJ45 de verdade em relação ao cabo.")]
+    [SerializeField] private float espessuraCabo = 26f;
+    [Tooltip("Lado do retângulo do plugue RJ45 (a arte mantém a proporção dentro dele). Ficava com 1,3x a tomada " +
+             "e parecia um plugue gigante; ~0,9x a tomada fica do tamanho de um conector.")]
+    [SerializeField] private float ladoMacho = 82f;
 
     // Geometria (pixels da referência 1920x1080; coordenadas LOCAIS do canvas, centro = 0).
     private const float EspacamentoPorta = 220f;
@@ -45,7 +57,6 @@ public class RedeRackScreen : MonoBehaviour
     private const float PatchY = 175f;            // centro do patch panel (em cima)
     private const float SwitchY = -215f;          // centro do switch (embaixo)
     private const float BarrigaCabo = 78f;        // quanto o cabo ligado "sai" para o lado
-    private const float EspessuraCabo = 10f;
     private const float BordaDeBaixo = -640f;     // por onde o cabo entra na tela (abaixo do canvas)
 
     private bool construido;
@@ -108,8 +119,11 @@ public class RedeRackScreen : MonoBehaviour
 
         RedeUi.Esticar((RectTransform)transform);
 
-        // UMA região só, de ponta a ponta do canvas.
-        bancada = RedeUi.Cheio(transform, "Painel", CorPainel);
+        // UMA região só, de ponta a ponta do canvas. Com a arte do protótipo (bg1) ela é o fundo da tela e leva
+        // por cima o mesmo véu escuro da crimpagem, para os textos e as tomadas continuarem legíveis.
+        bancada = RedeUi.Cheio(transform, "Painel", CorPainel, spriteFundo);
+        if (spriteFundo != null)
+            RedeUi.Cheio(bancada, "Veu", new Color(0.035f, 0.05f, 0.075f, Mathf.Clamp01(veuDoFundo)));
 
         // Mesmo botão de fechar da tela do PC (quadrado escuro com "X").
         RedeUi.BotaoFechar(bancada, Fechar);
@@ -241,11 +255,13 @@ public class RedeRackScreen : MonoBehaviour
 
         if (spritePlug == null)
         {
-            Caixa(img.transform, "Corpo", new Color(0.80f, 0.86f, 0.93f), Vector2.zero, new Vector2(TomadaLado * 1.25f, TomadaLado * 0.8f));
-            Caixa(img.transform, "Lingua", new Color(0.60f, 0.66f, 0.74f), new Vector2(0f, TomadaLado * 0.5f), new Vector2(TomadaLado * 0.55f, TomadaLado * 0.22f));
+            Caixa(img.transform, "Corpo", new Color(0.80f, 0.86f, 0.93f), Vector2.zero, new Vector2(ladoMacho, ladoMacho * 0.82f));
+            Caixa(img.transform, "Lingua", new Color(0.60f, 0.66f, 0.74f), new Vector2(0f, ladoMacho * 0.34f), new Vector2(ladoMacho * 0.45f, ladoMacho * 0.18f));
         }
 
-        RedeUi.Ancorar(img.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(TomadaLado * 1.3f, TomadaLado * 1.5f), new Vector2(0.5f, 0.5f));
+        // O "macho" fica com a grossura de um conector: um quadrado do lado <see cref="ladoMacho"/> — a arte
+        // (deitada) mantém a proporção dentro dele e o desenho sai do tamanho de um plugue de cabo de rede.
+        RedeUi.Ancorar(img.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(ladoMacho, ladoMacho), new Vector2(0.5f, 0.5f));
         img.enabled = false;
         return img;
     }
@@ -256,7 +272,7 @@ public class RedeRackScreen : MonoBehaviour
         go.transform.SetParent(cabos, false);
         RedeUi.Esticar((RectTransform)go.transform);
         var curva = go.AddComponent<UICableCurve>();
-        curva.Thickness = EspessuraCabo;
+        curva.Thickness = espessuraCabo;
         curva.color = AzulCabo;
         curva.raycastTarget = false;
         go.SetActive(false);
