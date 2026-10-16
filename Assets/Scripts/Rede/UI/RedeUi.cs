@@ -10,6 +10,46 @@ public static class RedeUi
 {
     private static Font fonte;
 
+    /// <summary>
+    /// Largura do aparelho fechado do jogador (o celular), em pixels da referência 1920 x 1080.
+    /// Ele fica ancorado no canto inferior direito, a <see cref="CelularMargem"/> das bordas.
+    /// </summary>
+    public const float CelularLargura = 96f;
+
+    /// <summary>Altura do aparelho fechado do jogador (veja <see cref="TicketTabletPrototype"/>).</summary>
+    public const float CelularAltura = 150f;
+
+    /// <summary>Distância do celular até as bordas direita e de baixo.</summary>
+    public const float CelularMargem = 16f;
+
+    /// <summary>Respiro entre a seta "►" e a lateral esquerda do celular.</summary>
+    public const float FolgaDoCelular = 20f;
+
+    /// <summary>
+    /// Distância da borda DIREITA em que a seta "►" fica: o celular ocupa os 112 px do canto inferior direito
+    /// (16 de margem + 96 do aparelho), então a seta vai para a ESQUERDA dele. É o mesmo valor gravado no
+    /// RectTransform do BotaoAvancar do prefab <c>UI_Screen_Gabinete</c> — se um mudar, mude o outro.
+    /// </summary>
+    public const float BordaSetaProxima = CelularMargem + CelularLargura + FolgaDoCelular;   // 132
+
+    /// <summary>
+    /// Setas de navegação das telas de vista (◄ ►), no padrão do canvas do PC (UI_Screen_Gabinete): os cantos de
+    /// baixo, 110 x 90. A "►" nasce À ESQUERDA do celular do jogador para ele não cobrir o botão.
+    /// </summary>
+    public static void Setas(Transform pai, UnityAction aoVoltar, UnityAction aoAvancar)
+    {
+        var cor = new Color(0.22f, 0.25f, 0.3f, 0.95f);
+
+        RectTransform anterior = Botao(pai, "Anterior", "\u25C4", cor, aoVoltar, 40);
+        Ancorar(anterior, new Vector2(0f, 0f), new Vector2(110f, 90f), new Vector2(0f, 0f));
+        anterior.anchoredPosition = new Vector2(24f, 24f);
+
+        // O canto inferior direito é do celular: a seta "►" fica na lateral esquerda dele.
+        RectTransform proxima = Botao(pai, "Proxima", "\u25BA", cor, aoAvancar, 40);
+        Ancorar(proxima, new Vector2(1f, 0f), new Vector2(110f, 90f), new Vector2(1f, 0f));
+        proxima.anchoredPosition = new Vector2(-BordaSetaProxima, 24f);
+    }
+
     public static Font Fonte
     {
         get

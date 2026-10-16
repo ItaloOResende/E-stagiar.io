@@ -36,6 +36,23 @@ public class UIScreenManager : MonoBehaviour
     public UIScreen Current => current;
     public bool IsOpen => current != null;
 
+    /// <summary>Gerenciador ativo da cena. O celular usa para saber se há tela 2D aberta e para pegar a mãozinha.</summary>
+    public static UIScreenManager Active { get; private set; }
+
+    /// <summary>Mãozinha configurada para as telas 2D (a MESMA que o celular usa em cima do aparelho aberto).</summary>
+    public Texture2D CursorMao => defaultCursor;
+    /// <summary>Ponta da mãozinha, em pixels da textura (origem no canto superior esquerdo).</summary>
+    public Vector2 CursorMaoPonta => defaultCursorHotspot;
+    /// <summary>Altura da mãozinha, em pixels da tela.</summary>
+    public int CursorMaoAltura => defaultCursorHeight;
+
+    private void OnEnable() => Active = this;
+
+    private void OnDisable()
+    {
+        if (Active == this) Active = null;
+    }
+
     /// <summary>
     /// Verdadeiro com tela aberta e também no frame em que ela fechou: o clique que fechou a tela
     /// (ex.: botão Fechar) não pode virar um clique 3D no mesmo frame.

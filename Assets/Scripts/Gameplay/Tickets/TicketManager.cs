@@ -27,6 +27,13 @@ public class TicketManager : MonoBehaviour
     [Tooltip("Na fase 1 o proximo chamado e imediato quando o anterior acaba.")]
     [SerializeField] private bool instantNextTicketOnFirstStage = true;
 
+    [Header("Tempo de cada chamado")]
+    [Tooltip("Tempo (s) que o jogador tem para resolver CADA chamado, contado desde a chegada dele. " +
+             "A barra de cada chamado na lista do celular mostra esse tempo descendo.")]
+    [Min(5f)] [SerializeField] private float ticketTimeSeconds = TicketInstance.DefaultSecondsToResolve;
+    [Tooltip("Desligado (padrao): o tempo corre desde a CHEGADA. Ligado: so comeca quando o atendimento e iniciado.")]
+    [SerializeField] private bool clockStartsWhenAttendanceBegins;
+
     public event Action<TicketInstance> TicketCreated;
     public event Action<TicketInstance> TicketChanged;
     public event Action<TicketInstance> TicketFinished;
@@ -43,7 +50,7 @@ public class TicketManager : MonoBehaviour
     public IReadOnlyList<TicketInstance> Tickets => tickets;
     public int StageNumber => stageNumber;
     public bool Running => running;
-    public int OpenCount => tickets.FindAll(t => t.Status != TicketStatus.Completed).Count;
+    public int OpenCount => tickets.FindAll(t => !t.IsClosed).Count;
     public float RemainingStageTime => remainingStageTime;
     public float SecondsUntilNextArrival => running && stageNumber >= 2 && arrivalClockStarted
         ? Mathf.Max(0f, nextArrivalAt - Time.time) : -1f;
@@ -75,10 +82,52 @@ public class TicketManager : MonoBehaviour
 
     private void Update()
     {
+        TickTickets(); // O relogio de cada chamado corre independente da geracao de novos chamados.
+
         if (!CanGenerate() || stageNumber < 2 || !arrivalClockStarted) return;
         if (Time.time < nextArrivalAt || OpenCount >= maximumOpenTickets) return;
         if (CreateTicket()) ScheduleNextArrival(Time.time);
         else ScheduleNextArrival(Time.time); // Evita logs de erro a cada frame se catalogo estiver vazio.
+    }
+
+    /// <summary>
+    /// O relogio de CADA chamado (nao e o da fase): desce sozinho e, quando acaba, o chamado e perdido
+    /// (<see cref="TicketStatus.Expired"/>) e a vaga abre para o proximo.
+    /// </summary>
+    private void TickTickets()
+    {
+        if (!running) return;
+        float dt = Time.deltaTime;
+        for (int i = tickets.Count - 1; i >= 0; i--)
+        {
+            TicketInstance ticket = tickets[i];
+            if (ticket.IsClosed) continue;
+            if (clockStartsWhenAttendanceBegins && ticket.Status != TicketStatus.InProgress) continue;
+
+            ticket.SecondsLeft = Mathf.Max(0f, ticket.SecondsLeft - dt);
+            if (ticket.SecondsLeft > 0f) continue;
+
+            ticket.Status = TicketStatus.Expired;
+            TicketChanged?.Invoke(ticket);
+            Debug.Log($"Chamado #{ticket.Number} perdido: o tempo de {ticket.SecondsToResolve:0}s acabou.", this);
+            OnTicketClosed();
+        }
+    }
+
+    /// <summary>Um chamado saiu da fila (resolvido ou perdido): trata a chegada do proximo.</summary>
+    private void OnTicketClosed()
+    {
+        if (!CanGenerate()) return;
+        if (stageNumber == 1 && OpenCount == 0)
+        {
+            if (instantNextTicketOnFirstStage) CreateTicket();
+            else Invoke(nameof(CreateSequentialTicket), firstPhaseRestSeconds);
+        }
+        else if (stageNumber >= 2 && OpenCount == 0)
+        {
+            // Jogador foi mais rapido que a estimativa: nao o deixa ocioso.
+            if (CreateTicket()) ScheduleNextArrival(Time.time);
+        }
     }
 
     private void ScheduleNextArrival(float now)
@@ -102,7 +151,7 @@ public class TicketManager : MonoBehaviour
             Debug.LogWarning("TicketManager: cadastre pelo menos um Ticket Definition valido no Catalog (ou Tutorial Ticket).", this);
             return false;
         }
-        var ticket = new TicketInstance(nextTicketNumber++, selected);
+        var ticket = new TicketInstance(nextTicketNumber++, selected, ticketTimeSeconds);
         tickets.Add(ticket);
         previousDefinition = selected;
         TicketCreated?.Invoke(ticket);
@@ -143,19 +192,7 @@ public class TicketManager : MonoBehaviour
             ticket.Status = TicketStatus.Completed;
             TicketFinished?.Invoke(ticket);
             TicketChanged?.Invoke(ticket);
-            if (CanGenerate())
-            {
-                if (stageNumber == 1 && OpenCount == 0)
-                {
-                    if (instantNextTicketOnFirstStage) CreateTicket();
-                    else Invoke(nameof(CreateSequentialTicket), firstPhaseRestSeconds);
-                }
-                else if (stageNumber >= 2 && OpenCount == 0)
-                {
-                    // Jogador foi mais rapido que a estimativa: nao o deixa ocioso.
-                    if (CreateTicket()) ScheduleNextArrival(Time.time);
-                }
-            }
+            OnTicketClosed();
         }
         return true;
     }

@@ -192,14 +192,8 @@ public class NotebookTela : MonoBehaviour
         ConstruirFrente(vistas[(int)NotebookVista.Frente]);
 
         // Setas IGUAIS às do canvas do PC (UI_Screen_Gabinete): os cantos de baixo, sem título de vista e sem
-        // dica escrita — a própria tela mostra o que fazer.
-        RectTransform anterior = RedeUi.Botao(painel, "Anterior", "\u25C4", new Color(0.22f, 0.25f, 0.3f, 0.95f), () => TrocarVista(-1), 40);
-        RedeUi.Ancorar(anterior, new Vector2(0f, 0f), new Vector2(110f, 90f), new Vector2(0f, 0f));
-        anterior.anchoredPosition = new Vector2(24f, 24f);
-
-        RectTransform proxima = RedeUi.Botao(painel, "Proxima", "\u25BA", new Color(0.22f, 0.25f, 0.3f, 0.95f), () => TrocarVista(1), 40);
-        RedeUi.Ancorar(proxima, new Vector2(1f, 0f), new Vector2(110f, 90f), new Vector2(1f, 0f));
-        proxima.anchoredPosition = new Vector2(-24f, 24f);
+        // dica escrita — a própria tela mostra o que fazer. A "►" fica à ESQUERDA do celular (RedeUi.Setas).
+        RedeUi.Setas(painel, () => TrocarVista(-1), () => TrocarVista(1));
 
         msgTxt = RedeUi.Texto(painel, "Mensagem", "", 26, TextAnchor.MiddleCenter, TextoFraco);
         RedeUi.Ancorar((RectTransform)msgTxt.transform, new Vector2(0.5f, 0.5f), new Vector2(1300f, 40f), new Vector2(0.5f, 0.5f));
@@ -467,6 +461,7 @@ public class NotebookTela : MonoBehaviour
                     else Mensagem("Parafuso " + (indice + 1) + " de volta no lugar.", TextoFraco);
                     break;
                 case NotebookParafusoResultado.FerramentaErrada:
+                    InteractionSounds.Raise(InteractionSound.Error);   // ferramenta errada: som de erro
                     Mensagem("Precisa de uma chave de fenda na mão.", Vermelho);
                     Recusar(indice);
                     break;
@@ -491,6 +486,7 @@ public class NotebookTela : MonoBehaviour
                 else Mensagem("Parafuso " + (indice + 1) + " removido.", TextoFraco);
                 break;
             case NotebookParafusoResultado.FerramentaErrada:
+                InteractionSounds.Raise(InteractionSound.Error);   // ferramenta errada: som de erro
                 Mensagem("Precisa de uma chave de fenda na mão.", Vermelho);
                 Recusar(indice);
                 break;
@@ -531,6 +527,7 @@ public class NotebookTela : MonoBehaviour
                     : "Ponha um SSD na mão e clique no encaixe.", Amarelo);
                 break;
             case NotebookEncaixeResultado.PecaErrada:
+                InteractionSounds.Raise(InteractionSound.Error);   // peça no encaixe errado
                 Mensagem("Essa peça não encaixa aqui.", Vermelho);
                 break;
             case NotebookEncaixeResultado.MaoCheia:
@@ -571,6 +568,7 @@ public class NotebookTela : MonoBehaviour
                 Mensagem("Ponha um pendrive na mão e clique na porta USB.", Amarelo);
                 break;
             case NotebookUsbResultado.ItemErrado:
+                InteractionSounds.Raise(InteractionSound.Error);   // item errado na porta USB
                 Mensagem("Só um pendrive entra nessa porta.", Vermelho);
                 break;
             case NotebookUsbResultado.MaoCheia:

@@ -301,4 +301,21 @@ public class RedeLogicTests
         for (int p = 1; p <= 3; p++) { r.EscolherSwitch(p); r.EscolherPatch(p); Assert.IsTrue(r.Confirmar()); }
         Assert.IsTrue(r.Completo);
     }
+
+    [Test]
+    public void Rack_desliga_a_porta_e_deixa_ligar_de_novo()
+    {
+        var r = new RedeRackSession(6);
+        r.EscolherSwitch(3); r.EscolherPatch(3); Assert.IsTrue(r.Confirmar());
+
+        Assert.IsTrue(r.Desligar(3));
+        Assert.IsFalse(r.PortaLigada(3));
+        Assert.AreEqual(0, r.TotalLigado);
+
+        // Ligada de novo: dá pra colocar e tirar quantas vezes quiser.
+        r.EscolherSwitch(3); r.EscolherPatch(3); Assert.IsTrue(r.Confirmar());
+        Assert.IsTrue(r.PortaLigada(3));
+        Assert.IsTrue(r.Desligar(3));
+        Assert.IsFalse(r.Desligar(3));   // já estava sem cabo
+    }
 }

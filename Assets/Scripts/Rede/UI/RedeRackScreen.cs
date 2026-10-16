@@ -11,8 +11,9 @@ using UnityEngine.UI;
 /// <para>
 /// O cabo é SÓ o que o jogador traz na mão — não existe cabo infinito. Com um cabo de rede crimpado na mão,
 /// ele aparece na tela seguindo o mouse; clicar numa tomada encaixa a primeira ponta (o cabo SAI da mão);
-/// clicar na tomada de MESMO número do outro lado liga o par e o cabo é GASTO; clicar de novo na mesma
-/// tomada tira o cabo e ele VOLTA pra mão do jogador. Sem cabo na mão, não dá pra encaixar em nada.
+/// clicar na tomada de MESMO número do outro lado liga o par; clicar de novo na mesma tomada (ou em qualquer
+/// tomada já ligada) tira o cabo, que VOLTA pra mão do jogador — dá pra colocar e tirar quantas vezes quiser.
+/// Sem cabo na mão, não dá pra encaixar em nada.
 /// </para>
 /// Monta a própria interface por código (as artes vêm do setup) e usa o estado de <see cref="RedeGame"/>.
 /// </summary>
@@ -304,6 +305,7 @@ public class RedeRackScreen : MonoBehaviour
     /// Clique numa tomada, com o cabo na mão: encaixa a ponta ali. Já com uma ponta encaixada: a tomada de
     /// mesmo número do outro lado liga o par; a mesma tomada solta o cabo; outra tomada do mesmo lado muda a
     /// ponta de lugar; tomada de número diferente do outro lado avisa que os números precisam bater.
+    /// Tomada JÁ LIGADA: o clique tira o cabo dela (veja <see cref="Desligar"/>).
     /// </summary>
     private void ClicarPorta(bool ehPatch, int porta)
     {
@@ -312,7 +314,10 @@ public class RedeRackScreen : MonoBehaviour
 
         if (sessao.PortaLigada(porta))
         {
-            Erro(ehPatch, porta);      // essa tomada já está ligada
+            // Tomada já ligada: o clique TIRA o cabo (ele volta pra mão) — dá pra colocar e tirar quantas vezes quiser.
+            // Com uma ponta na mão (meio caminho de outra ligação) o clique não vale: primeiro termine/desfaça aquela.
+            if (pontaPorta == 0) Desligar(porta, ehPatch);
+            else Erro(ehPatch, porta);
             return;
         }
 
@@ -364,7 +369,8 @@ public class RedeRackScreen : MonoBehaviour
         Erro(ehPatch, porta);
     }
 
-    /// <summary>Encaixa a outra ponta: se os números batem, a porta fica ligada e o cabo é GASTO (acabou).</summary>
+    /// <summary>Encaixa a outra ponta: se os números batem, a porta fica ligada e o cabo fica guardado com ela
+    /// (o jogador pode tirá-lo depois e ligar de novo — veja <see cref="Desligar"/>).</summary>
     private void FecharLigacao(bool ehPatch, int porta)
     {
         Escolher(ehPatch, porta);
@@ -373,14 +379,45 @@ public class RedeRackScreen : MonoBehaviour
         if (ok)
         {
             InteractionSounds.Raise(InteractionSound.CablePlugged);   // par ligado: a outra ponta encaixou
-            RedeGame.Garantir().RegistrarParLigado(porta);
-            pontaItem = null;        // o cabo ficou no rack (gasto)
+            RedeGame jogo = RedeGame.Garantir();
+            jogo.RegistrarParLigado(porta);
+            // O cabo NÃO é gasto: fica guardado com a porta (o jogador pode tirá-lo depois e ligar de novo).
+            jogo.GuardarCaboLigado(porta, pontaItem);
+            pontaItem = null;
             pontaPorta = 0;
             pontaEhPatch = false;
-            temCabo = false;         // e a mão voltou a ficar vazia: precisa de outro cabo
+            temCabo = false;         // e a mão ficou vazia: o cabo está no rack
         }
         else Erro(ehPatch, porta);
 
+        Atualizar();
+    }
+
+    /// <summary>
+    /// Tira o cabo de uma tomada já ligada: o par desliga e o cabo VOLTA pra mão do jogador, que pode encaixar de
+    /// novo (na mesma tomada ou em outra), quantas vezes quiser. Sem cabo físico guardado (ligação feita sem mão,
+    /// ex.: sem jogador) a tomada simplesmente fica livre. Mão ocupada = o clique não vale: o cabo nunca some.
+    /// </summary>
+    private void Desligar(int porta, bool ehPatch)
+    {
+        RedeGame jogo = RedeGame.Garantir();
+        PickupInteractable cabo = jogo.RetirarCaboLigado(porta);
+
+        if (cabo != null)
+        {
+            ItemHolder mao = Mao();
+            if (mao == null || !mao.Retrieve(cabo.gameObject))
+            {
+                jogo.GuardarCaboLigado(porta, cabo);   // não deu pra devolver: o cabo continua onde estava
+                Erro(ehPatch, porta);
+                return;
+            }
+        }
+
+        sessao.Desligar(porta);
+        jogo.RemoverParLigado(porta);
+        temCabo = CaboNaMao() != null;   // o cabo voltou pra mão: já dá pra encaixar de novo
+        InteractionSounds.Raise(InteractionSound.CableUnplugged);
         Atualizar();
     }
 
@@ -427,6 +464,7 @@ public class RedeRackScreen : MonoBehaviour
     /// <summary>Aviso SEM texto: a tomada clicada pisca vermelha quando o clique não vale.</summary>
     private void Erro(bool ehPatch, int porta)
     {
+        InteractionSounds.Raise(InteractionSound.Error);   // clique que não vale: som de erro (o vermelho é o visual)
         int i = porta - 1;
         if (i < 0 || i >= numPortas) return;
         if (ehPatch) flashPatch[i] = 0.5f;

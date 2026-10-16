@@ -32,9 +32,6 @@ public static class RedeMinigameSetup
     private const string ArteCaixa = "Assets/Art/Textures/Sprites/caixa.png";
     private const string ArteCapa = "Assets/Art/Textures/Sprites/capa.png";
     private const string ArteRj45 = "Assets/Art/Textures/Sprites/conector.png";
-    private const string ArteBotao = "Assets/Art/Textures/Sprites/uibotao.png";
-    private const string ArteBotaoApertado = "Assets/Art/Textures/Sprites/uibotao2.png";
-    private const string ArtePainel = "Assets/Art/Textures/Sprites/uilista.png";
     private const string ArteAlicate = "Assets/Art/Textures/Sprites/alicate1.png";
     private const string ArteAlicateFechado = "Assets/Art/Textures/Sprites/alicate2.png";
     private const string SomCorte = "Assets/Art/Sounds/corte.mp3";
@@ -119,9 +116,6 @@ public static class RedeMinigameSetup
         mudou |= Arte(so, "spriteCaixa", ArteCaixa);
         mudou |= Arte(so, "spriteCapa", ArteCapa);
         mudou |= Arte(so, "spriteRj45", ArteRj45);
-        mudou |= Arte(so, "spriteBotao", ArteBotao);
-        mudou |= Arte(so, "spriteBotaoApertado", ArteBotaoApertado);
-        mudou |= Arte(so, "spritePainel", ArtePainel);
         mudou |= Arte(so, "spriteAlicateAberto", ArteAlicate);
         mudou |= Arte(so, "spriteAlicateFechado", ArteAlicateFechado);
 

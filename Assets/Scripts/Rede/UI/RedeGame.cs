@@ -19,6 +19,12 @@ public class RedeGame : MonoBehaviour
     public int CabosDisponiveis => cabosCrimpados;
     public readonly HashSet<int> ParesLigados = new HashSet<int>();
 
+    /// <summary>
+    /// O cabo físico que ficou ligado em cada porta do rack. Fica AQUI (e não na tela) porque o jogador pode fechar
+    /// e reabrir a tela: o cabo continua sendo dele, então ele pode tirá-lo de qualquer porta e ligar de novo.
+    /// </summary>
+    public readonly Dictionary<int, PickupInteractable> CabosLigados = new Dictionary<int, PickupInteractable>();
+
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -51,10 +57,35 @@ public class RedeGame : MonoBehaviour
         return ParesLigados.Add(porta);
     }
 
+    /// <summary>Tira a porta da lista de ligadas (o jogador tirou o cabo): ela volta a aceitar cabo.</summary>
+    public bool RemoverParLigado(int porta)
+    {
+        if (porta < 1 || porta > portasDoRack) return false;
+        return ParesLigados.Remove(porta);
+    }
+
+    /// <summary>Guarda o cabo que ficou ligado numa porta, para poder devolvê-lo à mão se o jogador desligar.</summary>
+    public void GuardarCaboLigado(int porta, PickupInteractable cabo)
+    {
+        if (porta < 1 || porta > portasDoRack) return;
+        if (cabo == null) CabosLigados.Remove(porta);
+        else CabosLigados[porta] = cabo;
+    }
+
+    /// <summary>Pega (e esquece) o cabo que estava ligado numa porta. Null se não havia cabo físico ali.</summary>
+    public PickupInteractable RetirarCaboLigado(int porta)
+    {
+        if (porta < 1 || porta > portasDoRack) return null;
+        if (!CabosLigados.TryGetValue(porta, out PickupInteractable cabo)) return null;
+        CabosLigados.Remove(porta);
+        return cabo;
+    }
+
     /// <summary>Zera tudo (botão de "reiniciar" no Editor/Console ou debug).</summary>
     public void Reiniciar()
     {
         cabosCrimpados = 0;
         ParesLigados.Clear();
+        CabosLigados.Clear();
     }
 }

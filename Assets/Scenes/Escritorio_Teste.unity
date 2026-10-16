@@ -3550,7 +3550,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TicketTabletPrototype
   ticketManager: {fileID: 1238468672}
   stageController: {fileID: 1238468671}
-  toggleKey: 34
+  toggleKey: 17
   interactionDetector: {fileID: 1638108197}
   disableWhileTabletOpen:
   - {fileID: 1638108196}
@@ -4086,6 +4086,11 @@ MonoBehaviour:
     clips:
     - {fileID: 8300000, guid: b722b24ff7bdf644792a868d3bfc7cc3, type: 3}
     volume: 0.55
+    pitchVariation: 0.05
+  - sound: 18
+    clips:
+    - {fileID: 8300000, guid: afa5cf30efd0c1f4cac63aa38ad02721, type: 3}
+    volume: 0.45
     pitchVariation: 0.05
   uiSource: {fileID: 1392670273}
   worldSourceTemplate: {fileID: 0}

@@ -284,8 +284,8 @@ public static class Fase01Setup
 
     // --------------------------------------------------------------------- chamados / cronômetro da fase
     /// <summary>
-    /// O grupo funcional traz o objeto <c>Chamados</c> completo (TicketManager + StageController + tablet [T]), mas o
-    /// <c>StageTimerHUD</c> — a barra de tempo no topo da tela — nunca foi colocado em cena nenhuma. Sem ele o
+    /// O grupo funcional traz o objeto <c>Chamados</c> completo (TicketManager + StageController + celular [C]), mas o
+    /// <c>StageTimerHUD</c> — o relógio da fase no canto superior direito da tela — nunca foi colocado em cena nenhuma. Sem ele o
     /// cronômetro de 15 minutos roda invisível. Aqui o HUD é criado uma vez no próprio <c>Chamados</c> e ligado ao
     /// StageController e ao TicketManager; as referências que já estiverem preenchidas não são tocadas.
     /// Devolve <c>true</c> quando mexeu em alguma coisa.

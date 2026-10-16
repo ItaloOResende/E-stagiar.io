@@ -22,8 +22,6 @@ public class RedeCrimpScreen : MonoBehaviour
     private static readonly Color CorPainel = new Color(0.09f, 0.11f, 0.14f, 1f);
     private static readonly Color AzulCapa = new Color(0.16f, 0.42f, 0.86f, 1f);
     private static readonly Color TextoClaro = new Color(0.92f, 0.94f, 0.97f);
-    private static readonly Color TextoFraco = new Color(0.66f, 0.71f, 0.78f);
-    private static readonly Color VermelhoErro = new Color(0.85f, 0.30f, 0.28f);
     private static readonly Color Transparente = new Color(1f, 1f, 1f, 0f);
 
     // Geometria do cabo (pixels da referência 1920x1080; coordenadas LOCAIS do container do cabo, centro = 0).
@@ -78,8 +76,6 @@ public class RedeCrimpScreen : MonoBehaviour
 
     private bool construido;
     private int origemColuna = -1;
-    // O padrão de cores (T568B) começa ESCONDIDO: o jogador o abre no "celular" do canto inferior direito.
-    private bool mostrarTabela;
 
     [Tooltip("Prefab do cabo que aparece na mão do jogador quando a crimpagem dá certo (ex.: Pickup_CaboRede).")]
     [SerializeField] private GameObject caboPrefab;
@@ -97,12 +93,6 @@ public class RedeCrimpScreen : MonoBehaviour
     [SerializeField] private Sprite spriteCapa;
     [Tooltip("Conector RJ45 (etapa de ordenar): Assets/Art/Textures/Sprites/conector.png")]
     [SerializeField] private Sprite spriteRj45;
-    [Tooltip("Botão do celular: Assets/Art/Textures/Sprites/uibotao.png")]
-    [SerializeField] private Sprite spriteBotao;
-    [Tooltip("Botão do celular apertado: Assets/Art/Textures/Sprites/uibotao2.png")]
-    [SerializeField] private Sprite spriteBotaoApertado;
-    [Tooltip("Painel claro do celular (tabela T568B): Assets/Art/Textures/Sprites/uilista.png")]
-    [SerializeField] private Sprite spritePainel;
     [Tooltip("O quanto o fundo (bg1) é escurecido para os textos claros ficarem legíveis. 0 = arte pura, 1 = quase preto.")]
     [Range(0f, 1f)] [SerializeField] private float veuDoFundo = 0.62f;
 
@@ -134,7 +124,7 @@ public class RedeCrimpScreen : MonoBehaviour
 
     private Text msgTxt;
     private RectTransform faseCortar, faseDescascar, faseFileira;
-    private RectTransform caboTela, capaCabo, faixaCabo, marcaCorte, fiosCabo, tabelaPainel, pontaMao, botaoCelular;
+    private RectTransform caboTela, capaCabo, faixaCabo, marcaCorte, fiosCabo, pontaMao;
     private RectTransform alvoCorte, alvoCapa;
     private RectTransform caixaCortar, rjVazio;
     // Centro (y) do desenho do RJ45: o PÉ fica em PeDoMacho e o resto sobe. Calculado em ConstruirRjVazio.
@@ -149,6 +139,7 @@ public class RedeCrimpScreen : MonoBehaviour
     private Canvas canvasTela;
     private AudioSource somUi;
     private Image alicateImg;
+    private AvisoRodape aviso;
 
     // Efeitos do protótipo: alicate seguindo o mouse (etapa de cortar) e a "batida" de entrada de cada etapa.
     private float alicateFechando;
@@ -169,8 +160,15 @@ public class RedeCrimpScreen : MonoBehaviour
 
     private void Awake() => Construir();
 
+    /// <summary>
+    /// Uma tela do minigame de rede está aberta agora? É o que o celular do jogador (<see cref="TicketTabletPrototype"/>)
+    /// lê para mostrar (só aqui) o app com o padrão de cores T568B.
+    /// </summary>
+    public static bool Aberta { get; private set; }
+
     private void OnEnable()
     {
+        Aberta = true;
         etapaAnterior = (RedeCrimpEtapa)(-1);   // cada abertura entra com a "batida" da primeira etapa
         cursorSobControle = false;
         if (alicateImg != null) alicateImg.gameObject.SetActive(false);
@@ -183,6 +181,7 @@ public class RedeCrimpScreen : MonoBehaviour
     /// </summary>
     private void OnDisable()
     {
+        Aberta = false;
         PararAnimacao(true);
         RestaurarCursor();
     }
@@ -191,7 +190,6 @@ public class RedeCrimpScreen : MonoBehaviour
     {
         sessao.Reset();
         EmbaralharFios();
-        mostrarTabela = false;   // o celular (padrão de cores) sempre começa fechado
         Mensagem("", TextoClaro);
         Atualizar();
     }
@@ -271,14 +269,6 @@ public class RedeCrimpScreen : MonoBehaviour
             banda.offsetMin = Vector2.zero;
             banda.offsetMax = Vector2.zero;
         }
-    }
-
-    private static Text Texto(RectTransform pai, string nome, string valor, int tam, TextAnchor alinhamento, Color cor, Vector2 ancora, Vector2 pos, Vector2 size)
-    {
-        Text t = RedeUi.Texto(pai, nome, valor, tam, alinhamento, cor);
-        RedeUi.Ancorar((RectTransform)t.transform, ancora, size, ancora);
-        ((RectTransform)t.transform).anchoredPosition = pos;
-        return t;
     }
 
     private static RectTransform Botao(RectTransform pai, string nome, string rotulo, Color cor, UnityEngine.Events.UnityAction acao, int tam, Vector2 ancora, Vector2 pos, Vector2 size,
@@ -526,74 +516,13 @@ public class RedeCrimpScreen : MonoBehaviour
         ((RectTransform)sinalCapaImg.transform).anchoredPosition = new Vector2(0f, (BaseFios + TopoCapaInteira) * 0.5f);
     }
 
-    private void ConstruirFileira()
-    {
-        ConstruirTabela();
-
-        // A ordem dos fios é SORTEADA a cada abertura da tela — não existe botão de "soltar tudo de novo".
-        // O celular do canto inferior direito é a única ajuda: abre a tabela do padrão de cores.
-        ConstruirCelular();
-    }
-
-    /// <summary>Botão do celular (canto inferior direito, sem texto): abre a tabela do padrão T568B.</summary>
-    private void ConstruirCelular()
-    {
-        botaoCelular = Botao(faseFileira, "BotaoCelular", "", new Color(0.22f, 0.25f, 0.3f, 0.95f),
-            () => { InteractionSounds.Raise(InteractionSound.DrawerOpened); mostrarTabela = true; Atualizar(); }, 22,
-            new Vector2(1f, 0f), new Vector2(-16f, 16f), new Vector2(96f, 150f), spriteBotao, spriteBotaoApertado);
-
-        // Desenho do aparelho: corpo escuro, a "tela" e o alto-falante (nada de texto).
-        RectTransform tela = RedeUi.Imagem(botaoCelular, "TelaCelular", new Color(0.13f, 0.16f, 0.21f));
-        RedeUi.Ancorar(tela, new Vector2(0.5f, 0.5f), new Vector2(78f, 122f), new Vector2(0.5f, 0.5f));
-        tela.anchoredPosition = new Vector2(0f, -5f);
-
-        RectTransform altoFalante = RedeUi.Imagem(botaoCelular, "AltoFalante", new Color(0.55f, 0.6f, 0.68f));
-        RedeUi.Ancorar(altoFalante, new Vector2(0.5f, 1f), new Vector2(34f, 7f), new Vector2(0.5f, 1f));
-        altoFalante.anchoredPosition = new Vector2(0f, -12f);
-    }
-
     /// <summary>
-    /// O celular com a ordem e as cores do RJ45 (1 a 8). Ele abre NO MESMO LUGAR do botão (mesmo canto e mesmo
-    /// pivô, só maior): cobre o botão e, clicado de novo (em qualquer ponto), fecha e o botão volta a aparecer.
-    /// Com a arte do protótipo (uilista.png) ele fica claro, como a tabela impressa — e aí o texto fica escuro.
+    /// A ordem dos fios é SORTEADA a cada abertura da tela — não existe botão de "soltar tudo de novo".
+    /// A ajuda do padrão de cores não é mais um botão aqui dentro: virou o app CORES do celular do jogador
+    /// (canto inferior direito da tela, tecla C), que só aparece enquanto esta tela está aberta.
+    /// Veja <see cref="TicketTabletPrototype"/> e <see cref="Aberta"/>.
     /// </summary>
-    private void ConstruirTabela()
-    {
-        bool claro = spritePainel != null;
-        Color corpo = claro ? new Color(0.90f, 0.92f, 0.95f, 0.99f) : new Color(0.10f, 0.12f, 0.16f, 0.98f);
-        Color texto = claro ? new Color(0.13f, 0.16f, 0.21f) : TextoClaro;
-        Color textoFraco = claro ? new Color(0.42f, 0.47f, 0.55f) : TextoFraco;
-
-        tabelaPainel = Botao(faseFileira, "Celular", "", corpo,
-            () => { InteractionSounds.Raise(InteractionSound.DrawerClosed); mostrarTabela = false; Atualizar(); }, 22,
-            new Vector2(1f, 0f), new Vector2(-16f, 16f), new Vector2(430f, 640f), spritePainel);
-
-        // O conteúdo fica no MESMO retângulo de antes: sem arte, ele é a "tela" escura por dentro; com a arte
-        // clara, ele é invisível (só segura o lugar) e o painel do protótipo aparece como fundo da tabela.
-        RectTransform tela = RedeUi.Imagem(tabelaPainel, "Tela", claro ? Color.clear : new Color(0.13f, 0.15f, 0.20f));
-        RedeUi.Esticar(tela, 16f);
-
-        Texto(tela, "Titulo", "PADR\u00C3O T568B", 26, TextAnchor.MiddleCenter, texto,
-            new Vector2(0.5f, 1f), new Vector2(0f, -26f), new Vector2(360f, 36f));
-
-        for (int i = 0; i < 8; i++)
-        {
-            RedeFio fio = RedeCores.OrdemT568B[i];
-            float y = -78f - i * 58f;
-
-            Texto(tela, "Numero" + i, (i + 1).ToString(), 26, TextAnchor.MiddleLeft, textoFraco,
-                new Vector2(0f, 1f), new Vector2(18f, y), new Vector2(40f, 40f));
-
-            // A amostra mostra o MESMO desenho do fio na bancada (cor cheia + listras brancas nos "branco-X").
-            RectTransform amostra = RedeUi.Imagem(tela, "Amostra" + i, RedeCores.CorDoDesenho(fio));
-            RedeUi.Ancorar(amostra, new Vector2(0f, 1f), new Vector2(46f, 30f), new Vector2(0f, 1f));
-            amostra.anchoredPosition = new Vector2(58f, y - 4f);
-            if (listrarFios && RedeCores.EhListrado(fio)) Listrar(amostra, 3, BrancoListra);
-
-            Texto(tela, "Nome" + i, RedeCores.Nome(fio), 22, TextAnchor.MiddleLeft, texto,
-                new Vector2(0f, 1f), new Vector2(116f, y), new Vector2(260f, 40f));
-        }
-    }
+    private void ConstruirFileira() { }
 
     // ================================================================== ordenar: pegar e encaixar o fio
 
@@ -615,7 +544,6 @@ public class RedeCrimpScreen : MonoBehaviour
             {
                 origemColuna = i;
                 InteractionSounds.Raise(InteractionSound.ItemPickedUp);
-                Mensagem("Fio na mão — clique na posição onde ele deve ficar.", TextoClaro);
             }
         }
         else
@@ -724,8 +652,7 @@ public class RedeCrimpScreen : MonoBehaviour
 
         if (!sessao.TodasPreenchidas)
         {
-            TocarSe(somErro);
-            Mensagem("Coloque os 8 fios na fileira antes de encaixar o RJ45.", VermelhoErro);
+            TocarSe(somErro);   // sem texto: o som de erro já diz que o clique não valeu
             return;
         }
 
@@ -752,11 +679,11 @@ public class RedeCrimpScreen : MonoBehaviour
 
         if (resultado == RedeCrimpResultado.OrdemErrada)
         {
-            // Errou a ordem: o cabo é descartado e volta a descascar (o estado já voltou para Descascar).
+            // Errou a ordem: o cabo é descartado e volta a descascar (o estado já voltou para Descascar). O aviso é
+            // curto e no rodapé: quantos fios estavam fora não interessa ao jogador.
             TocarSe(somErro);
             EmbaralharFios();
-            Mensagem("Ordem errada (" + sessao.FiosErradosNaUltimaCrimpagem +
-                     " fio(s) fora de lugar)! O cabo foi descartado — descasque outro e monte de novo.", VermelhoErro);
+            Aviso("Ordem errada");
         }
 
         Atualizar();
@@ -820,8 +747,19 @@ public class RedeCrimpScreen : MonoBehaviour
     private bool ConferirAlicate()
     {
         if (!exigirAlicate || TemAlicate()) return true;
-        Mensagem("Pegue o alicate de crimpar para trabalhar no cabo.", VermelhoErro);
+        TocarSe(somErro);
+        Aviso("Falta ferramenta", spriteAlicateAberto);   // o desenho do alicate que ele precisa pegar
         return false;
+    }
+
+    /// <summary>
+    /// Aviso curto no rodapé (<see cref="AvisoRodape"/>): o próprio jogo diz o que impediu a ação, sem caixa de
+    /// diálogo. <paramref name="icone"/> é o desenho da ferramenta que falta, quando é o caso.
+    /// </summary>
+    private void Aviso(string texto, Sprite icone = null)
+    {
+        if (aviso == null) aviso = gameObject.AddComponent<AvisoRodape>();
+        aviso.Mostrar(texto, icone);
     }
 
     private void Fechar()
@@ -846,10 +784,6 @@ public class RedeCrimpScreen : MonoBehaviour
         faseCortar.gameObject.SetActive(sessao.Etapa == RedeCrimpEtapa.Cortar);
         faseDescascar.gameObject.SetActive(sessao.Etapa == RedeCrimpEtapa.Descascar);
         faseFileira.gameObject.SetActive(descascado);
-
-        // O celular fica no lugar do botão: aberto, ele cobre o botão; fechado, só o botão aparece.
-        tabelaPainel.gameObject.SetActive(mostrarTabela);
-        botaoCelular.gameObject.SetActive(!mostrarTabela);
 
         if (faseDoCabo)
         {
@@ -980,7 +914,10 @@ public class RedeCrimpScreen : MonoBehaviour
         if (alicateFechando > 0f) alicateFechando = Mathf.Max(0f, alicateFechando - Time.unscaledDeltaTime);
 
         bool etapaDoAlicate = sessao.Etapa == RedeCrimpEtapa.Cortar || sessao.Etapa == RedeCrimpEtapa.Descascar;
-        bool mostrar = alicateImg != null && etapaDoAlicate
+        // Em cima do celular (aberto ou fechado) quem manda no ponteiro é a mãozinha (TicketTabletPrototype): o
+        // alicate sai da frente para não aparecer junto com ela nem ficar desenhado por baixo do aparelho. Fora do
+        // celular o alicate é o cursor, como sempre.
+        bool mostrar = alicateImg != null && etapaDoAlicate && !TicketTabletPrototype.PonteiroSobreOAparelho
                     && Application.isFocused && (!exigirAlicate || TemAlicate());
         if (mostrar && !alicateImg.gameObject.activeSelf) alicateImg.gameObject.SetActive(true);
         if (!mostrar)

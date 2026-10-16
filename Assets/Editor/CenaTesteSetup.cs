@@ -14,7 +14,7 @@ using UnityEngine;
 ///  - Cena <c>Escritorio_Teste.unity</c>: cópia da <c>Office_Placeholder</c> só com o escritório de teste (sai o
 ///    escritório novo do Matheus e a UI de crimpagem dele, que continuam na Office_Placeholder), jogador de volta ao
 ///    escritório de teste, Estacao_1 = esquerda funcional, Estacao_2 = direita com problema, e os chamados da Fernanda
-///    ligados (objeto <c>Chamados</c>: TicketManager + StageController + tablet [T]; ponte "abrir gabinete" no PC com
+///    ligados (objeto <c>Chamados</c>: TicketManager + StageController + celular [C]; ponte "abrir gabinete" no PC com
 ///    problema).
 /// Prefabs: sempre regravados. Cena: criada só se não existir (não sobrescreve trabalho feito nela).
 /// Não mexe na Office_Placeholder, em shader nem nas configurações do projeto.

@@ -6459,7 +6459,7 @@ Transform:
   m_GameObject: {fileID: 1171177457}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.22, y: -0.19, z: 0.55}
+  m_LocalPosition: {x: 0.44, y: -0.19, z: 0.55}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -6802,9 +6802,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::StageTimerHUD
   stageController: {fileID: 1238468671}
   ticketManager: {fileID: 1238468672}
-  width: 410
-  barHeight: 16
-  topMargin: 12
 --- !u!114 &1238468670
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6819,7 +6816,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TicketTabletPrototype
   ticketManager: {fileID: 1238468672}
   stageController: {fileID: 1238468671}
-  toggleKey: 34
+  toggleKey: 17
   interactionDetector: {fileID: 1638108197}
   disableWhileTabletOpen:
   - {fileID: 1638108196}
@@ -7579,6 +7576,11 @@ MonoBehaviour:
     clips:
     - {fileID: 8300000, guid: b722b24ff7bdf644792a868d3bfc7cc3, type: 3}
     volume: 0.55
+    pitchVariation: 0.05
+  - sound: 18
+    clips:
+    - {fileID: 8300000, guid: afa5cf30efd0c1f4cac63aa38ad02721, type: 3}
+    volume: 0.45
     pitchVariation: 0.05
   uiSource: {fileID: 1392670273}
   worldSourceTemplate: {fileID: 0}
@@ -10384,6 +10386,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 9009184486882563329, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1802587127}
+    - targetCorrespondingSourceObject: {fileID: 9009184486882563329, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1938675309}
   m_SourcePrefab: {fileID: 100100000, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
 --- !u!4 &1802587125 stripped
 Transform:
@@ -10411,6 +10416,24 @@ MonoBehaviour:
   ticketManager: {fileID: 1238468672}
   ticketId: pc-nao-liga
   stepId: abrir-gabinete
+--- !u!114 &1938675309
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1802587126}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 466a72d1d0d52de4a9f2e99123bc0d43, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ComputerPowerTicketBridge
+  computerPower: {fileID: 0}
+  ticketManager: {fileID: 1238468672}
+  ticketId: pc-nao-liga
+  requireFinalState: 1
+  requiredFinalState: 31
+  verifyIntervalSeconds: 0.25
 --- !u!1 &1817185385
 GameObject:
   m_ObjectHideFlags: 0
@@ -12257,7 +12280,7 @@ Transform:
   m_GameObject: {fileID: 2128157880}
   serializedVersion: 2
   m_LocalRotation: {x: -0.22875486, y: -0.17937422, z: -0.012553781, w: 0.9567332}
-  m_LocalPosition: {x: 0.31476247, y: -0.33290312, z: 0.2872361}
+  m_LocalPosition: {x: 0.53476247, y: -0.33290312, z: 0.2872361}
   m_LocalScale: {x: 0.52497625, y: 0.52497625, z: 0.52497625}
   m_ConstrainProportionsScale: 0
   m_Children:

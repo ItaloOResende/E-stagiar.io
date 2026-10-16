@@ -25,7 +25,12 @@ public enum InteractionSound
     ItemDropped,
     ItemStoredInDrawer,
     /// <summary>O supervisor presenciou uma infração (alerta curto, sem posição: o jogador ouve mesmo de costas).</summary>
-    SupervisorAlert
+    SupervisorAlert,
+    /// <summary>
+    /// Ação recusada — peça no encaixe errado, cabo na porta errada, ferramenta errada na mão, ordem errada.
+    /// Som curto de "isso não dá", só para avisar que o clique não valeu.
+    /// </summary>
+    Error
 }
 
 /// <summary>

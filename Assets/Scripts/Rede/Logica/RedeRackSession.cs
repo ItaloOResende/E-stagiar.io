@@ -63,6 +63,12 @@ namespace EstagiarIo.Rede
 
         public bool PortaLigada(int porta) => ParesLigados.Contains(porta);
 
+        /// <summary>
+        /// Tira o cabo de uma porta já ligada: a porta volta a aceitar cabo e o jogador pode ligar de novo,
+        /// quantas vezes quiser. Retorna true se havia cabo ali.
+        /// </summary>
+        public bool Desligar(int porta) => ParesLigados.Remove(porta);
+
         public int TotalLigado => ParesLigados.Count;
 
         public bool Completo => ParesLigados.Count >= NumPortas;

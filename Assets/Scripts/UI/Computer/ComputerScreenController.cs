@@ -503,6 +503,9 @@ public class ComputerScreenController : MonoBehaviour
         if (result == PortResult.OutOfReach) { RefreshHardware(); return; }   // interface antiga: esconde o que está longe
         if (result == PortResult.PluggedFromHand || result == PortResult.PluggedOtherEnd) InteractionSounds.Raise(InteractionSound.CablePlugged);
         else if (result == PortResult.Unplugged || result == PortResult.CableReturned) InteractionSounds.Raise(InteractionSound.CableUnplugged);
+        else if (result == PortResult.WrongCable || result == PortResult.NeedsCable
+              || result == PortResult.HandsFull || result == PortResult.Invalid)
+            InteractionSounds.Raise(InteractionSound.Error);   // cabo errado / clique que não vale: som de erro
         // segue a ponta solta (cabo recém-ligado por uma ponta ou que acabou de soltar uma); tomada: o cabo que estava nela
         if (result == PortResult.PluggedFromHand || result == PortResult.Unplugged) carriedLink = boundPower.LastChangedLink;
         RefreshHardware(); // o UsePort já atualizou a tela; de novo, agora sabendo qual cabo segue o mouse
@@ -520,6 +523,9 @@ public class ComputerScreenController : MonoBehaviour
         PortResult result = boundPower.UseUsbPort(index, pendrive, held != null, out GameObject back);
         if (result == PortResult.PluggedFromHand) InteractionSounds.Raise(InteractionSound.PendrivePlugged);
         else if (result == PortResult.CableReturned) InteractionSounds.Raise(InteractionSound.PendriveUnplugged);
+        else if (result == PortResult.WrongCable || result == PortResult.NeedsCable
+              || result == PortResult.HandsFull || result == PortResult.Invalid)
+            InteractionSounds.Raise(InteractionSound.Error);   // não é pendrive / clique que não vale
         if (result == PortResult.PluggedFromHand) holder.Stow(boundCase.transform.position);
         else if (result == PortResult.CableReturned && holder != null) holder.Retrieve(back);
     }
@@ -534,6 +540,8 @@ public class ComputerScreenController : MonoBehaviour
         PartSlotResult result = boundCase.UsePartSlot(slot, part, held != null, out GameObject back);
         if (result == PartSlotResult.Installed) InteractionSounds.Raise(InteractionSound.PartInstalled);
         else if (result == PartSlotResult.Removed) InteractionSounds.Raise(InteractionSound.PartRemoved);
+        else if (result == PartSlotResult.WrongPart || result == PartSlotResult.HandsFull)
+            InteractionSounds.Raise(InteractionSound.Error);   // peça no encaixe errado: som de erro
         if (result == PartSlotResult.Installed) holder.Stow(boundCase.transform.position);
         else if (result == PartSlotResult.Removed && holder != null) holder.Retrieve(back);
     }
@@ -548,7 +556,11 @@ public class ComputerScreenController : MonoBehaviour
         // furo (parafuso removido) = recoloca; parafuso no lugar = remove (estado real de cada parafuso)
         if (boundCase.Screws[index].removed)
         {
-            if (boundCase.TryInstallScrew(index, held) == ScrewInstallResult.WrongTool) views[index].PlayRejected();
+            if (boundCase.TryInstallScrew(index, held) == ScrewInstallResult.WrongTool)
+            {
+                InteractionSounds.Raise(InteractionSound.Error);   // ferramenta errada: som de erro + parafuso recusando
+                views[index].PlayRejected();
+            }
             return;
         }
 
@@ -557,6 +569,7 @@ public class ComputerScreenController : MonoBehaviour
             case ScrewRemovalResult.Removed:
                 break;
             case ScrewRemovalResult.WrongTool:
+                InteractionSounds.Raise(InteractionSound.Error);
                 views[index].PlayRejected();
                 break;
         }
