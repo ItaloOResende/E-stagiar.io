@@ -6,7 +6,7 @@ using UnityEngine.UI;
 ///  - borda vermelha breve e discreta (não cobre o centro, não recebe cliques);
 ///  - indicador direcional: seta na borda da tela apontando para o supervisor quando ele está fora da visão (inclusive
 ///    atrás), ou um "!" sobre a cabeça dele quando está na tela. A câmera do jogador nunca é girada;
-///  - cartão no lado esquerdo: ícone, título, a mensagem do motivo (queda, dano, desorganização) e a penalidade REAL
+///  - cartão compacto no centro superior: ícone, título, a mensagem do motivo (queda, dano, desorganização) e a penalidade REAL
 ///    lançada pelo <see cref="ScoreKeeper"/> (ex.: "−5 PTS"; o motivo fica na mensagem), com entrada/saída animadas;
 ///  - som curto de alerta (<see cref="InteractionSound.SupervisorAlert"/>, sem posição: ouvido mesmo de costas).
 /// Sem ScoreKeeper na cena, a linha de pontos fica vazia. Monta os próprios elementos (formas
@@ -106,7 +106,7 @@ public class SupervisorAlertHUD : MonoBehaviour
         vignette.color = new Color(alertColor.r, alertColor.g, alertColor.b, a);
         vignette.enabled = a > 0.001f;
 
-        // cartão: desce do alto, fica, sobe
+        // cartão: desce do alto, fica, sobe (centro superior)
         float c = now - shownAt;
         if (card.gameObject.activeSelf)
         {
@@ -115,7 +115,8 @@ public class SupervisorAlertHUD : MonoBehaviour
             {
                 float inK = Mathf.Clamp01(c / 0.3f), outK = Mathf.Clamp01((cardDuration - c) / 0.3f);
                 float k = Mathf.Min(EaseOut(inK), EaseOut(outK));
-                card.anchoredPosition = new Vector2(Mathf.Lerp(-card.sizeDelta.x - 40f, 28f, k), -150f);
+                // centro superior: desce do alto da tela (fora do cronômetro, no canto direito, e da pontuação, no esquerdo)
+                card.anchoredPosition = new Vector2(0f, Mathf.Lerp(card.sizeDelta.y + 20f, -18f, k));
                 card.localScale = Vector3.one * Mathf.Lerp(0.9f, 1f, k);
             }
         }
@@ -186,10 +187,10 @@ public class SupervisorAlertHUD : MonoBehaviour
         Label(bang, "!", 40, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
         indicator.gameObject.SetActive(false);
 
-        // cartão no lado esquerdo (abaixo do canto, fora do centro da mira): entra deslizando da borda
+        // cartão no CENTRO SUPERIOR (acima da mira, entre a pontuação à esquerda e o cronômetro à direita): desce do alto
         card = New("Cartao", root);
-        card.anchorMin = card.anchorMax = new Vector2(0f, 1f);
-        card.pivot = new Vector2(0f, 1f);
+        card.anchorMin = card.anchorMax = new Vector2(0.5f, 1f);
+        card.pivot = new Vector2(0.5f, 1f);
         card.sizeDelta = new Vector2(600f, 168f);
         var bg = card.gameObject.AddComponent<Image>();
         bg.sprite = Rounded(alertColor, cardColor);

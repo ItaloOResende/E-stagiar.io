@@ -8,6 +8,14 @@ public class StageController : MonoBehaviour
     [Min(0)] [SerializeField] private int stageNumber = 1;
     [Min(1f)] [SerializeField] private float durationMinutes = 15f;
     [SerializeField] private bool startAutomatically = true;
+    [Tooltip("Abrir o MENU INICIAL (escolha do modo) antes de começar, em vez de começar direto. Voltar ao menu pelo " +
+             "relatório final sempre abre o menu, com este campo ligado ou não.")]
+    [SerializeField] private bool showStartMenu;
+
+    [Header("Speed Run (chamados sem fim)")]
+    [Tooltip("Duração do Speed Run (min): os chamados não param de chegar; ao zerar, a partida termina e o relatório " +
+             "mostra quantos foram concluídos e o tempo médio.")]
+    [Min(1f)] [SerializeField] private float speedRunMinutes = 8f;
 
     public event Action<float> TimeChanged;
     /// <summary>A fase começou (<see cref="StartStage"/>): a pontuação zera aqui.</summary>
@@ -15,7 +23,9 @@ public class StageController : MonoBehaviour
     public event Action StageEnded;
 
     public float SecondsRemaining { get; private set; }
-    public float DurationSeconds => durationMinutes * 60f;
+    public float DurationSeconds => (IsSpeedRun ? speedRunMinutes : durationMinutes) * 60f;
+    /// <summary>A partida atual é um Speed Run (<see cref="GameSession.Mode"/>).</summary>
+    public bool IsSpeedRun => GameSession.Mode == GameMode.SpeedRun && stageNumber > 0;
     public bool IsRunning { get; private set; }
 
     private void Awake()
@@ -26,12 +36,20 @@ public class StageController : MonoBehaviour
     private void OnEnable()
     {
         if (ticketManager == null) ticketManager = GetComponent<TicketManager>();
-        if (ticketManager != null) ticketManager.TicketFinished += OnTicketFinished;
+        if (ticketManager != null)
+        {
+            ticketManager.TicketFinished += OnTicketFinished;
+            ticketManager.AllWorkDone += EndStageNow;   // nada pendente e nada mais por vir: encerra (relatório)
+        }
     }
 
     private void OnDisable()
     {
-        if (ticketManager != null) ticketManager.TicketFinished -= OnTicketFinished;
+        if (ticketManager != null)
+        {
+            ticketManager.TicketFinished -= OnTicketFinished;
+            ticketManager.AllWorkDone -= EndStageNow;
+        }
     }
 
     private void OnTicketFinished(TicketInstance ticket)
@@ -45,7 +63,16 @@ public class StageController : MonoBehaviour
 
     private void Start()
     {
+        // pedido do relatório ("Ir para o menu inicial") ou cena configurada para abrir no menu
+        if (GameSession.ConsumeMenuRequest() || showStartMenu) { MainMenuScreen.Open(this); return; }
         if (startAutomatically) StartStage();
+    }
+
+    /// <summary>Escolha do menu inicial: define o modo e começa a fase.</summary>
+    public void StartStageWithMode(GameMode mode)
+    {
+        GameSession.Mode = mode;
+        StartStage();
     }
 
     public void StartStage()
@@ -57,6 +84,7 @@ public class StageController : MonoBehaviour
         }
         SecondsRemaining = DurationSeconds;
         IsRunning = true;
+        ticketManager.EndlessMode = IsSpeedRun;
         StageStarted?.Invoke();
         ticketManager.BeginStage(stageNumber, SecondsRemaining);
         TimeChanged?.Invoke(SecondsRemaining);

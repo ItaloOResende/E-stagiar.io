@@ -30,6 +30,8 @@ public class ScoreEntry
 ///  - <b>Infração PRESENCIADA</b> pelo supervisor (<see cref="InfractionLog.Witnessed"/>, disparado uma única vez por
 ///    infração): penalidade progressiva por tipo, contada na fase (<see cref="repeatPenalties"/>: 1ª, 2ª, 3ª+).
 ///  - Gabinete incompleto ao concluir o chamado: <see cref="ApplyIncompleteCasePenalty"/> (chamado pelo PcTicketBridge).
+///  - Entrega recusada com o equipamento aberto (todas as etapas feitas, <see cref="TicketDeviceBridge.DeliveryBlockerFor"/>):
+///    <see cref="openEquipmentDeliveryPenalty"/> por tentativa.
 /// <b>Pontuação possível</b> (<see cref="PossibleScore"/>): soma dos valores-base de todos os chamados que CHEGARAM na
 /// fase (<see cref="TicketManager.TicketCreated"/>). Não diminui com erros; chamado não concluído conta contra.
 /// <b>Estrelas</b>: percentual Score/Possível (0–100%) comparado a <see cref="starPercentThresholds"/>.
@@ -54,6 +56,9 @@ public class ScoreKeeper : MonoBehaviour
     [Header("Finalização incompleta")]
     [Tooltip("Pontos perdidos a cada tentativa de finalizar um chamado com etapas pendentes (o chamado não é concluído).")]
     [Min(0)] [SerializeField] private int incompleteFinishPenalty = 5;
+    [Tooltip("Pontos perdidos a cada tentativa de ENTREGAR um chamado com todas as etapas feitas, mas com o equipamento " +
+             "ainda aberto (gabinete sem tampa/parafusos, notebook sem os parafusos). O chamado não é concluído.")]
+    [Min(0)] [SerializeField] private int openEquipmentDeliveryPenalty = 5;
 
     [Header("Atraso (SLA)")]
     [Tooltip("Pontos perdidos quando um chamado passa do prazo de referência (uma vez por chamado).")]
@@ -73,10 +78,12 @@ public class ScoreKeeper : MonoBehaviour
     [Header("Relatório")]
     [Tooltip("Cria o relatório final da fase (StageReportScreen) neste objeto, mostrado quando a fase termina.")]
     [SerializeField] private bool showStageReport = true;
+    [Tooltip("Cria o selo da pontuação atual (ScoreHUD, alto à esquerda) neste objeto.")]
+    [SerializeField] private bool showScoreHud = true;
 
     [Header("Estrelas (% da pontuação possível)")]
-    [Tooltip("Percentual mínimo de cada estrela, em ordem crescente (padrão: 40, 70, 90).")]
-    [SerializeField] private List<float> starPercentThresholds = new List<float> { 40f, 70f, 90f };
+    [Tooltip("Percentual mínimo de cada estrela, em ordem crescente (padrão: 20, 70, 90; 1 estrela a partir de 20%).")]
+    [SerializeField] private List<float> starPercentThresholds = new List<float> { 20f, 70f, 90f };
 
     public event Action<ScoreEntry> ScoreChanged;
     /// <summary>Fim da fase: pontuação final e estrelas (valores congelados em <see cref="FinalScore"/>/<see cref="FinalStars"/>).</summary>
@@ -152,6 +159,7 @@ public class ScoreKeeper : MonoBehaviour
         if (ticketManager == null) ticketManager = GetComponent<TicketManager>();
         if (stageController == null) stageController = GetComponent<StageController>();
         if (showStageReport && GetComponent<StageReportScreen>() == null) gameObject.AddComponent<StageReportScreen>();
+        if (showScoreHud && GetComponent<ScoreHUD>() == null) gameObject.AddComponent<ScoreHUD>();
     }
 
     private void OnEnable()
@@ -286,7 +294,19 @@ public class ScoreKeeper : MonoBehaviour
     // Uma tentativa recusada = um lançamento (o TicketManager dispara uma vez por clique).
     private void OnFinishRejected(TicketInstance ticket)
     {
-        if (ticket == null || StageFinished || incompleteFinishPenalty <= 0) return;
+        if (ticket == null || StageFinished) return;
+        if (!string.IsNullOrEmpty(ticket.LastRejectReason))
+        {
+            if (openEquipmentDeliveryPenalty <= 0) return;
+            Add(new ScoreEntry
+            {
+                Kind = ScoreEntryKind.Penalty, Reason = $"Entrega com o equipamento aberto: {TitleOf(ticket)}",
+                Points = -openEquipmentDeliveryPenalty, Occurrence = ticket.RejectedDeliveryAttempts,
+                TicketNumber = ticket.Number, TicketId = ticket.Definition != null ? ticket.Definition.ticketId : ""
+            });
+            return;
+        }
+        if (incompleteFinishPenalty <= 0) return;
         Add(new ScoreEntry
         {
             Kind = ScoreEntryKind.Penalty, Reason = $"Tentativa de finalizar com etapas pendentes: {TitleOf(ticket)}",

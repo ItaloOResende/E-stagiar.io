@@ -41,8 +41,8 @@ public class StageTimerHUD : MonoBehaviour
     [Tooltip("Nos últimos segundos o som fica mais intenso e o selo pulsa.")]
     [SerializeField, Min(1f)] private float finalSeconds = 10f;
     [Tooltip("Volume do suspense (aviso / últimos segundos).")]
-    [SerializeField, Range(0f, 1f)] private float warningVolume = 0.25f;
-    [SerializeField, Range(0f, 1f)] private float finalVolume = 0.55f;
+    [SerializeField, Range(0f, 1f)] private float warningVolume = 0.4f;
+    [SerializeField, Range(0f, 1f)] private float finalVolume = 0.8f;
 
     /// <summary>Estado da tensão (para o som não reiniciar a cada atualização do contador).</summary>
     private enum Tensao { Normal, Aviso, Final, Fim }
@@ -127,7 +127,9 @@ public class StageTimerHUD : MonoBehaviour
         float duration = Mathf.Max(1f, stageController.DurationSeconds);
         float remaining = Mathf.Clamp(stageController.SecondsRemaining, 0f, duration);
         int seconds = Mathf.CeilToInt(remaining);
-        string text = $"FASE {stage}   |   {seconds / 60:00}:{seconds % 60:00}";
+        string text = stageController.IsSpeedRun
+            ? $"SPEED RUN   |   {seconds / 60:00}:{seconds % 60:00}"
+            : $"FASE {stage}   |   {seconds / 60:00}:{seconds % 60:00}";
 
         // A escala acompanha o CanvasScaler das telas do jogo (referência 1920x1080), então o selo fica do
         // MESMO tamanho relativo em qualquer resolução — como o celular do jogador.

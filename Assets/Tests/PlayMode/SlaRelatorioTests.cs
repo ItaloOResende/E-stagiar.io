@@ -182,4 +182,23 @@ public class SlaRelatorioTests
         Call(tickets, "TryFinishTicket", number);
         Assert.AreEqual(-10, (int)Get(score, "Score"), "nova tentativa, nova penalidade");
     }
+
+    [UnityTest]
+    public IEnumerator SemChamadosPendentesNemPorVir_EncerraAFase()
+    {
+        Set(def, "slaSecondsOverride", 999f);
+        Set(stage, "durationMinutes", 1f);   // 60 s < 90 s de "parar de gerar": nenhum chamado novo depois do 1º
+        Call(stage, "StartStage");
+        object ticket = ((IList)Get(tickets, "Tickets"))[0];
+        int number = (int)ticket.GetType().GetField("Number").GetValue(ticket);
+        Call(tickets, "StartTicket", number);
+        Call(tickets, "CompleteStep", number, "resolver");
+        yield return null;
+        yield return null;
+        Assert.IsFalse((bool)Get(stage, "IsRunning"), "fase encerrada sem esperar o relógio");
+        Assert.IsTrue((bool)Get(score, "StageFinished"), "pontuação final calculada");
+        var report = ((Component)score).GetComponent(T("StageReportScreen"));
+        Assert.IsTrue((bool)Get(report, "IsOpen"), "relatório aberto");
+        Call(report, "Close");
+    }
 }
