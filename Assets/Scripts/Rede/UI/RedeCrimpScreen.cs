@@ -671,7 +671,7 @@ public class RedeCrimpScreen : MonoBehaviour
         {
             // Deu certo: NÃO aparece tela de "deu certo" — o cabo vai para a mão e a tela fecha na hora.
             InteractionSounds.Raise(InteractionSound.CablePlugged);
-            RedeGame.Garantir().RegistrarCabo();
+            if (!RedeGame.Garantir().RegistrarCabo(sessao)) { Atualizar(); return; }   // fora da sequência: nenhum cabo
             EntregarCaboNaMao();
             Fechar();
             return;

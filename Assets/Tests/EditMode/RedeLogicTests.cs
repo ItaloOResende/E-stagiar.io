@@ -86,6 +86,29 @@ public class RedeLogicTests
     }
 
     [Test]
+    public void Sequencia_fios_so_mexem_na_ordenacao()
+    {
+        // 2026-10-17: antes de descascar (e depois do RJ45) a fileira não pode ser montada nem alterada
+        var s = new RedeCrimpSession();
+        s.Embaralhar(new System.Random(5));
+        Assert.IsFalse(s.PegarSolto(0), "cabo ainda não cortado");
+        s.Cortar();
+        Assert.IsFalse(s.PegarSolto(0), "capa ainda não tirada");
+        Assert.IsFalse(s.EncaixarRj45());
+        Assert.AreEqual(RedeCrimpResultado.EtapaInvalida, s.Crimpar());
+        s.Descascar();
+        for (int pos = 0; pos < 8; pos++)
+        {
+            Assert.IsTrue(s.PegarSolto(s.Soltos.IndexOf(RedeCores.OrdemT568B[pos])));
+            Assert.IsTrue(s.ColocarNaPosicao(pos));
+        }
+        Assert.IsTrue(s.EncaixarRj45());
+        Assert.IsFalse(s.PegarDaPosicao(0), "RJ45 encaixado: a fileira está travada");
+        Assert.AreEqual(RedeCrimpResultado.Ok, s.Crimpar());
+        Assert.AreEqual(RedeCrimpEtapa.Concluido, s.Etapa);
+    }
+
+    [Test]
     public void Trocar_permuta_dois_fios()
     {
         var s = AteOrdenar();
@@ -317,5 +340,44 @@ public class RedeLogicTests
         Assert.IsTrue(r.PortaLigada(3));
         Assert.IsTrue(r.Desligar(3));
         Assert.IsFalse(r.Desligar(3));   // já estava sem cabo
+    }
+
+    // ------------------------------------------------------------------ topologia livre do rack (2026-10-17)
+
+    [Test]
+    public void Topologia_aceita_qualquer_combinacao_e_so_PN_SN_da_rede()
+    {
+        var t = new RedeRackTopologia(6);
+        Assert.IsNotNull(t.Ligar(PortaRack.P(1), PortaRack.S(1), true, false, null, 0f));
+        Assert.IsTrue(t.PortaFunciona(1));
+
+        Assert.IsNotNull(t.Ligar(PortaRack.P(2), PortaRack.S(3), true, false, null, 0f), "P2 em S3 é permitido");
+        Assert.IsFalse(t.PortaFunciona(2), "número trocado não dá rede");
+        Assert.AreEqual("ligada na porta errada do switch (S3)", t.Diagnostico(2));
+
+        Assert.IsNotNull(t.Ligar(PortaRack.P(4), PortaRack.P(5), true, false, null, 0f), "P com P é permitido");
+        Assert.IsFalse(t.PortaFunciona(4));
+        Assert.IsFalse(t.PortaFunciona(5));
+        Assert.AreEqual(2, t.Incorretas);
+
+        Assert.IsNull(t.Ligar(PortaRack.P(1), PortaRack.S(6), true, false, null, 0f), "porta ocupada");
+        Assert.IsNull(t.Ligar(PortaRack.S(6), PortaRack.S(6), true, false, null, 0f), "mesma porta");
+
+        Assert.IsNotNull(t.Ligar(PortaRack.S(5), PortaRack.S(6), true, false, null, 0f), "S com S é permitido");
+        Assert.IsTrue(t.LacoNoSwitch);
+        Assert.IsFalse(t.PortaFunciona(1), "laço no switch derruba a rede inteira");
+        t.Desligar(PortaRack.S(6));
+        Assert.IsTrue(t.PortaFunciona(1));
+    }
+
+    [Test]
+    public void Topologia_cabo_defeituoso_liga_mas_nao_da_rede()
+    {
+        var t = new RedeRackTopologia(6);
+        t.Ligar(PortaRack.S(3), PortaRack.P(3), true, true, null, 0f);
+        Assert.IsTrue(t.Ocupada(PortaRack.P(3)));
+        Assert.IsTrue(t.LigacaoEm(PortaRack.P(3)).Correta, "S3↔P3 (em qualquer ordem) é o par certo");
+        Assert.IsFalse(t.PortaFunciona(3));
+        Assert.AreEqual("cabo com defeito", t.Diagnostico(3));
     }
 }

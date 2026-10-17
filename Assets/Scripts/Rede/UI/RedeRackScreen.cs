@@ -6,103 +6,108 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>
-/// Tela 2D do rack de rede (patch panel + switch) feita IGUAL à conexão de rede da tela do PC:
-/// as portas são tomadas (mesma arte) e o cabo é uma curva com PLUGUE na ponta, seguindo o mouse.
+/// Tela 2D do rack de rede: um gabinete de rack de 19" visto de frente, com o PATCH PANEL (portas P1..Pn, etiquetas
+/// brancas: cada uma é o ponto de parede de uma estação), o organizador de cabos e o SWITCH (portas S1..Sn, com o LED de
+/// link de cada porta). Mesmo padrão visual das outras telas internas (fundo escuro, equipamentos desenhados com cantos
+/// arredondados, a mesma arte de tomada/plugue da tela do PC).
 /// <para>
-/// O cabo é SÓ o que o jogador traz na mão — não existe cabo infinito. Com um cabo de rede crimpado na mão,
-/// ele aparece na tela seguindo o mouse; clicar numa tomada encaixa a primeira ponta (o cabo SAI da mão);
-/// clicar na tomada de MESMO número do outro lado liga o par; clicar de novo na mesma tomada (ou em qualquer
-/// tomada já ligada) tira o cabo, que VOLTA pra mão do jogador — dá pra colocar e tirar quantas vezes quiser.
-/// Sem cabo na mão, não dá pra encaixar em nada.
+/// O cabo é SÓ o que o jogador traz na mão — não existe cabo infinito. Com um cabo de rede na mão: clicar numa porta
+/// livre encaixa a primeira ponta (o cabo SAI da mão); clicar em QUALQUER outra porta livre encaixa a outra ponta.
+/// <b>Nenhuma combinação é proibida nem corrigida</b>: P N ↔ S N (certa), P N ↔ S M, P ↔ P e S ↔ S são ligações
+/// reais na topologia (<see cref="RedeGame.Topologia"/>), e são os PCs e os chamados que dizem se a rede funciona.
+/// Clicar de novo na porta da primeira ponta solta o cabo; clicar numa porta ocupada (com a mão livre) tira o cabo
+/// dela, que VOLTA para a mão. Porta ocupada com outra ponta pendurada = não encaixa (pisca vermelho).
 /// </para>
-/// Monta a própria interface por código (as artes vêm do setup) e usa o estado de <see cref="RedeGame"/>.
+/// Os LEDs do switch são o retorno do próprio equipamento: verde = porta com cabo bom vindo do patch panel; apagado =
+/// sem link; todos piscando âmbar = laço (S ↔ S), como num switch de verdade. Nada diz "número errado".
+/// Monta a própria interface por código (as artes vêm do setup).
 /// </summary>
 [RequireComponent(typeof(UIScreen))]
 public class RedeRackScreen : MonoBehaviour
 {
-    private static readonly Color CorPainel = new Color(0.09f, 0.11f, 0.14f, 1f);
-    private static readonly Color CorModulo = new Color(0.16f, 0.18f, 0.23f, 1f);
-    private static readonly Color CorModuloTopo = new Color(0.21f, 0.24f, 0.30f, 1f);
-    private static readonly Color CorTrilho = new Color(0.10f, 0.12f, 0.16f, 1f);
+    private static readonly Color CorPainel = new Color(0.09f, 0.11f, 0.14f, 1f);       // mesmo fundo da impressora
+    private static readonly Color CorGabinete = new Color(0.13f, 0.15f, 0.19f, 1f);
+    private static readonly Color CorTrilho = new Color(0.22f, 0.24f, 0.28f, 1f);
+    private static readonly Color CorFuro = new Color(0.07f, 0.08f, 0.1f, 1f);
+    private static readonly Color CorPatch = new Color(0.8f, 0.82f, 0.85f, 1f);          // carcaça clara (como a impressora)
+    private static readonly Color CorPatchSombra = new Color(0.62f, 0.65f, 0.7f, 1f);
+    private static readonly Color CorSwitch = new Color(0.2f, 0.22f, 0.26f, 1f);
+    private static readonly Color CorSwitchClaro = new Color(0.26f, 0.29f, 0.34f, 1f);
+    private static readonly Color CorOrganizador = new Color(0.1f, 0.11f, 0.13f, 1f);
+    private static readonly Color CorAnel = new Color(0.3f, 0.33f, 0.38f, 1f);
+    private static readonly Color CorEtiqueta = new Color(0.97f, 0.97f, 0.94f, 1f);
+    private static readonly Color TextoEtiqueta = new Color(0.12f, 0.13f, 0.16f, 1f);
+    private static readonly Color TextoGravado = new Color(0.6f, 0.66f, 0.74f, 1f);
     private static readonly Color CorTomada = new Color(0.13f, 0.15f, 0.19f, 1f);
-    private static readonly Color CorTomadaBorda = new Color(0.30f, 0.34f, 0.41f, 1f);
-    private static readonly Color CorContato = new Color(0.83f, 0.72f, 0.36f);
     private static readonly Color AzulCabo = new Color(0.22f, 0.50f, 0.90f, 1f);
     private static readonly Color VermelhoErro = new Color(0.85f, 0.30f, 0.28f);
-    private static readonly Color AmareloOk = new Color(0.97f, 0.84f, 0.30f);
+    private static readonly Color LedApagado = new Color(0.16f, 0.18f, 0.2f);
+    private static readonly Color LedVerde = new Color(0.36f, 0.95f, 0.45f);
+    private static readonly Color LedAmbar = new Color(1f, 0.7f, 0.15f);
 
     [Header("Artes (as mesmas da tela do PC) — o setup preenche")]
     [Tooltip("Tomada/ponto de rede: Assets/Art/UI/ui_render_ponto_rede.png")]
     [SerializeField] private Sprite spriteTomada;
     [Tooltip("Plugue RJ45: Assets/Art/UI/ui_render_plugue_rj45.png")]
     [SerializeField] private Sprite spritePlug;
-    [Tooltip("Fundo da tela, o mesmo da crimpagem: Assets/Art/Textures/Sprites/bg1.png")]
+    [Tooltip("Fundo antigo (bg1). Não é mais usado: o fundo segue o padrão escuro das outras telas internas.")]
     [SerializeField] private Sprite spriteFundo;
-    [Tooltip("O quanto o fundo (bg1) é escurecido para os textos claros ficarem legíveis. 0 = arte pura, 1 = quase preto.")]
+    [Tooltip("Sem uso desde a reformulação visual (2026-10-17); mantido para não perder a configuração do prefab.")]
     [Range(0f, 1f)] [SerializeField] private float veuDoFundo = 0.62f;
 
     [Header("Grossuras (pixels da referência)")]
-    [Tooltip("Espessura do cabo de rede desenhado no rack. O 'macho' (plugue) fica com ~3x esta grossura, como um " +
-             "RJ45 de verdade em relação ao cabo.")]
-    [SerializeField] private float espessuraCabo = 26f;
-    [Tooltip("Lado do retângulo do plugue RJ45 (a arte mantém a proporção dentro dele). Ficava com 1,3x a tomada " +
-             "e parecia um plugue gigante; ~0,9x a tomada fica do tamanho de um conector.")]
-    [SerializeField] private float ladoMacho = 82f;
+    [Tooltip("Espessura do cabo de rede desenhado no rack.")]
+    [SerializeField] private float espessuraCabo = 22f;
+    [Tooltip("Lado do retângulo do plugue RJ45 (a arte mantém a proporção dentro dele).")]
+    [SerializeField] private float ladoMacho = 74f;
 
     // Geometria (pixels da referência 1920x1080; coordenadas LOCAIS do canvas, centro = 0).
-    private const float EspacamentoPorta = 220f;
-    private const float TomadaLado = 92f;         // tamanho da arte da tomada
-    private const float TomadaClique = 132f;      // área clicável em volta dela
-    private const float BarraLargura = 1500f;
-    private const float BarraAltura = 250f;
-    private const float PatchY = 175f;            // centro do patch panel (em cima)
-    private const float SwitchY = -215f;          // centro do switch (embaixo)
-    private const float BarrigaCabo = 78f;        // quanto o cabo ligado "sai" para o lado
-    private const float BordaDeBaixo = -640f;     // por onde o cabo entra na tela (abaixo do canvas)
+    private const float EspacamentoPorta = 200f;
+    private const float TomadaClique = 124f;
+    private const float LarguraEquip = 1460f;
+    private const float PatchY = 250f, PatchAltura = 200f;
+    private const float OrganizadorY = 70f, OrganizadorAltura = 96f;
+    private const float SwitchY = -150f, SwitchAltura = 240f;
+    private const float CegaY = -360f, CegaAltura = 110f;
+    private const float BordaDeBaixo = -640f;
 
     private bool construido;
     private int numPortas;
-    private RedeRackSession sessao;
 
     private RectTransform bancada, cabos;
-    private RectTransform[] tomadaPatch, tomadaSwitch;
-    private Image[] plugPatch, plugSwitch;
-    private UICableCurve[] curvaLigada;
+    private readonly Dictionary<PortaRack, PortaUi> portas = new Dictionary<PortaRack, PortaUi>();
+    private readonly List<UICableCurve> curvas = new List<UICableCurve>();
+    private readonly List<Image> plugues = new List<Image>();
     private UICableCurve curvaLivre;
-    private Image plugLivre, brilhoAlvo;
+    private Image plugLivre;
+    private static Sprite arredondado;
 
-    // Sem texto nenhum na tela: o retorno é só visual. A tomada clicada pisca VERMELHA quando o clique não
-    // vale (sem cabo na mão, par de números diferente, tomada já ligada) e o cabo ligado aparece entre as duas.
-    private Image[] tomadaImgPatch, tomadaImgSwitch;
-    private Color[] corBasePatch, corBaseSwitch;
-    private float[] flashPatch, flashSwitch;
+    private class PortaUi
+    {
+        public RectTransform Rt;
+        public Image Img, Led;
+        public Color Base;
+        public float Flash;
+    }
 
-    // O cabo: só existe o cabo que o jogador trouxe na mão — não tem cabo infinito.
-    // temCabo = o jogador tem um cabo de rede na mão (ou já encaixado numa tomada).
-    // pontaPorta = 0 (cabo na mão, sem tomada ainda) ou o número da tomada onde a primeira ponta está encaixada.
-    // pontaItem = o cabo físico que SAIU da mão pra ficar encaixado (null enquanto ele está na mão).
+    // O cabo da mão: temCabo = o jogador tem um cabo de rede na mão (ou com uma ponta encaixada).
     private bool temCabo;
-    private bool pontaEhPatch;
-    private int pontaPorta;
-    private PickupInteractable pontaItem;
+    private PortaRack? ponta;              // porta onde a primeira ponta está encaixada (null = cabo ainda na mão)
+    private PickupInteractable pontaItem;  // o cabo físico que SAIU da mão para ficar encaixado
 
     private readonly List<Vector2> pontos = new List<Vector2>();
-    private Vector2[] posPatch, posSwitch;
     private Canvas canvasTela;
+
+    /// <summary>Topologia do rack que esta tela mostra (para testes).</summary>
+    public RedeRackTopologia Topologia => RedeGame.Garantir().Topologia;
 
     private void Awake() => Construir();
 
     private void OnEnable()
     {
-        sessao = new RedeRackSession(RedeGame.Garantir().PortasDoRack);
-        foreach (int p in RedeGame.Garantir().ParesLigados) sessao.ParesLigados.Add(p);
-
-        // O cabo é SÓ o que o jogador traz na mão. Sem cabo crimpado na mão, não dá pra encaixar em nada.
         pontaItem = null;
-        pontaPorta = 0;
-        pontaEhPatch = false;
+        ponta = null;
         temCabo = CaboNaMao() != null;
-
         Atualizar();
     }
 
@@ -115,154 +120,141 @@ public class RedeRackScreen : MonoBehaviour
     {
         if (construido) return;
         construido = true;
-
         numPortas = Mathf.Max(1, RedeGame.Garantir().PortasDoRack);
 
         RedeUi.Esticar((RectTransform)transform);
-
-        // UMA região só, de ponta a ponta do canvas. Com a arte do protótipo (bg1) ela é o fundo da tela e leva
-        // por cima o mesmo véu escuro da crimpagem, para os textos e as tomadas continuarem legíveis.
-        bancada = RedeUi.Cheio(transform, "Painel", CorPainel, spriteFundo);
-        if (spriteFundo != null)
-            RedeUi.Cheio(bancada, "Veu", new Color(0.035f, 0.05f, 0.075f, Mathf.Clamp01(veuDoFundo)));
-
-        // Mesmo botão de fechar da tela do PC (quadrado escuro com "X").
+        bancada = RedeUi.Cheio(transform, "Painel", CorPainel);
         RedeUi.BotaoFechar(bancada, Fechar);
 
-        tomadaPatch = new RectTransform[numPortas];
-        tomadaSwitch = new RectTransform[numPortas];
-        tomadaImgPatch = new Image[numPortas];
-        tomadaImgSwitch = new Image[numPortas];
-        corBasePatch = new Color[numPortas];
-        corBaseSwitch = new Color[numPortas];
-        flashPatch = new float[numPortas];
-        flashSwitch = new float[numPortas];
-
-        Modulo("PatchPanel", PatchY, true);
-        Modulo("Switch", SwitchY, false);
-
-        // Os cabos ficam ACIMA dos equipamentos (é um cabo por cima do rack, como na traseira do PC).
-        cabos = RedeUi.Cheio(bancada, "Cabos", Color.clear);
-
-        // As CURVAS ficam atrás dos plugues; os plugues ficam atrás só do plugue que segue o mouse.
-        curvaLigada = new UICableCurve[numPortas];
-        for (int i = 0; i < numPortas; i++) curvaLigada[i] = NovaCurva("Cabo" + (i + 1));
-        curvaLivre = NovaCurva("CaboNaMao");
-
-        // Destaque amarelo que pulsa na tomada de mesmo número (sem texto, como na crimpagem).
-        brilhoAlvo = RedeUi.Imagem(cabos, "Alvo", new Color(AmareloOk.r, AmareloOk.g, AmareloOk.b, 0.3f)).GetComponent<Image>();
-        RedeUi.Ancorar(brilhoAlvo.rectTransform, new Vector2(0.5f, 0.5f),
-            new Vector2(TomadaClique + 28f, TomadaClique + 28f), new Vector2(0.5f, 0.5f));
-
-        // Plugues das tomadas (depois das curvas para ficarem na frente, como no PC).
-        plugPatch = new Image[numPortas];
-        plugSwitch = new Image[numPortas];
-        for (int i = 0; i < numPortas; i++)
+        // gabinete do rack: fundo, trilhos laterais com a furação e a base
+        Caixa(bancada, "Gabinete", CorGabinete, new Vector2(0f, -40f), new Vector2(LarguraEquip + 240f, 980f), true);
+        foreach (float x in new[] { -(LarguraEquip * 0.5f + 60f), LarguraEquip * 0.5f + 60f })
         {
-            plugPatch[i] = Plugue(cabos, "PlugP" + (i + 1));
-            plugSwitch[i] = Plugue(cabos, "PlugS" + (i + 1));
+            RectTransform trilho = Caixa(bancada, "Trilho", CorTrilho, new Vector2(x, -40f), new Vector2(46f, 940f), true);
+            for (int i = 0; i < 22; i++)
+                Caixa(trilho, "Furo", CorFuro, new Vector2(0f, 440f - i * 41f), new Vector2(14f, 14f), true);
         }
 
-        // O plugue da ponta que segue o mouse fica na frente de tudo.
-        plugLivre = Plugue(cabos, "PlugNaMao");
+        Equipamento("PatchPanel", PatchY, PatchAltura, CorPatch, CorPatchSombra, "PATCH PANEL  ·  CAT6", true);
+        Organizador();
+        Equipamento("Switch", SwitchY, SwitchAltura, CorSwitch, CorSwitchClaro, "SWITCH  ·  GIGABIT", false);
+        PainelCego();
 
-        posPatch = new Vector2[numPortas];
-        posSwitch = new Vector2[numPortas];
+        // cabos por cima dos equipamentos (curvas atrás dos plugues; o plugue que segue o mouse na frente de tudo)
+        cabos = RedeUi.Cheio(bancada, "Cabos", Color.clear);
+        curvaLivre = NovaCurva("CaboNaMao");
+        plugLivre = Plugue("PlugNaMao");
     }
 
-    /// <summary>Um equipamento do rack (patch panel ou switch) com a fileira de tomadas numeradas.</summary>
-    private void Modulo(string nome, float y, bool ehPatch)
+    // Um equipamento de rack (1U/2U): carcaça, orelhas com parafusos, nome gravado e a fileira de portas.
+    private void Equipamento(string nome, float y, float altura, Color cor, Color sombra, string gravado, bool patch)
     {
-        RectTransform modulo = RedeUi.Imagem(bancada, nome, CorModulo);
-        RedeUi.Ancorar(modulo, new Vector2(0.5f, 0.5f), new Vector2(BarraLargura, BarraAltura), new Vector2(0.5f, 0.5f));
-        modulo.anchoredPosition = new Vector2(0f, y);
+        RectTransform sombraRt = Caixa(bancada, nome + "_Sombra", sombra, new Vector2(0f, y - 6f), new Vector2(LarguraEquip + 100f, altura), true);
+        sombraRt.SetAsLastSibling();
+        RectTransform eq = Caixa(bancada, nome, cor, new Vector2(0f, y), new Vector2(LarguraEquip + 100f, altura - 8f), true);
+        foreach (float x in new[] { -(LarguraEquip * 0.5f + 20f), LarguraEquip * 0.5f + 20f })   // parafusos das orelhas
+            foreach (float yy in new[] { altura * 0.3f, -altura * 0.3f })
+                Caixa(eq, "Parafuso", CorFuro, new Vector2(x, yy), new Vector2(18f, 18f), true);
 
-        Caixa(modulo, "Topo", CorModuloTopo, new Vector2(0f, BarraAltura * 0.5f - 10f), new Vector2(BarraLargura, 20f));
-        Caixa(modulo, "Trilho", CorTrilho, new Vector2(0f, -BarraAltura * 0.5f + 12f), new Vector2(BarraLargura, 24f));
+        Text marca = RedeUi.Texto(eq, "Gravado", gravado, 18, TextAnchor.MiddleLeft, patch ? Color.Lerp(CorPatchSombra, Color.black, 0.35f) : TextoGravado);
+        RedeUi.Ancorar((RectTransform)marca.transform, new Vector2(0f, 1f), new Vector2(500f, 26f), new Vector2(0f, 1f));
+        ((RectTransform)marca.transform).anchoredPosition = new Vector2(70f, -10f);
+        marca.fontStyle = FontStyle.Bold;
+        marca.raycastTarget = false;
+
+        if (!patch)
+        {
+            // LED de energia do switch
+            Image pwr = Circulo(eq, "LedEnergia", LedVerde, 16f);
+            ((RectTransform)pwr.transform).anchorMin = ((RectTransform)pwr.transform).anchorMax = new Vector2(1f, 1f);
+            ((RectTransform)pwr.transform).anchoredPosition = new Vector2(-80f, -22f);
+        }
 
         for (int i = 0; i < numPortas; i++)
         {
-            int porta = i + 1;
-            bool patch = ehPatch;
+            int numero = i + 1;
+            var p = new PortaRack(patch, numero);
             float x = (i - (numPortas - 1) * 0.5f) * EspacamentoPorta;
+            var ui = new PortaUi();
 
-            RectTransform tomada = BotaoTomada(modulo, (ehPatch ? "P" : "S") + porta, new Vector2(x, 0f),
-                () => ClicarPorta(patch, porta), out Image imagem, out Color corBase);
-
-            if (ehPatch)
+            if (patch)
             {
-                tomadaPatch[i] = tomada;
-                tomadaImgPatch[i] = imagem;
-                corBasePatch[i] = corBase;
+                // etiqueta branca acima da porta: é ela que diz qual ponto de parede (estação) a porta atende
+                RectTransform etiqueta = Caixa(eq, "Etiqueta" + numero, CorEtiqueta, new Vector2(x, 62f), new Vector2(96f, 36f), true);
+                Text t = RedeUi.Texto(etiqueta, "Texto", p.Rotulo, 24, TextAnchor.MiddleCenter, TextoEtiqueta);
+                RedeUi.Esticar((RectTransform)t.transform);
+                t.fontStyle = FontStyle.Bold;
+                t.raycastTarget = false;
             }
             else
             {
-                tomadaSwitch[i] = tomada;
-                tomadaImgSwitch[i] = imagem;
-                corBaseSwitch[i] = corBase;
+                // número da porta impresso embaixo e o LED de link acima
+                Text t = RedeUi.Texto(eq, "Numero" + numero, p.Rotulo, 24, TextAnchor.MiddleCenter, TextoGravado);
+                RedeUi.Ancorar((RectTransform)t.transform, new Vector2(0.5f, 0.5f), new Vector2(120f, 30f), new Vector2(0.5f, 0.5f));
+                ((RectTransform)t.transform).anchoredPosition = new Vector2(x, -84f);
+                t.fontStyle = FontStyle.Bold;
+                t.raycastTarget = false;
+                ui.Led = Circulo(eq, "Led" + numero, LedApagado, 18f);
+                ((RectTransform)ui.Led.transform).anchoredPosition = new Vector2(x, 78f);
             }
 
-            // O número da tomada (P1..Pn no patch panel, S1..Sn no switch) é o que casa os pares.
-            Text numero = RedeUi.Texto(modulo, "Numero" + porta, (ehPatch ? "P" : "S") + porta, 22, TextAnchor.MiddleCenter, CorTomadaBorda);
-            RedeUi.Ancorar((RectTransform)numero.transform, new Vector2(0.5f, 0.5f), new Vector2(EspacamentoPorta - 20f, 28f), new Vector2(0.5f, 0.5f));
-            ((RectTransform)numero.transform).anchoredPosition = new Vector2(x, -80f);
+            PortaRack alvo = p;
+            ui.Rt = BotaoTomada(eq, p.Rotulo, new Vector2(x, patch ? -12f : 0f), () => ClicarPorta(alvo), out ui.Img, out ui.Base);
+            portas[p] = ui;
         }
     }
 
+    private void Organizador()
+    {
+        RectTransform org = Caixa(bancada, "Organizador", CorOrganizador, new Vector2(0f, OrganizadorY), new Vector2(LarguraEquip + 100f, OrganizadorAltura), true);
+        for (int i = 0; i < numPortas; i++)
+        {
+            float x = (i - (numPortas - 1) * 0.5f) * EspacamentoPorta;
+            RectTransform anel = Caixa(org, "Anel", CorAnel, new Vector2(x, 0f), new Vector2(96f, 60f), true);
+            Caixa(anel, "Vao", CorOrganizador, new Vector2(0f, -6f), new Vector2(70f, 40f), true);
+        }
+    }
+
+    private void PainelCego()
+    {
+        RectTransform cega = Caixa(bancada, "PainelCego", CorSwitch, new Vector2(0f, CegaY), new Vector2(LarguraEquip + 100f, CegaAltura), true);
+        for (int i = 0; i < 18; i++)   // ventilação
+            Caixa(cega, "Ventilacao", CorOrganizador, new Vector2(-595f + i * 70f, 0f), new Vector2(46f, 12f), true);
+    }
+
     /// <summary>Tomada clicável: a MESMA arte do ponto de rede do PC (com um desenho simples de reserva).</summary>
-    private RectTransform BotaoTomada(Transform pai, string nome, Vector2 pos, UnityAction acao,
-        out Image imagem, out Color corBase)
+    private RectTransform BotaoTomada(Transform pai, string nome, Vector2 pos, UnityAction acao, out Image imagem, out Color corBase)
     {
         var go = new GameObject(nome, typeof(RectTransform));
         go.transform.SetParent(pai, false);
-
         var img = go.AddComponent<Image>();
         img.raycastTarget = true;
-        if (spriteTomada != null)
-        {
-            img.sprite = spriteTomada;
-            img.preserveAspect = true;
-            img.color = Color.white;
-        }
+        if (spriteTomada != null) { img.sprite = spriteTomada; img.preserveAspect = true; img.color = Color.white; }
         else img.color = CorTomada;
-
         imagem = img;
         corBase = img.color;
-
         var b = go.AddComponent<Button>();
         b.targetGraphic = img;
-        ButtonColors(b, Color.white);
+        ColorBlock cores = b.colors;
+        cores.normalColor = Color.white;
+        cores.highlightedColor = new Color(1f, 0.95f, 0.58f, 1f);
+        cores.pressedColor = new Color(0.85f, 0.80f, 0.50f, 1f);
+        cores.selectedColor = Color.white;
+        cores.fadeDuration = 0.06f;
+        b.colors = cores;
         if (acao != null) b.onClick.AddListener(acao);
-
-        if (spriteTomada == null)
-        {
-            Caixa(go.transform, "Borda", CorTomadaBorda, Vector2.zero, new Vector2(TomadaLado, TomadaLado));
-            Caixa(go.transform, "Miolo", new Color(0.08f, 0.09f, 0.12f), Vector2.zero, new Vector2(TomadaLado - 16f, TomadaLado - 16f));
-            for (int k = 0; k < 4; k++)
-                Caixa(go.transform, "Contato" + k, CorContato, new Vector2((k - 1.5f) * 14f, 2f), new Vector2(7f, TomadaLado - 36f));
-        }
-
         RedeUi.Ancorar((RectTransform)go.transform, new Vector2(0.5f, 0.5f), new Vector2(TomadaClique, TomadaClique), new Vector2(0.5f, 0.5f));
         ((RectTransform)go.transform).anchoredPosition = pos;
         return (RectTransform)go.transform;
     }
 
-    /// <summary>Plugue (a mesma arte do PC) com um desenho simples de reserva. Já é criado desligado.</summary>
-    private Image Plugue(RectTransform pai, string nome)
+    private Image Plugue(string nome)
     {
         Image img = spritePlug != null
-            ? RedeUi.ImagemSprite(pai, nome, spritePlug, Color.white)
-            : RedeUi.Imagem(pai, nome, new Color(0.80f, 0.86f, 0.93f)).GetComponent<Image>();
-
-        if (spritePlug == null)
-        {
-            Caixa(img.transform, "Corpo", new Color(0.80f, 0.86f, 0.93f), Vector2.zero, new Vector2(ladoMacho, ladoMacho * 0.82f));
-            Caixa(img.transform, "Lingua", new Color(0.60f, 0.66f, 0.74f), new Vector2(0f, ladoMacho * 0.34f), new Vector2(ladoMacho * 0.45f, ladoMacho * 0.18f));
-        }
-
-        // O "macho" fica com a grossura de um conector: um quadrado do lado <see cref="ladoMacho"/> — a arte
-        // (deitada) mantém a proporção dentro dele e o desenho sai do tamanho de um plugue de cabo de rede.
+            ? RedeUi.ImagemSprite(cabos, nome, spritePlug, Color.white)
+            : RedeUi.Imagem(cabos, nome, new Color(0.80f, 0.86f, 0.93f)).GetComponent<Image>();
         RedeUi.Ancorar(img.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(ladoMacho, ladoMacho), new Vector2(0.5f, 0.5f));
+        img.raycastTarget = false;
         img.enabled = false;
         return img;
     }
@@ -280,150 +272,107 @@ public class RedeRackScreen : MonoBehaviour
         return curva;
     }
 
-    private static void ButtonColors(Button b, Color normal)
-    {
-        ColorBlock cores = b.colors;
-        cores.normalColor = normal;
-        cores.highlightedColor = new Color(1f, 0.95f, 0.58f, 1f);
-        cores.pressedColor = new Color(0.85f, 0.80f, 0.50f, 1f);
-        cores.selectedColor = normal;
-        cores.fadeDuration = 0.06f;
-        b.colors = cores;
-    }
-
-    private static RectTransform Caixa(Transform pai, string nome, Color cor, Vector2 pos, Vector2 tamanho)
+    private static RectTransform Caixa(Transform pai, string nome, Color cor, Vector2 pos, Vector2 tamanho, bool redondo)
     {
         RectTransform rt = RedeUi.Imagem(pai, nome, cor);
         RedeUi.Ancorar(rt, new Vector2(0.5f, 0.5f), tamanho, new Vector2(0.5f, 0.5f));
         rt.anchoredPosition = pos;
+        Image img = rt.GetComponent<Image>();
+        img.raycastTarget = false;
+        if (redondo) { img.sprite = Arredondado; img.type = Image.Type.Sliced; }
         return rt;
+    }
+
+    private static Image Circulo(Transform pai, string nome, Color cor, float d)
+    {
+        Image img = MiniUi.ImagemCircular(pai, nome, cor, d);
+        img.raycastTarget = false;
+        return img;
+    }
+
+    // Cantos arredondados (9-slice gerado uma vez), o mesmo desenho das outras telas internas.
+    private static Sprite Arredondado
+    {
+        get
+        {
+            if (arredondado != null) return arredondado;
+            const int n = 32, raio = 10;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    float dx = Mathf.Max(0f, Mathf.Max(raio - x - 0.5f, x + 0.5f - (n - raio)));
+                    float dy = Mathf.Max(0f, Mathf.Max(raio - y - 0.5f, y + 0.5f - (n - raio)));
+                    tex.SetPixel(x, y, new Color(1f, 1f, 1f, Mathf.Clamp01(raio + 0.5f - Mathf.Sqrt(dx * dx + dy * dy))));
+                }
+            tex.Apply();
+            arredondado = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect,
+                                        new Vector4(raio, raio, raio, raio));
+            return arredondado;
+        }
     }
 
     // ================================================================== interação
 
     /// <summary>
-    /// Clique numa tomada, com o cabo na mão: encaixa a ponta ali. Já com uma ponta encaixada: a tomada de
-    /// mesmo número do outro lado liga o par; a mesma tomada solta o cabo; outra tomada do mesmo lado muda a
-    /// ponta de lugar; tomada de número diferente do outro lado avisa que os números precisam bater.
-    /// Tomada JÁ LIGADA: o clique tira o cabo dela (veja <see cref="Desligar"/>).
+    /// Clique numa porta. Sem ponta encaixada: porta ocupada = tira o cabo dela (mão livre); porta livre com cabo na mão =
+    /// encaixa a primeira ponta. Com uma ponta encaixada: a mesma porta solta o cabo; qualquer outra porta LIVRE fecha a
+    /// ligação (qualquer combinação: a topologia guarda o que o jogador fez); porta ocupada não aceita.
     /// </summary>
-    private void ClicarPorta(bool ehPatch, int porta)
+    private void ClicarPorta(PortaRack p)
     {
-        if (sessao == null) return;
-        if (porta < 1 || porta > numPortas) return;
+        RedeGame jogo = RedeGame.Garantir();
+        LigacaoRack ligacao = jogo.Topologia.LigacaoEm(p);
 
-        if (sessao.PortaLigada(porta))
+        if (ponta == null)
         {
-            // Tomada já ligada: o clique TIRA o cabo (ele volta pra mão) — dá pra colocar e tirar quantas vezes quiser.
-            // Com uma ponta na mão (meio caminho de outra ligação) o clique não vale: primeiro termine/desfaça aquela.
-            if (pontaPorta == 0) Desligar(porta, ehPatch);
-            else Erro(ehPatch, porta);
-            return;
-        }
-
-        // Sem cabo na mão não dá pra encaixar em nada.
-        if (!temCabo)
-        {
-            Erro(ehPatch, porta);
-            return;
-        }
-
-        // Cabo na mão, sem nenhuma ponta encaixada ainda: encaixa a primeira ponta aqui (o cabo SAI da mão).
-        if (pontaPorta == 0)
-        {
+            if (ligacao != null) { Desligar(p); return; }
+            if (!temCabo) { Erro(p); return; }   // sem cabo na mão não dá pra encaixar em nada
             ItemHolder mao = Mao();
             pontaItem = mao != null ? mao.Stow(transform.position) : null;
-            pontaEhPatch = ehPatch;
-            pontaPorta = porta;
-            Escolher(ehPatch, porta);
+            ponta = p;
             InteractionSounds.Raise(InteractionSound.CablePlugged);   // primeira ponta encaixada
             Atualizar();
             return;
         }
 
-        // Clicou de novo na tomada onde a ponta está: solta o cabo (ele volta pra mão).
-        if (porta == pontaPorta && ehPatch == pontaEhPatch)
-        {
-            SoltarPonta();
-            return;
-        }
+        if (p.Equals(ponta.Value)) { SoltarPonta(); return; }
+        if (ligacao != null) { Erro(p); return; }   // porta ocupada: uma porta, um cabo
 
-        // Tomada de MESMO número do outro lado: encaixa a outra ponta e liga o par.
-        if (porta == pontaPorta)
-        {
-            FecharLigacao(ehPatch, porta);
-            return;
-        }
-
-        // Mesmo lado, outra tomada: a ponta encaixada só muda de lugar.
-        if (ehPatch == pontaEhPatch)
-        {
-            sessao.LimparEscolhas();
-            Escolher(ehPatch, porta);
-            pontaPorta = porta;
-            Atualizar();
-            return;
-        }
-
-        // Números diferentes: a outra ponta tem de ser a tomada de MESMO número do outro lado.
-        Erro(ehPatch, porta);
-    }
-
-    /// <summary>Encaixa a outra ponta: se os números batem, a porta fica ligada e o cabo fica guardado com ela
-    /// (o jogador pode tirá-lo depois e ligar de novo — veja <see cref="Desligar"/>).</summary>
-    private void FecharLigacao(bool ehPatch, int porta)
-    {
-        Escolher(ehPatch, porta);
-        bool ok = sessao.Confirmar();
-
-        if (ok)
-        {
-            InteractionSounds.Raise(InteractionSound.CablePlugged);   // par ligado: a outra ponta encaixou
-            RedeGame jogo = RedeGame.Garantir();
-            // cabo crimpado bom conta para o chamado de cabeamento; cabo defeituoso liga, mas não dá rede
-            bool crimpado = pontaItem != null && pontaItem.GetComponentInParent<CaboCrimpado>(true) != null;
-            jogo.RegistrarParLigado(porta, crimpado, pontaItem != null ? pontaItem.gameObject : null);
-            // O cabo NÃO é gasto: fica guardado com a porta (o jogador pode tirá-lo depois e ligar de novo).
-            jogo.GuardarCaboLigado(porta, pontaItem);
-            pontaItem = null;
-            pontaPorta = 0;
-            pontaEhPatch = false;
-            temCabo = false;         // e a mão ficou vazia: o cabo está no rack
-        }
-        else Erro(ehPatch, porta);
-
+        LigacaoRack nova = jogo.Ligar(ponta.Value, p, pontaItem);
+        if (nova == null) { Erro(p); return; }
+        InteractionSounds.Raise(InteractionSound.CablePlugged);   // a outra ponta encaixou
+        pontaItem = null;
+        ponta = null;
+        temCabo = CaboNaMao() != null;   // a mão ficou vazia: o cabo está no rack
         Atualizar();
     }
 
     /// <summary>
-    /// Tira o cabo de uma tomada já ligada: o par desliga e o cabo VOLTA pra mão do jogador, que pode encaixar de
-    /// novo (na mesma tomada ou em outra), quantas vezes quiser. Sem cabo físico guardado (ligação feita sem mão,
-    /// ex.: sem jogador) a tomada simplesmente fica livre. Mão ocupada = o clique não vale: o cabo nunca some.
+    /// Tira o cabo de uma porta ocupada: as duas pontas saem e o cabo VOLTA pra mão (que precisa estar livre). Cabo do
+    /// estado inicial (sem objeto físico) só deixa as portas livres.
     /// </summary>
-    private void Desligar(int porta, bool ehPatch)
+    private void Desligar(PortaRack p)
     {
         RedeGame jogo = RedeGame.Garantir();
-        PickupInteractable cabo = jogo.RetirarCaboLigado(porta);
+        LigacaoRack l = jogo.Topologia.LigacaoEm(p);
+        ItemHolder mao = Mao();
+        bool temFisico = l != null && l.Cabo is PickupInteractable;
+        if (temFisico && (mao == null || mao.Current != null)) { Erro(p); return; }   // mão ocupada: o cabo nunca some
 
-        if (cabo != null)
+        jogo.Desligar(p, out PickupInteractable cabo);
+        if (cabo != null && !mao.Retrieve(cabo.gameObject))
         {
-            ItemHolder mao = Mao();
-            if (mao == null || !mao.Retrieve(cabo.gameObject))
-            {
-                jogo.GuardarCaboLigado(porta, cabo);   // não deu pra devolver: o cabo continua onde estava
-                Erro(ehPatch, porta);
-                return;
-            }
+            jogo.Ligar(l.A, l.B, cabo);   // não deu pra devolver: o cabo continua onde estava
+            Erro(p);
+            return;
         }
-
-        sessao.Desligar(porta);
-        jogo.RemoverParLigado(porta);
-        temCabo = CaboNaMao() != null;   // o cabo voltou pra mão: já dá pra encaixar de novo
+        temCabo = CaboNaMao() != null;
         InteractionSounds.Raise(InteractionSound.CableUnplugged);
         Atualizar();
     }
 
-    /// <summary>Tira a ponta da tomada: o cabo VOLTA pra mão do jogador (ele termina com o cabo na mão).</summary>
+    /// <summary>Tira a ponta da porta: o cabo VOLTA pra mão do jogador.</summary>
     private void SoltarPonta()
     {
         if (pontaItem != null)
@@ -432,16 +381,13 @@ public class RedeRackScreen : MonoBehaviour
             if (mao != null) mao.Retrieve(pontaItem.gameObject);
             pontaItem = null;
         }
-
-        pontaPorta = 0;
-        pontaEhPatch = false;
+        ponta = null;
         temCabo = true;
         InteractionSounds.Raise(InteractionSound.CableUnplugged);
-        if (sessao != null) sessao.LimparEscolhas();
         Atualizar();
     }
 
-    /// <summary>Ao fechar a tela, um cabo encaixado volta pra mão do jogador (nunca some).</summary>
+    /// <summary>Ao fechar a tela, um cabo com uma ponta só encaixada volta pra mão do jogador (nunca some).</summary>
     private void DevolverCabo(bool atualizar = true)
     {
         if (pontaItem != null)
@@ -450,30 +396,17 @@ public class RedeRackScreen : MonoBehaviour
             if (mao != null) mao.Retrieve(pontaItem.gameObject);
             pontaItem = null;
         }
-
-        pontaPorta = 0;
-        pontaEhPatch = false;
-        if (sessao != null) sessao.LimparEscolhas();
+        ponta = null;
         if (atualizar) Atualizar();
     }
 
-    private void Escolher(bool ehPatch, int porta)
+    /// <summary>Aviso SEM texto: a porta clicada pisca vermelha quando o clique não vale.</summary>
+    private void Erro(PortaRack p)
     {
-        if (ehPatch) sessao.EscolherPatch(porta);
-        else sessao.EscolherSwitch(porta);
+        InteractionSounds.Raise(InteractionSound.Error);
+        if (portas.TryGetValue(p, out PortaUi ui)) ui.Flash = 0.5f;
     }
 
-    /// <summary>Aviso SEM texto: a tomada clicada pisca vermelha quando o clique não vale.</summary>
-    private void Erro(bool ehPatch, int porta)
-    {
-        InteractionSounds.Raise(InteractionSound.Error);   // clique que não vale: som de erro (o vermelho é o visual)
-        int i = porta - 1;
-        if (i < 0 || i >= numPortas) return;
-        if (ehPatch) flashPatch[i] = 0.5f;
-        else flashSwitch[i] = 0.5f;
-    }
-
-    /// <summary>A mão do jogador que abriu a tela (null se a tela não estiver ligada a um jogador).</summary>
     private ItemHolder Mao()
     {
         UIScreen tela = GetComponent<UIScreen>();
@@ -486,7 +419,6 @@ public class RedeRackScreen : MonoBehaviour
         ItemHolder mao = Mao();
         PickupInteractable item = mao != null ? mao.Current : null;
         if (item == null) return null;
-
         CableItem cabo = item.GetComponentInParent<CableItem>(true);
         return cabo != null && cabo.Type == CableType.Network ? item : null;
     }
@@ -502,83 +434,103 @@ public class RedeRackScreen : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (sessao == null || cabos == null) return;
-
-        // Piscada vermelha da tomada clicada sem sucesso (retorno sem nenhum texto).
+        if (cabos == null) return;
+        RedeRackTopologia topo = RedeGame.Garantir().Topologia;
         float dt = Time.unscaledDeltaTime;
-        for (int i = 0; i < numPortas; i++)
+        bool laco = topo.LacoNoSwitch;
+        bool piscaLaco = Mathf.Repeat(Time.unscaledTime * 6f, 1f) < 0.5f;
+
+        foreach (KeyValuePair<PortaRack, PortaUi> kv in portas)
         {
-            if (flashPatch[i] > 0f)
+            PortaUi ui = kv.Value;
+            if (ui.Flash > 0f)
             {
-                flashPatch[i] = Mathf.Max(0f, flashPatch[i] - dt);
-                tomadaImgPatch[i].color = Color.Lerp(corBasePatch[i], VermelhoErro, Mathf.Clamp01(flashPatch[i] * 2f));
+                ui.Flash = Mathf.Max(0f, ui.Flash - dt);
+                ui.Img.color = Color.Lerp(ui.Base, VermelhoErro, Mathf.Clamp01(ui.Flash * 2f));
             }
-            if (flashSwitch[i] > 0f)
+            if (ui.Led != null)
             {
-                flashSwitch[i] = Mathf.Max(0f, flashSwitch[i] - dt);
-                tomadaImgSwitch[i].color = Color.Lerp(corBaseSwitch[i], VermelhoErro, Mathf.Clamp01(flashSwitch[i] * 2f));
+                // LED de link do switch: verde = cabo bom vindo do patch panel; laço = todos piscando âmbar
+                LigacaoRack l = topo.LigacaoEm(kv.Key);
+                bool link = l != null && !l.Defeituoso && l.Outra(kv.Key).Patch;
+                ui.Led.color = laco ? (l != null && piscaLaco ? LedAmbar : LedApagado) : link ? LedVerde : LedApagado;
             }
         }
 
-        for (int i = 0; i < numPortas; i++)
+        // cabos ligados (um por ligação da topologia)
+        IReadOnlyList<LigacaoRack> ligs = topo.Ligacoes;
+        while (curvas.Count < ligs.Count) curvas.Add(NovaCurva("Cabo" + (curvas.Count + 1)));
+        while (plugues.Count < ligs.Count * 2 + 1) plugues.Add(Plugue("Plug" + (plugues.Count + 1)));
+        for (int i = 0; i < plugues.Count; i++) plugues[i].enabled = i < ligs.Count * 2;
+        for (int i = 0; i < curvas.Count; i++)
         {
-            posPatch[i] = Local(tomadaPatch[i]);
-            posSwitch[i] = Local(tomadaSwitch[i]);
-            if (plugPatch[i].enabled) plugPatch[i].rectTransform.anchoredPosition = posPatch[i];
-            if (plugSwitch[i].enabled) plugSwitch[i].rectTransform.anchoredPosition = posSwitch[i];
+            bool usa = i < ligs.Count;
+            if (curvas[i].gameObject.activeSelf != usa) curvas[i].gameObject.SetActive(usa);
+            if (!usa) continue;
+            Vector2 a = Pos(ligs[i].A), b = Pos(ligs[i].B);
+            Desenhar(curvas[i], a, b, ligs[i]);
+            plugues[i * 2].rectTransform.anchoredPosition = a;
+            plugues[i * 2 + 1].rectTransform.anchoredPosition = b;
         }
-
-        bool presaNumaTomada = pontaPorta >= 1 && pontaPorta <= numPortas;
-
-        if (presaNumaTomada)
-        {
-            float pulso = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 5f);
-            brilhoAlvo.color = new Color(AmareloOk.r, AmareloOk.g, AmareloOk.b, Mathf.Lerp(0.10f, 0.45f, pulso));
-            brilhoAlvo.rectTransform.anchoredPosition = pontaEhPatch ? posSwitch[pontaPorta - 1] : posPatch[pontaPorta - 1];
-        }
-
-        for (int i = 0; i < numPortas; i++)
-            if (curvaLigada[i].gameObject.activeSelf)
-                Desenhar(curvaLigada[i], posPatch[i], posSwitch[i], true);
+        plugLivre.transform.SetAsLastSibling();
 
         if (!temCabo)
         {
             if (curvaLivre.gameObject.activeSelf) curvaLivre.gameObject.SetActive(false);
+            plugLivre.enabled = false;
             return;
         }
 
-        // A outra ponta do cabo (com plugue) segue o mouse. Sem tomada ainda, o cabo sobe da borda de baixo.
+        // a outra ponta do cabo (com plugue) segue o mouse; sem ponta encaixada, o cabo sobe da borda de baixo
         Vector2 livre = new Vector2(0f, BordaDeBaixo + 320f);
         if (TentarPonteiro(out Vector2 mouse)) livre = mouse;
-
-        Vector2 presa = presaNumaTomada
-            ? (pontaEhPatch ? posPatch[pontaPorta - 1] : posSwitch[pontaPorta - 1])
-            : new Vector2(livre.x, BordaDeBaixo);
-
+        Vector2 presa = ponta.HasValue ? Pos(ponta.Value) : new Vector2(livre.x, BordaDeBaixo);
         if (!curvaLivre.gameObject.activeSelf) curvaLivre.gameObject.SetActive(true);
+        plugLivre.enabled = true;
         plugLivre.rectTransform.anchoredPosition = livre;
-        Desenhar(curvaLivre, presa, livre, false);
+        DesenharSolto(curvaLivre, presa, livre);
+        if (ponta.HasValue)
+        {
+            // a ponta encaixada também mostra o plugue (o primeiro plugue livre da lista)
+            Image p0 = plugues[ligs.Count * 2];
+            p0.enabled = true;
+            p0.rectTransform.anchoredPosition = presa;
+        }
     }
 
+    private Vector2 Pos(PortaRack p) => portas.TryGetValue(p, out PortaUi ui) ? Local(ui.Rt) : Vector2.zero;
+
     /// <summary>
-    /// Pontos do cabo. Ligado: sai da tomada de cima e faz a "barriga" para o lado, como um patch cord.
-    /// Solto (seguindo o mouse): desce/sobe em curva até a ponta livre, como o cabo pendurado do PC.
+    /// Patch cord ligado: P ↔ S desce pelo organizador; P ↔ P e S ↔ S fazem uma alça para baixo (o laço fica visível).
     /// </summary>
-    private void Desenhar(UICableCurve curva, Vector2 a, Vector2 b, bool ligado)
+    private void Desenhar(UICableCurve curva, Vector2 a, Vector2 b, LigacaoRack l)
     {
         Vector2 c1, c2;
-        if (ligado)
+        if (l.A.Patch != l.B.Patch)
         {
-            c1 = a + Vector2.right * BarrigaCabo;
-            c2 = b + Vector2.right * BarrigaCabo;
+            Vector2 cima = a.y >= b.y ? a : b, baixo = a.y >= b.y ? b : a;
+            float d = Mathf.Max(90f, (cima.y - baixo.y) * 0.45f);
+            c1 = cima + Vector2.down * d;
+            c2 = baixo + Vector2.up * d;
+            a = cima; b = baixo;
         }
         else
         {
-            float queda = Mathf.Max(80f, Vector2.Distance(a, b) * 0.32f);
+            float queda = 150f + Mathf.Abs(a.x - b.x) * 0.12f;
             c1 = a + Vector2.down * queda;
-            c2 = b + Vector2.down * queda * 0.6f;
+            c2 = b + Vector2.down * queda;
         }
+        Curva(curva, a, c1, c2, b);
+    }
 
+    private void DesenharSolto(UICableCurve curva, Vector2 a, Vector2 b)
+    {
+        float queda = Mathf.Max(80f, Vector2.Distance(a, b) * 0.32f);
+        Curva(curva, a, a + Vector2.down * queda, b + Vector2.down * queda * 0.6f, b);
+    }
+
+    private void Curva(UICableCurve curva, Vector2 a, Vector2 c1, Vector2 c2, Vector2 b)
+    {
         pontos.Clear();
         const int n = 26;
         for (int k = 0; k <= n; k++)
@@ -589,9 +541,7 @@ public class RedeRackScreen : MonoBehaviour
         curva.SetPoints(pontos);
     }
 
-    /// <summary>Posição do centro de um elemento em coordenadas locais do container dos cabos.</summary>
-    private Vector2 Local(RectTransform t) =>
-        ((RectTransform)cabos).InverseTransformPoint(t.TransformPoint(t.rect.center));
+    private Vector2 Local(RectTransform t) => cabos.InverseTransformPoint(t.TransformPoint(t.rect.center));
 
     private bool TentarPonteiro(out Vector2 local)
     {
@@ -599,31 +549,15 @@ public class RedeRackScreen : MonoBehaviour
         if (Mouse.current == null) return false;
         if (canvasTela == null) canvasTela = GetComponentInParent<Canvas>();
         Camera cam = canvasTela != null && canvasTela.renderMode != RenderMode.ScreenSpaceOverlay ? canvasTela.worldCamera : null;
-        return RectTransformUtility.ScreenPointToLocalPointInRectangle((RectTransform)cabos, Mouse.current.position.ReadValue(), cam, out local);
+        return RectTransformUtility.ScreenPointToLocalPointInRectangle(cabos, Mouse.current.position.ReadValue(), cam, out local);
     }
 
     // ================================================================== atualização
 
     private void Atualizar()
     {
-        if (sessao == null || bancada == null) return;
-
-        for (int i = 0; i < numPortas; i++)
-        {
-            int porta = i + 1;
-            bool ligada = sessao.PortaLigada(porta);
-            bool presaAqui = pontaPorta == porta;
-
-            bool plugP = ligada || (presaAqui && pontaEhPatch);
-            bool plugS = ligada || (presaAqui && !pontaEhPatch);
-            if (plugPatch[i].enabled != plugP) plugPatch[i].enabled = plugP;
-            if (plugSwitch[i].enabled != plugS) plugSwitch[i].enabled = plugS;
-
-            if (curvaLigada[i].gameObject.activeSelf != ligada) curvaLigada[i].gameObject.SetActive(ligada);
-        }
-
-        plugLivre.enabled = temCabo;
-        brilhoAlvo.enabled = temCabo && pontaPorta >= 1;
-        if (!temCabo && curvaLivre.gameObject.activeSelf) curvaLivre.gameObject.SetActive(false);
+        if (bancada == null) return;
+        if (!temCabo && curvaLivre != null && curvaLivre.gameObject.activeSelf) curvaLivre.gameObject.SetActive(false);
+        if (plugLivre != null) plugLivre.enabled = temCabo;
     }
 }

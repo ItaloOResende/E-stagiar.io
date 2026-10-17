@@ -1,10 +1,12 @@
-using System.Collections.Generic;
+using EstagiarIo.Rede;
 using UnityEngine;
 
 /// <summary>
-/// Estado do minigame de rede durante a partida: quantos cabos já foram crimpados e quais portas do rack
-/// já estão ligadas. Fica num objeto da própria cena (criado pelo setup) para o estado ser por partida.
-/// A tela de crimpagem e a tela do rack leem/escrevem aqui.
+/// Estado do minigame de rede durante a partida: quantos cabos já foram crimpados e a TOPOLOGIA real do rack
+/// (<see cref="RedeRackTopologia"/>: qualquer cabo entre quaisquer duas portas, inclusive ligações erradas — P N ↔ S M,
+/// P ↔ P, S ↔ S). Fica num objeto da própria cena (criado pelo setup) para o estado ser por partida.
+/// A tela de crimpagem e a tela do rack leem/escrevem aqui; os PCs (<see cref="RedeConectividade"/>) e os chamados leem
+/// <see cref="PortaFunciona"/> — uma conexão física em portas incompatíveis não dá rede.
 /// </summary>
 public class RedeGame : MonoBehaviour
 {
@@ -12,21 +14,22 @@ public class RedeGame : MonoBehaviour
     [SerializeField] private int portasDoRack = 6;
 
     private int cabosCrimpados;
+    private RedeRackTopologia topologia;
 
     public static RedeGame Instance { get; private set; }
 
     public int PortasDoRack => portasDoRack;
     public int CabosDisponiveis => cabosCrimpados;
-    public readonly HashSet<int> ParesLigados = new HashSet<int>();
-    /// <summary>Total de cabos crimpados com sucesso e de pares ligados no rack desde o início (só crescem; chamados comparam com o valor de quando começaram).</summary>
+    /// <summary>Topologia atual do rack (todas as ligações, certas e erradas).</summary>
+    public RedeRackTopologia Topologia => topologia ??= new RedeRackTopologia(portasDoRack);
+    /// <summary>Total de cabos crimpados com sucesso e de pares CERTOS ligados no rack desde o início (só crescem).</summary>
     public int TotalCrimpados { get; private set; }
     public int TotalParesLigados { get; private set; }
+    /// <summary>Pares CERTOS (P N ↔ S N) ligados com um cabo BOM feito na crimpagem (<see cref="CaboCrimpado"/>).</summary>
+    public int TotalParesComCaboCrimpado { get; private set; }
 
-    /// <summary>
-    /// O cabo físico que ficou ligado em cada porta do rack. Fica AQUI (e não na tela) porque o jogador pode fechar
-    /// e reabrir a tela: o cabo continua sendo dele, então ele pode tirá-lo de qualquer porta e ligar de novo.
-    /// </summary>
-    public readonly Dictionary<int, PickupInteractable> CabosLigados = new Dictionary<int, PickupInteractable>();
+    /// <summary>O rack mudou (cabo ligado ou desligado).</summary>
+    public event System.Action Mudou;
 
     private void Awake()
     {
@@ -48,60 +51,109 @@ public class RedeGame : MonoBehaviour
         return Instance;
     }
 
-    /// <summary>Um cabo crimpado com sucesso vira um cabo disponível para ligar no rack.</summary>
-    public void RegistrarCabo()
+    /// <summary>
+    /// Um cabo crimpado com sucesso vira um cabo disponível para ligar no rack. Só conta com a crimpagem CONCLUÍDA na
+    /// sequência (cortar → descascar → ordenar → RJ45 → crimpar): qualquer outro estado é recusado (false).
+    /// </summary>
+    public bool RegistrarCabo(RedeCrimpSession sessao)
     {
+        if (sessao == null || sessao.Etapa != RedeCrimpEtapa.Concluido)
+        {
+            Debug.LogWarning("RedeGame: cabo recusado — a crimpagem não terminou na sequência correta.", this);
+            return false;
+        }
         cabosCrimpados++;
         TotalCrimpados++;
+        return true;
     }
 
-    /// <summary>Pares ligados com um cabo BOM feito na crimpagem (<see cref="CaboCrimpado"/>), não com um cabo pronto.</summary>
-    public int TotalParesComCaboCrimpado { get; private set; }
+    // ------------------------------------------------------------------ ligações
 
-    // pares ligados com cabo defeituoso (contam como ligados no rack, mas não dão rede; o cabo físico de cada porta
-    // fica em CabosLigados)
-    private readonly HashSet<int> paresDefeituosos = new HashSet<int>();
-
-    /// <summary>O rack mudou (par ligado ou desligado).</summary>
-    public event System.Action Mudou;
-
-    public bool RegistrarParLigado(int porta) => RegistrarParLigado(porta, false);
-
-    public bool RegistrarParLigado(int porta, bool caboCrimpado) => RegistrarParLigado(porta, caboCrimpado, null);
-
-    /// <summary>Par N↔N ligado com o cabo <paramref name="cabo"/> (a tela guarda o objeto com <see cref="GuardarCaboLigado"/>).</summary>
-    public bool RegistrarParLigado(int porta, bool caboCrimpado, GameObject cabo)
+    /// <summary>
+    /// Liga o cabo <paramref name="cabo"/> entre duas portas quaisquer (o jogador pode errar: nada é forçado a casar).
+    /// Recusa só o fisicamente impossível (mesma porta, porta ocupada). Devolve a ligação criada (null = recusada).
+    /// </summary>
+    public LigacaoRack Ligar(PortaRack a, PortaRack b, PickupInteractable cabo)
     {
-        if (porta < 1 || porta > portasDoRack) return false;
-        if (!ParesLigados.Add(porta)) return false;
-        bool defeituoso = CaboRedeEstado.EhDefeituoso(cabo);
-        TotalParesLigados++;
-        if (caboCrimpado && !defeituoso) TotalParesComCaboCrimpado++;
-        if (defeituoso) paresDefeituosos.Add(porta);
+        bool crimpado = cabo != null && cabo.GetComponentInParent<CaboCrimpado>(true) != null;
+        bool defeituoso = cabo != null && CaboRedeEstado.EhDefeituoso(cabo.gameObject);
+        LigacaoRack l = Topologia.Ligar(a, b, crimpado, defeituoso, cabo, Time.time);
+        if (l == null) return null;
+        if (l.Correta)
+        {
+            TotalParesLigados++;
+            if (crimpado && !defeituoso) TotalParesComCaboCrimpado++;
+        }
+        Debug.Log($"[Rack] cabo ligado {l}" + (l.Correta ? "" : " (fora da topologia)") + (defeituoso ? " com defeito" : "") + ".", this);
+        Avisar();
+        return l;
+    }
+
+    /// <summary>Estado inicial: o par certo P N ↔ S N de uma estação já vem ligado (sem cabo físico, sem contar nos totais).</summary>
+    public void PreLigar(int porta)
+    {
+        if (Topologia.Ligar(PortaRack.P(porta), PortaRack.S(porta), false, false, null, Time.time, true) != null) Avisar();
+    }
+
+    /// <summary>
+    /// Tira o cabo de uma porta (o jogador no rack, ou um defeito de chamado). Devolve o cabo físico, se houver
+    /// (a ligação do estado inicial não tem: o cabo dela é descartado).
+    /// </summary>
+    public bool Desligar(PortaRack porta, out PickupInteractable cabo)
+    {
+        LigacaoRack l = Topologia.Desligar(porta);
+        cabo = l != null ? l.Cabo as PickupInteractable : null;
+        if (l == null) return false;
         Avisar();
         return true;
     }
 
-    /// <summary>Estado inicial: o par da porta de uma estação já vem ligado (sem cabo físico, sem contar nos totais).</summary>
-    public void PreLigar(int porta)
+    /// <summary>Compatível com os chamados antigos: tira o cabo da porta N do PATCH PANEL (esteja ligado onde estiver).</summary>
+    public bool Desligar(int porta, out GameObject cabo)
     {
-        if (porta < 1 || porta > portasDoRack || !ParesLigados.Add(porta)) return;
-        Avisar();
+        bool ok = Desligar(PortaRack.P(porta), out PickupInteractable item);
+        cabo = item != null ? item.gameObject : null;
+        return ok;
     }
 
     /// <summary>
-    /// Desliga o par (defeito de chamado ou o jogador tirando o cabo no rack). Devolve o cabo físico do par, se houver
-    /// (o par pré-ligado do começo não tem: o cabo dele é descartado).
+    /// Defeito de chamado: o cabo do patch panel N passa para uma porta ERRADA livre do switch (o par fica "ligado", mas
+    /// na porta trocada). Sem porta livre, só desliga. Devolve a porta do switch usada (0 = só desligou).
     /// </summary>
-    public bool Desligar(int porta, out GameObject cabo)
+    public int TrocarParaPortaErrada(int porta)
     {
-        PickupInteractable item = RetirarCaboLigado(porta);
-        cabo = item != null ? item.gameObject : null;
-        return RemoverParLigado(porta);
+        LigacaoRack antes = Topologia.Desligar(PortaRack.P(porta));
+        int livre = 0;
+        for (int i = 0; i < portasDoRack && livre == 0; i++)
+        {
+            int m = (porta + i) % portasDoRack + 1;   // a próxima depois de N, dando a volta
+            if (m != porta && !Topologia.Ocupada(PortaRack.S(m))) livre = m;
+        }
+        if (livre > 0)
+        {
+            // o mesmo cabo, só que na porta trocada (mantém quando foi ligado: não conta como cabo novo do jogador)
+            Topologia.Ligar(PortaRack.P(porta), PortaRack.S(livre), antes != null && antes.Crimpado,
+                            antes != null && antes.Defeituoso, antes != null ? antes.Cabo : null,
+                            antes != null ? antes.LigadaEm : -1f, antes == null || antes.PreLigada);
+        }
+        Avisar();
+        return livre;
     }
 
-    /// <summary>O par N está ligado no rack com um cabo bom.</summary>
-    public bool PortaFunciona(int porta) => ParesLigados.Contains(porta) && !paresDefeituosos.Contains(porta);
+    /// <summary>O ponto de parede da porta N tem rede: P N ↔ S N com cabo bom e nenhum laço no switch.</summary>
+    public bool PortaFunciona(int porta) => Topologia.PortaFunciona(porta);
+
+    /// <summary>
+    /// Há um par CERTO (P N ↔ S N), com cabo BOM feito na crimpagem, ligado a partir de <paramref name="desde"/> e a
+    /// rede do rack funcionando (sem laço). Estado real, não um contador: tirar o cabo desfaz.
+    /// </summary>
+    public bool ParCrimpadoFuncionandoDesde(float desde)
+    {
+        if (Topologia.LacoNoSwitch) return false;
+        foreach (LigacaoRack l in Topologia.Ligacoes)
+            if (l.Correta && l.Crimpado && !l.Defeituoso && l.LigadaEm >= desde) return true;
+        return false;
+    }
 
     private void Avisar()
     {
@@ -109,40 +161,11 @@ public class RedeGame : MonoBehaviour
         RedeConectividade.NotificarPcs();
     }
 
-    /// <summary>Tira a porta da lista de ligadas (o jogador tirou o cabo): ela volta a aceitar cabo.</summary>
-    public bool RemoverParLigado(int porta)
-    {
-        if (porta < 1 || porta > portasDoRack) return false;
-        paresDefeituosos.Remove(porta);
-        if (!ParesLigados.Remove(porta)) return false;
-        Avisar();   // a estação dessa porta perde a rede
-        return true;
-    }
-
-    /// <summary>Guarda o cabo que ficou ligado numa porta, para poder devolvê-lo à mão se o jogador desligar.</summary>
-    public void GuardarCaboLigado(int porta, PickupInteractable cabo)
-    {
-        if (porta < 1 || porta > portasDoRack) return;
-        if (cabo == null) CabosLigados.Remove(porta);
-        else CabosLigados[porta] = cabo;
-    }
-
-    /// <summary>Pega (e esquece) o cabo que estava ligado numa porta. Null se não havia cabo físico ali.</summary>
-    public PickupInteractable RetirarCaboLigado(int porta)
-    {
-        if (porta < 1 || porta > portasDoRack) return null;
-        if (!CabosLigados.TryGetValue(porta, out PickupInteractable cabo)) return null;
-        CabosLigados.Remove(porta);
-        return cabo;
-    }
-
-    /// <summary>Zera tudo (botão de "reiniciar" no Editor/Console ou debug).</summary>
+    /// <summary>Zera tudo (debug).</summary>
     public void Reiniciar()
     {
         cabosCrimpados = 0;
-        ParesLigados.Clear();
-        CabosLigados.Clear();
-        paresDefeituosos.Clear();
+        Topologia.Limpar();
         Avisar();
     }
 }

@@ -6,6 +6,8 @@ namespace EstagiarIo.Rede
     /// Estado do rack de rede: ligar um cabo crimpado entre a porta do patch panel e a porta do switch.
     /// Regra: os números precisam ser iguais (patch panel 3 &lt;-&gt; switch 3).
     /// Lógica pura, sem MonoBehaviour.
+    /// <para><b>Legado:</b> desde 2026-10-17 a tela do rack usa a topologia livre (<see cref="RedeRackTopologia"/>: qualquer
+    /// porta com qualquer porta, sem forçar os números). Esta classe ficou só para os testes antigos da regra N↔N.</para>
     /// </summary>
     public class RedeRackSession
     {

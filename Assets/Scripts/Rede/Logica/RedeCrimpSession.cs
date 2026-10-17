@@ -27,7 +27,9 @@ namespace EstagiarIo.Rede
 
     /// <summary>
     /// Estado de UMA crimpagem: cortar o cabo, tirar a capa azul, ordenar os 8 fios no padrão T568B,
-    /// encaixar o RJ45 e crimpar.
+    /// encaixar o RJ45 e crimpar. A SEQUÊNCIA é obrigatória: cada etapa só vale na etapa anterior concluída (cortar →
+    /// descascar → ordenar → RJ45 → crimpar); mexer nos fios só durante a ordenação; um cabo só existe (é registrado
+    /// pelo <c>RedeGame</c>) com a sessão em <see cref="RedeCrimpEtapa.Concluido"/>.
     /// <para>
     /// A ordenação funciona como o cabo de energia: os 8 fios saem SOLTOS da capa azul (<see cref="Soltos"/>),
     /// o jogador PEGA um fio (<see cref="PegarSolto"/>/<see cref="PegarDaPosicao"/> — ele fica em <see cref="NaMao"/>)
@@ -136,6 +138,7 @@ namespace EstagiarIo.Rede
         public RedeCrimpResultado Crimpar()
         {
             if (Etapa != RedeCrimpEtapa.EncaixarRj45) return RedeCrimpResultado.EtapaInvalida;
+            if (!TodasPreenchidas || NaMao != null) return RedeCrimpResultado.EtapaInvalida;   // RJ45 sem os 8 fios
 
             if (!OrdemCorreta())
             {
@@ -186,6 +189,7 @@ namespace EstagiarIo.Rede
         /// <summary>Pega um fio que estava solto (índice em <see cref="Soltos"/>). Só dá para pegar se a mão estiver vazia.</summary>
         public bool PegarSolto(int indice)
         {
+            if (Etapa != RedeCrimpEtapa.Ordenar) return false;   // só com a capa tirada e antes do RJ45
             if (NaMao != null) return false;
             if (indice < 0 || indice >= Soltos.Count) return false;
             NaMao = Soltos[indice];
@@ -196,6 +200,7 @@ namespace EstagiarIo.Rede
         /// <summary>Tira um fio de uma posição da fileira (o fio vai para a mão). Só se a mão estiver vazia.</summary>
         public bool PegarDaPosicao(int posicao)
         {
+            if (Etapa != RedeCrimpEtapa.Ordenar) return false;   // com o RJ45 encaixado a fileira não mexe mais
             if (NaMao != null) return false;
             if (posicao < 0 || posicao >= Fila.Length) return false;
             if (Fila[posicao] == null) return false;
@@ -210,6 +215,7 @@ namespace EstagiarIo.Rede
         /// </summary>
         public bool ColocarNaPosicao(int posicao)
         {
+            if (Etapa != RedeCrimpEtapa.Ordenar) return false;
             if (NaMao == null) return false;
             if (posicao < 0 || posicao >= Fila.Length) return false;
 
