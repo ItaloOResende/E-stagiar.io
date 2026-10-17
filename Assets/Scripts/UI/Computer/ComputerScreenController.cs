@@ -643,7 +643,15 @@ public class ComputerScreenController : MonoBehaviour
         {
             if (nextRoutine != null) StopCoroutine(nextRoutine);
             nextRoutine = StartCoroutine(PulseUnlocked());
+            StartCoroutine(AutoOpenAfterUnlock());
         }
+    }
+
+    // Desbloqueou com sucesso: depois do pulso do Avançar a tampa abre sozinha e o Interior aparece (som de abrir).
+    private IEnumerator AutoOpenAfterUnlock()
+    {
+        yield return new WaitForSecondsRealtime(0.65f);
+        if (current == ComputerView.Rear && boundCase != null && !InteriorLocked) Next();
     }
 
     private void HandleScrewInstalled(int index)

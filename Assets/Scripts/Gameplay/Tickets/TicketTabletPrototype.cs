@@ -7,7 +7,8 @@ using UnityEngine.UI;
 /// <summary>
 /// O CELULAR do estagiário — no canto inferior DIREITO e em qualquer lugar do jogo.
 /// Fechado ele é só o desenho do aparelho, com um selo vermelho quando há chamados em aberto.
-/// O jogador abre com a tecla <b>C</b> (ou clicando no aparelho) e fecha com <b>C</b> de novo, com o "X"
+/// O jogador abre com a tecla <b>C</b> (ou clicando no aparelho: nas telas 2D o cursor já está livre; no 3D, segurando
+/// <b>Alt</b> o cursor se solta da câmera para o clique) e fecha com <b>C</b> de novo, com o "X"
 /// no alto da "tela" ou <b>clicando em cima do aparelho aberto</b> — o celular volta a ser miniatura no primeiro
 /// clique que cair DENTRO dele e não seja num dos botões (X, CHAMADOS, CORES, "Iniciar atendimento"), que aí
 /// cumprem o papel deles. Clicar fora do celular não fecha (no minigame de rede o jogador clica nos cabos da
@@ -38,6 +39,9 @@ public class TicketTabletPrototype : MonoBehaviour
     [SerializeField] private InteractionDetector interactionDetector;
     [Tooltip("Componentes desligados enquanto o celular está aberto: com ele aberto o jogador mexe só no celular.")]
     [SerializeField] private Behaviour[] disableWhileTabletOpen;
+    [Tooltip("No escritório 3D o cursor fica preso na câmera. SEGURANDO esta tecla ele fica livre (a câmera para) e o " +
+             "jogador pode clicar no aparelho do canto para abrir o celular. Ao soltar, o cursor volta a ficar preso.")]
+    [SerializeField] private Key freeCursorKey = Key.LeftAlt;
 
     [Header("Celular (pixels da referência 1920 x 1080)")]
     // Largura/altura/margem vêm do RedeUi: é a MESMA geometria que as telas usam para posicionar a seta "►"
@@ -87,12 +91,12 @@ public class TicketTabletPrototype : MonoBehaviour
     public static bool PonteiroSobreOAparelho { get; private set; }
     /// <summary>Algum celular está aberto (ele solta o cursor por conta própria).</summary>
     public static bool CelularAberto { get; private set; }
+    /// <summary>O jogador está segurando a tecla de soltar o cursor no 3D (para clicar no aparelho).</summary>
+    public static bool CursorLiberado { get; private set; }
 
     private bool aberto;
     private bool mostrarCores;
     private bool cursorDeMaozinha;   // a mãozinha do celular está posta por cima do cursor da tela?
-    private bool cursorEraVisivel;
-    private CursorLockMode travaDoCursor;
     private Vector2 rolagem;
 
     // As ações pedidas pelos botões do celular NÃO são feitas no meio do OnGUI: o IMGUI desenha duas vezes por
@@ -161,7 +165,8 @@ public class TicketTabletPrototype : MonoBehaviour
             if (!ticketManager.TryFinishTicket(n)) { recusaNumero = n; recusaEm = Time.unscaledTime; }
         }
 
-        if (Keyboard.current != null && Keyboard.current[toggleKey].wasPressedThisFrame) SetAberto(!aberto);
+        if (Keyboard.current != null && Keyboard.current[toggleKey].wasPressedThisFrame && !MainMenuScreen.Showing) SetAberto(!aberto);
+        AtualizarCursorLiberado();
         AtualizarBloqueio();
         VerificarChamadoNovo();
         AtualizarSelo();
@@ -171,6 +176,40 @@ public class TicketTabletPrototype : MonoBehaviour
     private void OnDisable()
     {
         if (aberto) SetAberto(false);
+        if (CursorLiberado) { CursorLiberado = false; SetControles(true); }
+    }
+
+    /// <summary>
+    /// Segurar a tecla de soltar o cursor no 3D (celular fechado, nenhuma tela 2D, sem relatório): o cursor fica livre
+    /// e visível e câmera/movimento/mira param, para o jogador clicar no aparelho fechado. Soltar devolve tudo (se o
+    /// celular foi aberto nesse meio-tempo, é ele quem cuida do cursor e dos controles).
+    /// </summary>
+    private void AtualizarCursorLiberado()
+    {
+        bool quer = !aberto && NoMundo3D() && !StageReportScreen.Showing && !MainMenuScreen.Showing && Keyboard.current != null
+                    && freeCursorKey != Key.None && Keyboard.current[freeCursorKey].isPressed;
+        if (quer == CursorLiberado) return;
+        CursorLiberado = quer;
+        if (quer)
+        {
+            SetControles(false);
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            return;
+        }
+        if (aberto) return;   // abriu o celular com o clique: o cursor continua livre por causa dele
+        SetControles(true);
+        if (UIScreenManager.Active != null) UIScreenManager.Active.ApplyCursorForCurrentState();
+        else { Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false; }
+    }
+
+    /// <summary>Liga/desliga câmera, movimento e mira do jogador (os mesmos componentes do celular aberto).</summary>
+    private void SetControles(bool ligar)
+    {
+        if (interactionDetector != null) interactionDetector.enabled = ligar;
+        if (disableWhileTabletOpen != null)
+            foreach (Behaviour comportamento in disableWhileTabletOpen)
+                if (comportamento != null) comportamento.enabled = ligar;
     }
 
     /// <summary>
@@ -214,8 +253,6 @@ public class TicketTabletPrototype : MonoBehaviour
 
         if (abrir)
         {
-            travaDoCursor = Cursor.lockState;
-            cursorEraVisivel = Cursor.visible;
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
 
@@ -230,8 +267,10 @@ public class TicketTabletPrototype : MonoBehaviour
             // O estado do cursor ao fechar vem do jogo AGORA, não do que era ao abrir: o celular aberto durante uma
             // tela 2D (ex.: padrão de cores na crimpagem) guardava "livre", e se a tela fechasse antes do celular o
             // cursor ficava solto no 3D, fora da janela.
-            if (UIScreenManager.Active != null) UIScreenManager.Active.ApplyCursorForCurrentState();
-            else { Cursor.lockState = travaDoCursor; Cursor.visible = cursorEraVisivel; }
+            // (aberto pelo clique com Alt, o "de antes" era livre: no 3D o cursor volta SEMPRE a ficar preso)
+            if (StageReportScreen.Showing) { Cursor.lockState = CursorLockMode.None; Cursor.visible = true; }
+            else if (UIScreenManager.Active != null) UIScreenManager.Active.ApplyCursorForCurrentState();
+            else { Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false; }
             AtualizarCursorDeMao(false);   // fechou: a mãozinha sai e o cursor de baixo volta
             InteractionSounds.Raise(InteractionSound.DrawerClosed);
         }
@@ -239,10 +278,11 @@ public class TicketTabletPrototype : MonoBehaviour
         if (bloqueioTela != null && bloqueioTela.activeSelf != aberto) bloqueioTela.SetActive(aberto);
         if (aparelhoFechado != null && aparelhoFechado.activeSelf == aberto) aparelhoFechado.SetActive(!aberto);
 
-        if (interactionDetector != null) interactionDetector.enabled = !aberto;
-        if (disableWhileTabletOpen != null)
-            foreach (Behaviour comportamento in disableWhileTabletOpen)
-                if (comportamento != null) comportamento.enabled = !aberto;
+        // Abriu: o jogador mexe só no celular. Fechou: os controles só voltam se ninguém mais os quer desligados — com
+        // uma tela 2D aberta (o UIScreenManager os religa ao fechar a tela) ou o relatório final na frente, ficam como
+        // estão. Antes eles voltavam sempre e o jogador andava/girava com uma tela 2D aberta.
+        if (aberto) SetControles(false);
+        else if (NoMundo3D() && !StageReportScreen.Showing) { CursorLiberado = false; SetControles(true); }
 
         AtualizarBloqueio();
     }
@@ -374,7 +414,7 @@ public class TicketTabletPrototype : MonoBehaviour
         // O GUI.color é global do IMGUI. Como DesenharRetangulo agora multiplica por ele (para o aviso poder
         // aparecer e sumir de uma vez), garanto que ninguém entrou aqui com um tint pendurado de outro OnGUI.
         GUI.color = Color.white;
-        if (StageReportScreen.Showing) return;   // relatório final na frente: o celular não aparece
+        if (StageReportScreen.Showing || MainMenuScreen.Showing) return;   // relatório final / menu inicial na frente: o celular não aparece
 
         if (aberto)
         {
@@ -487,7 +527,7 @@ public class TicketTabletPrototype : MonoBehaviour
     private bool CalcularSobreOAparelho()
     {
         if (aberto) return RetanguloAberto().Contains(PonteiroNaTela());
-        if (NoMundo3D()) return false;
+        if (NoMundo3D() && !CursorLiberado) return false;
         return RetanguloFechado().Contains(PonteiroNaTela());
     }
 
@@ -671,7 +711,9 @@ public class TicketTabletPrototype : MonoBehaviour
             if (GUILayout.Button("Finalizar atendimento", sBotao, GUILayout.Height(32f * e)))
                 finalizarChamadoPendente = chamado.Number;
             if (recusaNumero == chamado.Number && Time.unscaledTime - recusaEm < 3.5f)
-                GUILayout.Label("Ainda há etapas pendentes neste atendimento.", sRuim);
+                GUILayout.Label(string.IsNullOrEmpty(chamado.LastRejectReason)
+                    ? "Ainda há etapas pendentes neste atendimento."
+                    : "Não dá para entregar: " + chamado.LastRejectReason + ".", sRuim);
         }
         else
         {

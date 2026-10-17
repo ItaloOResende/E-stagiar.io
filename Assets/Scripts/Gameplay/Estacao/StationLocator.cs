@@ -5,7 +5,8 @@ using UnityEngine;
 /// Seta discreta sobre a estação de um chamado EM ATENDIMENTO. Mostrada pelo <see cref="TicketDeviceBridge"/> ao
 /// reservar o equipamento e removida ao liberar (chamado concluído, troca de equipamento). Uma seta por equipamento.
 /// O modelo vem de <c>Resources/Indicador_Chamado</c> (gerado pelo menu de correções); sem ele, nada aparece.
-/// A seta flutua um pouco acima do ponto mais alto da estação e balança devagar; não tem colisor (não atrapalha a mira).
+/// A seta (<see cref="Scale"/> × o modelo) flutua um pouco acima do ponto mais alto da estação e das divisórias em volta
+/// (<see cref="Clearance"/>) e balança devagar; não tem colisor (não atrapalha a mira).
 /// </summary>
 public class StationLocator : MonoBehaviour
 {
@@ -13,6 +14,11 @@ public class StationLocator : MonoBehaviour
     private static GameObject prefab;
     private static bool loaded;
     private static readonly Dictionary<Object, StationLocator> shown = new Dictionary<Object, StationLocator>();
+
+    /// <summary>Escala da seta sobre o modelo do Resources (2026-10-17: um pouco maior para ser vista de longe).</summary>
+    public const float Scale = 1.4f;
+    /// <summary>Folga (m) entre o ponto mais alto da estação/divisória e a base da seta.</summary>
+    public const float Clearance = 0.3f;
 
     private Transform target;
     private float baseHeight;
@@ -29,7 +35,8 @@ public class StationLocator : MonoBehaviour
         foreach (Collider c in go.GetComponentsInChildren<Collider>(true)) Destroy(c);
         var loc = go.AddComponent<StationLocator>();
         loc.target = station;
-        loc.baseHeight = TopOf(station) + 0.45f;
+        go.transform.localScale = prefab.transform.localScale * Scale;
+        loc.baseHeight = Mathf.Max(TopOf(station), DividerTop(station)) + Clearance;
         shown[owner] = loc;
     }
 
@@ -41,6 +48,27 @@ public class StationLocator : MonoBehaviour
     }
 
     public static int Count => shown.Count;
+
+    /// <summary>Seta mostrada para um dono (testes).</summary>
+    public static StationLocator Of(Object owner) => owner != null && shown.TryGetValue(owner, out StationLocator l) ? l : null;
+
+    /// <summary>
+    /// Topo das divisórias em volta da estação: o mais alto entre os colisores ESTÁTICOS (sem Rigidbody) num raio de 1,6 m
+    /// que não passam de 2,3 m acima do chão da estação (ignora paredes, teto, NPCs e objetos soltos). Assim a seta fica
+    /// um pouco ACIMA da divisória e é vista do corredor.
+    /// </summary>
+    private static float DividerTop(Transform station)
+    {
+        float chao = station.position.y, top = chao;
+        foreach (Collider c in Physics.OverlapSphere(station.position + Vector3.up, 1.6f, ~0, QueryTriggerInteraction.Ignore))
+        {
+            if (c.attachedRigidbody != null) continue;
+            float y = c.bounds.max.y;
+            if (y > chao + 2.3f || c.bounds.size.y > 2.6f) continue;   // parede/teto
+            top = Mathf.Max(top, y);
+        }
+        return top;
+    }
 
     private static float TopOf(Transform t)
     {

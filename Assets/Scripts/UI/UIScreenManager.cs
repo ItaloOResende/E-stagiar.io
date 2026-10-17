@@ -96,8 +96,9 @@ public class UIScreenManager : MonoBehaviour
         closedFrame = Time.frameCount;
         closing.Hide();
         UICursor.Reset();       // fora das telas, nenhum cursor personalizado fica ativo
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+        bool livre = TicketTabletPrototype.CelularAberto;   // celular aberto no 3D: o cursor continua livre para ele
+        Cursor.lockState = livre ? CursorLockMode.None : CursorLockMode.Locked;
+        Cursor.visible = livre;
         StartCoroutine(RestorePlayerNextFrame());
     }
 
@@ -124,7 +125,7 @@ public class UIScreenManager : MonoBehaviour
         // Rede de segurança: no 3D (sem tela, sem celular, sem relatório) e com a janela em foco, o cursor fica
         // travado. Algo que solte o cursor e não o devolva (ex.: fechar uma tela por outro caminho) não deixa o
         // jogador com o mouse saindo da janela.
-        if (!IsOpen && !TicketTabletPrototype.CelularAberto && !StageReportScreen.Showing && Application.isFocused
+        if (!IsOpen && !TicketTabletPrototype.CelularAberto && !TicketTabletPrototype.CursorLiberado && !StageReportScreen.Showing && !MainMenuScreen.Showing && Application.isFocused
             && Time.frameCount > closedFrame + 1 && Cursor.lockState != CursorLockMode.Locked)
         {
             Cursor.lockState = CursorLockMode.Locked;
@@ -158,7 +159,8 @@ public class UIScreenManager : MonoBehaviour
     private IEnumerator RestorePlayerNextFrame()
     {
         yield return null;
-        if (!IsOpen) SetPlayerControl(true);
+        // com o celular aberto (ou o relatório final) os controles continuam desligados: quem os devolve é o celular ao fechar
+        if (!IsOpen && !TicketTabletPrototype.CelularAberto && !StageReportScreen.Showing) SetPlayerControl(true);
     }
 
     private void SetPlayerControl(bool enabled)

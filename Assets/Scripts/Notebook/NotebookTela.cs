@@ -422,6 +422,18 @@ public class NotebookTela : MonoBehaviour
 
     // ================================================================== ações
 
+    // Tampa solta com sucesso: depois de um instante a tela mostra o interior sozinha.
+    private System.Collections.IEnumerator AbrirInteriorDepois()
+    {
+        yield return new WaitForSecondsRealtime(0.6f);
+        if (vista == NotebookVista.Baixo && PodeVer(NotebookVista.Aberto))
+        {
+            vista = NotebookVista.Aberto;
+            Atualizar();
+            Mensagem("Tampa aberta: interior acessível.", Verde);
+        }
+    }
+
     private void TrocarVista(int passo)
     {
         if (passo == 0) return;
@@ -494,7 +506,8 @@ public class NotebookTela : MonoBehaviour
                 if (est.Sessao.TodosParafusosRemovidos)
                 {
                     InteractionSounds.Raise(InteractionSound.CaseOpened);   // a tampa abriu (como o gabinete do PC)
-                    Mensagem("Tampa solta: o interior está acessível (seta \u25BA).", Verde);
+                    Mensagem("Tampa aberta: interior acessível.", Verde);
+                    StartCoroutine(AbrirInteriorDepois());   // vai sozinho para a vista de dentro
                 }
                 else Mensagem("Parafuso " + (indice + 1) + " removido.", TextoFraco);
                 break;
