@@ -230,6 +230,40 @@ public static class CorrecoesRodada2Setup
         return old;
     }
 
+    public static void CapturaMesas()
+    {
+        EditorSceneManager.OpenScene(Cena);
+        string dir = System.Environment.GetEnvironmentVariable("CAPTURAS_DIR");
+        System.IO.Directory.CreateDirectory(dir);
+        foreach (StationEmployee e in Object.FindObjectsByType<StationEmployee>(FindObjectsSortMode.None))
+        {
+            WorkSurface mesa = e.GetComponentInChildren<WorkSurface>();
+            Bounds b = Bounds(mesa.gameObject);
+            Transform placa = e.transform.Find("Placa_Mesa");
+            ShotOrtho($"{dir}/topo_{e.name}.png", new Vector3(b.center.x, 2.2f, b.center.z), Quaternion.Euler(90f, 0f, 0f), 1.6f);
+            if (placa != null)
+            {
+                Vector3 side = Vector3.Cross(Vector3.up, placa.forward);
+                Shot($"{dir}/lado_{e.name}.png", placa.position + side * 0.9f + Vector3.up * 0.1f, Quaternion.LookRotation(-side));
+                Debug.Log($"[Mesas] {e.name} {e.employeeName}: placa {placa.position:F3}, mesa top {b.max.y:F3} centro {b.center:F2} ext {b.extents:F2}");
+            }
+            else Debug.Log($"[Mesas] {e.name}: SEM PLACA");
+        }
+    }
+
+    private static void ShotOrtho(string file, Vector3 pos, Quaternion rot, float size)
+    {
+        var go = new GameObject("cam"); var cam = go.AddComponent<Camera>();
+        go.transform.SetPositionAndRotation(pos, rot);
+        cam.orthographic = true; cam.orthographicSize = size; cam.nearClipPlane = 0.05f; cam.farClipPlane = 2.4f;
+        cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = new Color(0.4f, 0.45f, 0.5f);
+        var rt = new RenderTexture(960, 960, 24); cam.targetTexture = rt; cam.Render();
+        RenderTexture.active = rt;
+        var tex = new Texture2D(960, 960, TextureFormat.RGB24, false); tex.ReadPixels(new Rect(0, 0, 960, 960), 0, 0); tex.Apply();
+        System.IO.File.WriteAllBytes(file, tex.EncodeToPNG());
+        RenderTexture.active = null; cam.targetTexture = null; Object.DestroyImmediate(rt); Object.DestroyImmediate(go);
+    }
+
     public static void Captura()
     {
         EditorSceneManager.OpenScene(Cena);
