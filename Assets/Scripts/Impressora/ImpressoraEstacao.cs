@@ -21,6 +21,33 @@ public class ImpressoraEstacao : MonoBehaviour
 
     private ImpressoraVista? vistaPedida;
 
+    /// <summary>Impressões de teste que saíram (a tela de teste conta; os chamados validam por ela).</summary>
+    public int TestesOk { get; private set; }
+
+    /// <summary>
+    /// Impressão de teste pedida na tela: por enquanto a única condição verificada é o PAPEL na bandeja (toner/IP
+    /// ainda não têm diagnóstico próprio). Devolve se a folha saiu.
+    /// </summary>
+    public bool ImprimirTeste()
+    {
+        bool ok = Sessao.TemPapel;
+        if (ok) TestesOk++;
+        return ok;
+    }
+
+    /// <summary>
+    /// Cenário/defeito: define o que está instalado. <paramref name="toner"/>/<paramref name="papel"/> são os objetos
+    /// reais (guardados aqui, desativados); null = vazio. Peça que saía é destruída (o defeito a consome).
+    /// </summary>
+    public void DefinirEstado(GameObject toner, GameObject papel, string ip)
+    {
+        if (tonerGuardado != null && tonerGuardado != toner) Destroy(tonerGuardado);
+        if (papelGuardado != null && papelGuardado != papel) Destroy(papelGuardado);
+        tonerGuardado = toner;
+        papelGuardado = papel;
+        Sessao.DefinirEstado(toner != null, papel != null, ip);
+    }
+
     /// <summary>
     /// Pede que a próxima abertura da tela 2D comece nesta vista (ex.: clicar no painel 3D abre direto no teclado do
     /// IP). Vale uma vez: a <see cref="ImpressoraTela"/> consome o pedido ao abrir.

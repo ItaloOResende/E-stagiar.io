@@ -93,6 +93,17 @@ public class NotebookTela : MonoBehaviour
     private Image telaFundo, telaPower, barraFill;
     private Text telaTxt, etapaTxt;
 
+    // Modo 3D: o MODELO real do notebook (filho Visual_Toon do Notebook_Estacao) num ângulo fixo por vista, como os
+    // renders do gabinete; os pontos clicáveis ficam em cima das peças do modelo. Sem o modelo, vale o desenho antigo.
+    private RectTransform areaVistas;
+    private NotebookModeloEstado estado3D;   // a cópia do teclado (frente): o LED pisca nela quando o Power não liga
+    private GameObject origem3D;
+    private RectTransform[] overlays;
+    private RectTransform hotPower, hotUsb, hotRam, hotSsd;
+    private Image barra3D;
+    private Text etapa3D;
+    private bool modo3D;
+
     private void Awake() => Construir();
 
     private void OnEnable()
@@ -109,6 +120,7 @@ public class NotebookTela : MonoBehaviour
         }
         // A vista lembrada pode ser a de dentro (Aberto) e a tampa ter sido presa de novo: cai para a tampa de baixo.
         if (!PodeVer(vista)) vista = NotebookVista.Baixo;
+        PrepararModelo3D(Estacao());
         parafusoEstado = null;   // ao abrir, desenha o estado atual sem animar
         cursorDeChave = false;
         Mensagem("", TextoFraco);
@@ -183,6 +195,7 @@ public class NotebookTela : MonoBehaviour
         RedeUi.BotaoFechar(painel, Fechar);
 
         RectTransform area = RedeUi.Cheio(painel, "Vistas", Color.clear);
+        areaVistas = area;
         vistas = new RectTransform[4];
         for (int i = 0; i < 4; i++) vistas[i] = RedeUi.Cheio(area, "Vista" + (NotebookVista)i, Color.clear);
 
@@ -481,7 +494,7 @@ public class NotebookTela : MonoBehaviour
                 if (est.Sessao.TodosParafusosRemovidos)
                 {
                     InteractionSounds.Raise(InteractionSound.CaseOpened);   // a tampa abriu (como o gabinete do PC)
-                    Mensagem("Tampa solta — o notebook abriu. Use a seta \u25BA e instale a memória e o SSD.", Verde);
+                    Mensagem("Tampa solta: o interior está acessível (seta \u25BA).", Verde);
                 }
                 else Mensagem("Parafuso " + (indice + 1) + " removido.", TextoFraco);
                 break;
@@ -522,9 +535,7 @@ public class NotebookTela : MonoBehaviour
                 Mensagem("Peça retirada.", TextoFraco);
                 break;
             case NotebookEncaixeResultado.PrecisaPeca:
-                Mensagem(encaixe == NotebookParte.Ram
-                    ? "Ponha uma memória SO-DIMM na mão e clique no encaixe."
-                    : "Ponha um SSD na mão e clique no encaixe.", Amarelo);
+                Mensagem("Encaixe vazio.", Amarelo);
                 break;
             case NotebookEncaixeResultado.PecaErrada:
                 InteractionSounds.Raise(InteractionSound.Error);   // peça no encaixe errado
@@ -557,7 +568,7 @@ public class NotebookTela : MonoBehaviour
             case NotebookUsbResultado.Conectado:
                 if (mao != null) mao.Stow(est.transform.position);
                 InteractionSounds.Raise(InteractionSound.PendrivePlugged);
-                Mensagem("Pendrive conectado. Ligue o notebook na tela da frente para instalar o sistema.", Verde);
+                Mensagem("Pendrive conectado.", Verde);
                 break;
             case NotebookUsbResultado.Devolvido:
                 if (mao != null && devolver != null) mao.Retrieve(devolver);
@@ -586,15 +597,21 @@ public class NotebookTela : MonoBehaviour
         NotebookBotaoResultado r = est.PressPower();
         InteractionSounds.Raise(InteractionSound.PowerButton);
         if (r == NotebookBotaoResultado.FaltamRequisitos)
-            Mensagem("Não liga sem memória RAM instalada.", Vermelho);
+        {
+            // sintoma, não diagnóstico: o LED pisca e nada acontece
+            Mensagem("O notebook não deu sinal de vida.", Amarelo);
+            if (estado3D != null) estado3D.PiscarFalha();
+            NotebookModeloEstado mundo = est.GetComponentInChildren<NotebookModeloEstado>();
+            if (mundo != null) mundo.PiscarFalha();
+        }
         else if (r == NotebookBotaoResultado.Desligou)
             Mensagem("Notebook desligado.", TextoFraco);
         else if (est.Sessao.Instalando)
-            Mensagem("Boot pelo pendrive: instalando o sistema...", Amarelo);
+            Mensagem("Iniciando pelo pendrive...", Amarelo);
         else if (est.Sessao.TemSistema)
-            Mensagem("Ligou no sistema instalado.", Verde);
+            Mensagem("Notebook ligado.", Verde);
         else
-            Mensagem("Ligou na BIOS.", Amarelo);
+            Mensagem("O notebook ligou, mas não iniciou o sistema.", Amarelo);
         Atualizar();
     }
 
@@ -622,7 +639,11 @@ public class NotebookTela : MonoBehaviour
         if (!PodeVer(vista)) vista = NotebookVista.Baixo;
         NotebookEstacao est = Estacao();
 
-        for (int i = 0; i < 4; i++) vistas[i].gameObject.SetActive(i == (int)vista);
+        for (int i = 0; i < 4; i++) vistas[i].gameObject.SetActive(!modo3D && i == (int)vista);
+        if (modo3D)
+        {
+            for (int i = 0; i < 4; i++) overlays[i].gameObject.SetActive(i == (int)vista);
+        }
 
         if (est == null) return;
 
@@ -668,9 +689,262 @@ public class NotebookTela : MonoBehaviour
         else if (vista == NotebookVista.Frente) AtualizarFrente(est);
     }
 
+    // ================================================================== modo 3D
+
+    // Uma vista 3D: a cópia do modelo com câmera fixa (ModeloNaTela) e o estado dela. Os pontos clicáveis são filhos da
+    // própria imagem e ficam ancorados (fração 0..1) em cima das peças, como os parafusos do gabinete.
+    private sealed class Vista3D
+    {
+        public ModeloNaTela modelo;
+        public NotebookModeloEstado estado;
+        public Vector3 olhar, cima;
+        public string[] enquadrar;   // peças que a câmera enquadra (null = o notebook todo)
+        public float borda;
+        public bool parafusos = true;
+        public bool manterTampa;     // tampa de baixo sempre à vista (vista de baixo)
+        public string[] apenas;      // só estas partes (e filhas) aparecem (null = todas)
+        public string[] ocultar;     // partes (e filhas) que não aparecem
+    }
+
+    private Vista3D v3Baixo, v3Aberto, v3Lado, v3Tela, v3Teclado;
+
+    /// <summary>Copia o modelo do notebook que abriu a tela (uma vez por notebook) em cada vista 3D.</summary>
+    private void PrepararModelo3D(NotebookEstacao est)
+    {
+        Transform visual = est != null ? est.transform.Find("Visual_Toon") : null;
+        if (visual == null || visual.GetComponent<NotebookModeloEstado>() == null)
+        {
+            modo3D = false;
+            if (overlays != null) foreach (RectTransform o in overlays) o.gameObject.SetActive(false);
+            return;
+        }
+        if (overlays == null) ConstruirOverlays();
+        if (origem3D != visual.gameObject)
+        {
+            foreach (Vista3D v in new[] { v3Baixo, v3Aberto, v3Lado, v3Tela, v3Teclado })
+            {
+                Transform copia = v.modelo.Copiar(visual.gameObject, typeof(NotebookModeloEstado));
+                v.estado = copia != null ? copia.GetComponent<NotebookModeloEstado>() : null;
+                if (v.estado == null) continue;
+                v.estado.MostrarParafusos = v.parafusos;
+                v.estado.ManterTampa = v.manterTampa;
+                Esconder(copia, v);
+                Transform[] alvos = v.enquadrar == null ? new Transform[0] : System.Array.ConvertAll(v.enquadrar, n => v.estado.Parte(n));
+                v.modelo.Enquadrar(v.olhar, v.cima, v.modelo.BoundsLocal(alvos), v.borda);
+            }
+            origem3D = visual.gameObject;
+        }
+        foreach (Vista3D v in new[] { v3Baixo, v3Aberto, v3Lado, v3Tela, v3Teclado }) if (v.estado != null) v.estado.Vincular(est);
+        estado3D = v3Teclado.estado;
+        modo3D = v3Baixo.estado != null;
+    }
+
+    // Tira da imagem as partes que não são desta vista (só o desenho: as peças continuam lá para o estado e os alvos).
+    private static void Esconder(Transform copia, Vista3D v)
+    {
+        if (v.apenas == null && v.ocultar == null) return;
+        var visiveis = new System.Collections.Generic.List<Transform>();
+        if (v.apenas != null) foreach (string n in v.apenas) { Transform p = v.estado.Parte(n); if (p != null) visiveis.Add(p); }
+        foreach (Renderer r in copia.GetComponentsInChildren<Renderer>(true))
+        {
+            bool mostra = v.apenas == null || visiveis.Exists(p => r.transform.IsChildOf(p));
+            if (mostra && v.ocultar != null)
+                foreach (string n in v.ocultar) { Transform p = v.estado.Parte(n); if (p != null && r.transform.IsChildOf(p)) mostra = false; }
+            r.forceRenderingOff = !mostra;
+        }
+    }
+
+    private Vista3D NovaVista(RectTransform pai, string nome, Rect ancoras, Vector3 olhar, Vector3 cima, string[] enquadrar, float borda)
+    {
+        var v = new Vista3D { olhar = olhar, cima = cima, enquadrar = enquadrar, borda = borda };
+        v.modelo = ModeloNaTela.Criar(pai, nome, new Vector2Int(1600, 1000));
+        var rt = (RectTransform)v.modelo.transform;
+        rt.anchorMin = ancoras.min;
+        rt.anchorMax = ancoras.max;
+        rt.offsetMin = rt.offsetMax = Vector2.zero;
+        return v;
+    }
+
+    private void ConstruirOverlays()
+    {
+        var raiz = RedeUi.Cheio(areaVistas, "Vistas3D", Color.clear);
+        raiz.GetComponent<Image>().raycastTarget = false;
+        overlays = new RectTransform[4];
+        for (int i = 0; i < 4; i++)
+        {
+            overlays[i] = RedeUi.Cheio(raiz, "Vista3D_" + (NotebookVista)i, Color.clear);
+            overlays[i].GetComponent<Image>().raycastTarget = false;
+        }
+        // No espaço do modelo: frente = +Z, portas = +X, dobradiça em -Z; tela aberta ~110°.
+        Rect centro = Rect.MinMaxRect(0.17f, 0.12f, 0.83f, 0.92f);   // menor que a tela inteira: sobra espaço em volta
+        v3Baixo = NovaVista(overlays[(int)NotebookVista.Baixo], "Baixo", centro, Vector3.up, Vector3.back, new[] { "Base" }, 0.12f);
+        v3Baixo.parafusos = false;   // as cabeças e os furos são da tela (ScrewView), como no gabinete
+        v3Baixo.manterTampa = true;  // o interior aparece só na vista "Aberto": aqui é sempre a tampa com os parafusos
+        v3Aberto = NovaVista(overlays[(int)NotebookVista.Aberto], "Aberto", centro,
+                             new Vector3(0f, 1f, -0.42f), Vector3.back, new[] { "Base" }, 0.08f);   // de baixo, pouco inclinado: quase a proporção da vista "Baixo" (a 45° o notebook saía achatado), ainda com relevo
+        v3Aberto.parafusos = false;  // parafusos só na vista de baixo (recolocados com a tampa aberta, ficariam soltos aqui)
+        v3Lado = NovaVista(overlays[(int)NotebookVista.Lado], "Lado", centro, Vector3.left, Vector3.up, null, 0.1f);
+        // Frente: como o monitor e o gabinete na manutenção do PC, a tela de um lado e o teclado "em pé" do outro
+        Quaternion tampa = Quaternion.Euler(-110f, 0f, 0f);
+        v3Tela = NovaVista(overlays[(int)NotebookVista.Frente], "Tela", Rect.MinMaxRect(0.03f, 0.08f, 0.47f, 0.95f),
+                           tampa * Vector3.up, tampa * Vector3.forward, new[] { "Tampa" }, 0.06f);
+        v3Tela.apenas = new[] { "Dobradica" };   // só a tampa com a tela
+        v3Teclado = NovaVista(overlays[(int)NotebookVista.Frente], "Teclado", Rect.MinMaxRect(0.49f, 0.08f, 0.86f, 0.95f)   /* à direita fica a miniatura da mão */,
+                              Vector3.down, Vector3.back, new[] { "Base" }, 0.06f);
+        v3Teclado.ocultar = new[] { "Dobradica" };   // só a base com o teclado (a tela aberta ficaria na frente)
+
+        // Baixo: cabeça Phillips desenhada + o MESMO ScrewView do gabinete (furo, anel, animações, cursor da chave)
+        if (parafusoPrefab != null)
+        {
+            parafusoViews = new ScrewView[PosicaoParafusos.Length];
+            cabecas3D = new RectTransform[PosicaoParafusos.Length];
+            for (int i = 0; i < parafusoViews.Length; i++)
+            {
+                cabecas3D[i] = CabecaPhillips(v3Baixo.modelo.transform, "Cabeca" + i);
+                ScrewView v = Instantiate(parafusoPrefab, v3Baixo.modelo.transform, false);
+                v.name = "Parafuso" + i;
+                v.Init(i, ClicarParafuso);
+                parafusoViews[i] = v;
+            }
+        }
+
+        hotRam = Alvo(v3Aberto.modelo.transform, "Encaixe_RAM", () => ClicarEncaixe(NotebookParte.Ram));
+        hotSsd = Alvo(v3Aberto.modelo.transform, "Encaixe_SSD", () => ClicarEncaixe(NotebookParte.Ssd));
+        hotUsb = Alvo(v3Lado.modelo.transform, "Porta_USB", ClicarUsb);
+        hotPower = Alvo(v3Teclado.modelo.transform, "Power", ClicarPower);
+
+        barra3D = MiniUi.BarraProgresso(v3Tela.modelo.transform, "Barra", new Color(0.16f, 0.19f, 0.23f), Verde,
+            Vector2.zero, new Vector2(520f, 20f), out RectTransform barraRaiz);
+        RedeUi.Ancorar(barraRaiz, new Vector2(0.5f, 0f), new Vector2(520f, 20f), new Vector2(0.5f, 1f));
+        barraRaiz.anchoredPosition = new Vector2(0f, -10f);
+        barraRaiz.gameObject.SetActive(false);
+        etapa3D = RedeUi.Texto(barraRaiz, "Etapa", "", 22, TextAnchor.MiddleCenter, TextoClaro);
+        RedeUi.Ancorar((RectTransform)etapa3D.transform, new Vector2(0.5f, 0f), new Vector2(600f, 30f), new Vector2(0.5f, 1f));
+        ((RectTransform)etapa3D.transform).anchoredPosition = new Vector2(0f, -4f);
+    }
+
+    private RectTransform[] cabecas3D;
+    // Cabeça de parafuso Phillips (aro escuro, metal e a cruz), como a dos renders do gabinete: o furo do ScrewView a cobre
+    // quando o parafuso sai.
+    private RectTransform CabecaPhillips(Transform pai, string nome)
+    {
+        Image aro = MiniUi.ImagemCircular(pai, nome, new Color(0.3f, 0.32f, 0.37f), 30f);
+        aro.raycastTarget = false;
+        Image metal = MiniUi.ImagemCircular(aro.transform, "Metal", CorMetal, 24f);
+        metal.raycastTarget = false;
+        for (int k = 0; k < 2; k++)
+        {
+            RectTransform fenda = RedeUi.Imagem(metal.transform, "Fenda" + k, new Color(0.22f, 0.24f, 0.28f));
+            RedeUi.Ancorar(fenda, new Vector2(0.5f, 0.5f), new Vector2(15f, 3.5f), new Vector2(0.5f, 0.5f));
+            fenda.localRotation = Quaternion.Euler(0f, 0f, 20f + k * 90f);
+            fenda.GetComponent<Image>().raycastTarget = false;
+        }
+        return (RectTransform)aro.transform;
+    }
+
+    /// <summary>
+    /// Área clicável sobre uma peça do modelo: INVISÍVEL (a peça encaixando continua à vista), com uma moldura amarela
+    /// fina só enquanto o mouse está em cima — o mesmo retorno dos encaixes do gabinete.
+    /// </summary>
+    private RectTransform Alvo(Transform pai, string nome, UnityAction acao)
+    {
+        var go = new GameObject("Alvo_" + nome, typeof(RectTransform));
+        go.transform.SetParent(pai, false);
+        var rt = (RectTransform)go.transform;
+        var img = go.AddComponent<Image>();
+        img.color = new Color(0f, 0f, 0f, 0f);   // só recebe o clique
+        var b = go.AddComponent<Button>();
+        b.targetGraphic = img;
+        b.transition = Selectable.Transition.None;
+        b.onClick.AddListener(acao);
+        var moldura = new GameObject("Moldura", typeof(RectTransform)).transform;
+        moldura.SetParent(rt, false);
+        RedeUi.Esticar((RectTransform)moldura);
+        Color amarelo = new Color(1f, 0.86f, 0.2f, 0.95f);
+        foreach ((Vector2 min, Vector2 max) in new[] { (new Vector2(0f, 1f), new Vector2(1f, 1f)), (new Vector2(0f, 0f), new Vector2(1f, 0f)),
+                                                       (new Vector2(0f, 0f), new Vector2(0f, 1f)), (new Vector2(1f, 0f), new Vector2(1f, 1f)) })
+        {
+            RectTransform linha = RedeUi.Imagem(moldura, "Linha", amarelo);
+            linha.anchorMin = min; linha.anchorMax = max;
+            bool horizontal = min.y == max.y;
+            linha.sizeDelta = horizontal ? new Vector2(0f, 4f) : new Vector2(4f, 0f);
+            linha.anchoredPosition = Vector2.zero;
+            linha.GetComponent<Image>().raycastTarget = false;
+        }
+        moldura.gameObject.SetActive(false);
+        var hover = go.AddComponent<UnityEngine.EventSystems.EventTrigger>();
+        Gatilho(hover, UnityEngine.EventSystems.EventTriggerType.PointerEnter, () => moldura.gameObject.SetActive(true));
+        Gatilho(hover, UnityEngine.EventSystems.EventTriggerType.PointerExit, () => moldura.gameObject.SetActive(false));
+        return rt;
+    }
+
+    private static void Gatilho(UnityEngine.EventSystems.EventTrigger t, UnityEngine.EventSystems.EventTriggerType tipo, UnityAction acao)
+    {
+        var e = new UnityEngine.EventSystems.EventTrigger.Entry { eventID = tipo };
+        e.callback.AddListener(_ => acao());
+        t.triggers.Add(e);
+    }
+
+    // Os pontos clicáveis acompanham as peças do modelo (ancorados: o ScrewView volta à âncora quando anima).
+    private void LateUpdate()
+    {
+        if (!modo3D) return;
+        switch (vista)
+        {
+            case NotebookVista.Baixo:
+                if (parafusoViews == null) break;
+                for (int i = 0; i < parafusoViews.Length; i++)
+                {
+                    Transform t = v3Baixo.estado.Parte("Parafuso_" + i);
+                    if (t == null) continue;
+                    Vector2 a = v3Baixo.modelo.Ancora(t.position);
+                    Ancorar(parafusoViews[i].transform, a);
+                    Ancorar(cabecas3D[i], a);
+                }
+                break;
+            case NotebookVista.Aberto:
+                Cobrir(hotRam, v3Aberto, "SlotRAM", "RAM_Instalada", 12f);
+                Cobrir(hotSsd, v3Aberto, "SlotSSD", "SSD_Instalado", 12f);
+                break;
+            case NotebookVista.Lado:
+                Cobrir(hotUsb, v3Lado, "Porta_USB", "Pendrive", 18f);
+                break;
+            default:
+                Cobrir(hotPower, v3Teclado, "BotaoPower", "BotaoPower", 16f);
+                break;
+        }
+    }
+
+    private static void Ancorar(Transform t, Vector2 a)
+    {
+        var rt = (RectTransform)t;
+        rt.anchorMin = rt.anchorMax = a;
+        rt.anchoredPosition = Vector2.zero;
+    }
+
+    // Área clicável cobrindo o encaixe e a peça encaixada (mesmo com o encaixe vazio a área é a mesma).
+    private static void Cobrir(RectTransform alvo, Vista3D v, string encaixe, string peca, float folga)
+    {
+        if (alvo == null || v.estado == null) return;
+        Rect a = v.modelo.Retangulo(v.estado.Parte(encaixe)), b = v.modelo.Retangulo(v.estado.Parte(peca));
+        Rect r = Rect.MinMaxRect(Mathf.Min(a.xMin, b.xMin) - folga, Mathf.Min(a.yMin, b.yMin) - folga,
+                                 Mathf.Max(a.xMax, b.xMax) + folga, Mathf.Max(a.yMax, b.yMax) + folga);
+        alvo.anchorMin = alvo.anchorMax = new Vector2(0.5f, 0.5f);
+        alvo.anchoredPosition = r.center;
+        alvo.sizeDelta = new Vector2(Mathf.Max(44f, r.width), Mathf.Max(44f, r.height));
+    }
+
     private void AtualizarFrente(NotebookEstacao est)
     {
         NotebookSession s = est.Sessao;
+        if (modo3D)
+        {
+            bool inst = s.Instalando;
+            ((RectTransform)barra3D.transform.parent).gameObject.SetActive(inst);
+            if (inst) barra3D.fillAmount = s.ProgressoInstalacao;
+            etapa3D.text = inst ? "Etapa " + (s.EtapaInstalacao + 1) + " de " + s.EtapasInstalacao : "";
+            return;
+        }
         bool ligado = s.Ligado;
 
         telaFundo.color = ligado ? new Color(0.08f, 0.1f, 0.14f) : CorTela;
@@ -693,10 +967,10 @@ public class NotebookTela : MonoBehaviour
         switch (s.Tela)
         {
             case NotebookEstadoTela.SemArmazenamento:
-                texto = "BIOS\n\nNenhum disco detectado.\nInstale um SSD (vista \"Aberto\").";
+                texto = "BIOS\n\nFalha ao iniciar o sistema.";
                 break;
             case NotebookEstadoTela.SemSistema:
-                texto = "BIOS\n\nSSD detectado, sem sistema.\nConecte um pendrive na lateral e ligue de novo.";
+                texto = "BIOS\n\nFalha ao iniciar o sistema.";
                 break;
             case NotebookEstadoTela.Instalando:
                 texto = "INSTALANDO O SISTEMA...\n\nNão retire o pendrive nem o SSD.";

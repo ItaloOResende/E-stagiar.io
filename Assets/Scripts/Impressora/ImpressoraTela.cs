@@ -4,16 +4,23 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>Vistas da impressora (a mesma tela, trocando de vista pelos botões Anterior/Próxima).</summary>
-public enum ImpressoraVista { Toner, Papel, Painel }
+/// Valores novos no fim; a ORDEM de navegação é <see cref="ImpressoraTela.Ordem"/> (teste, toner, papel, painel).
+public enum ImpressoraVista { Toner, Papel, Painel, Teste }
 
 /// <summary>
-/// Tela 2D da impressora. Monta a própria interface por código (retângulos, textos e botões), então não
-/// depende de nenhuma arte do projeto — quando houver arte de verdade, basta trocar as formas por sprites.
+/// Tela 2D da impressora, no padrão da manutenção do gabinete e do notebook: o compartimento desenhado e a PEÇA REAL
+/// (o modelo 3D do cartucho/da resma, <see cref="ModeloNaTela"/>) aparecendo encaixada quando está instalada; vazio,
+/// fica o contorno tracejado do lugar dela. A área clicável é invisível, com moldura amarela só com o mouse em cima.
 ///
-/// Três vistas:
-///  - <b>Toner</b>: o compartimento do cartucho.
-///  - <b>Papel</b>: a bandeja de papel.
-///  - <b>Painel</b>: o painel da impressora (visor + teclado numérico) para configurar o IP.
+/// Quatro vistas, nesta ordem:
+///  - <b>Teste</b>: a impressora de frente (modelo 3D da própria impressora) e o botão de imprimir uma página de teste:
+///    com papel a folha sai da impressora e aparece o sinal de sucesso; sem papel nada sai (aviso discreto, sem dizer
+///    o motivo). Os chamados validam pelo teste (<see cref="ImpressoraEstacao.TestesOk"/>).
+///  - <b>Toner</b>: a frente aberta, com o compartimento do cartucho.
+///  - <b>Papel</b>: a bandeja de papel puxada para fora.
+///  - <b>Painel</b>: configuração de rede (campo do IP + teclado numérico). Também aceita o TECLADO FÍSICO: números,
+///    ponto, Backspace (apaga), Delete (limpa) e Enter (confirma).
+/// Os textos são neutros: a tela não diz o que está faltando.
 ///
 /// O estado NÃO fica aqui: fica no <see cref="ImpressoraEstacao"/> do objeto do mundo (<c>UIScreen.Source</c>).
 /// </summary>
@@ -37,24 +44,49 @@ public class ImpressoraTela : MonoBehaviour
     private static readonly Color Vermelho = new Color(0.95f, 0.4f, 0.4f);
 
     private static readonly string[] Teclas = { "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "Apagar" };
+    private static readonly Color CorCarcaca = new Color(0.8f, 0.82f, 0.85f);
+    private static readonly Color CorCarcacaSombra = new Color(0.62f, 0.65f, 0.7f);
+    private static readonly Color CorCavidade = new Color(0.13f, 0.14f, 0.17f);
+    private static readonly Color CorCartao = new Color(0.14f, 0.17f, 0.22f);
+    private static readonly Color CorCampo = new Color(0.06f, 0.08f, 0.1f);
+
+    [Header("Modelos das peças (o desenho 3D na tela)")]
+    [Tooltip("Prefab do cartucho (Pickup_Toner): o modelo aparece encaixado no compartimento.")]
+    [SerializeField] private GameObject modeloToner;
+    [Tooltip("Prefab da resma (Pickup_ResmaPapel): o modelo aparece na bandeja.")]
+    [SerializeField] private GameObject modeloPapel;
 
     private bool construido;
     private bool vistaInicial;      // já escolheu a vista da primeira abertura? (depois a vista é lembrada)
     private UIScreen tela;
 
-    private ImpressoraVista vista = ImpressoraVista.Toner;
+    /// <summary>Ordem de navegação das vistas (◄ ►).</summary>
+    public static readonly ImpressoraVista[] Ordem = { ImpressoraVista.Teste, ImpressoraVista.Toner, ImpressoraVista.Papel, ImpressoraVista.Painel };
+
+    private ImpressoraVista vista = ImpressoraVista.Teste;
+
+    // Vista "Teste".
+    private ModeloNaTela impressoraModelo;
+    private ImpressoraEstacao copiaDe;
+    private RectTransform folha, folhaJanela, sucesso;
+    private Image ledTeste;
+    private Coroutine imprimindo;
     private RectTransform[] vistas;
     private Text msgTxt;
 
     // Vista "Toner".
-    private Image tonerMiolo, tonerCartucho;
+    private ModeloNaTela tonerModelo;
+    private RectTransform tonerVazio;
 
     // Vista "Papel".
-    private Image papelMiolo;
-    private RectTransform pilhaPapel;
+    private ModeloNaTela papelModelo;
+    private RectTransform papelVazio;
 
     // Vista "Painel".
-    private Text lcdStatus, lcdIp;
+    private Text lcdStatus, lcdIp, ipSalvoTxt;
+    private Image lcdLed;
+    private static Sprite arredondado;
+    private bool modelosProntos;
 
     private void Awake() => Construir();
 
@@ -66,14 +98,7 @@ public class ImpressoraTela : MonoBehaviour
         // resolver; se estiver tudo pronto, vai direto ao painel.
         if (!vistaInicial)
         {
-            ImpressoraEstacao est = Estacao();
-            if (est != null)
-            {
-                if (!est.Sessao.TemToner) vista = ImpressoraVista.Toner;
-                else if (!est.Sessao.TemPapel) vista = ImpressoraVista.Papel;
-                else vista = ImpressoraVista.Painel;
-            }
-            else vista = ImpressoraVista.Toner;
+            vista = ImpressoraVista.Teste;   // primeiro o teste: ver se imprime, depois toner e papel
             vistaInicial = true;
         }
 
@@ -97,7 +122,26 @@ public class ImpressoraTela : MonoBehaviour
             else if (teclado.rightArrowKey.wasPressedThisFrame) TrocarVista(1);
         }
 
-        if (vista == ImpressoraVista.Painel) Atualizar();
+        if (vista == ImpressoraVista.Painel)
+        {
+            TecladoFisico(teclado);
+            Atualizar();
+        }
+    }
+
+    // Digitação do IP pelo teclado físico (o mesmo que clicar nas teclas da tela).
+    private void TecladoFisico(Keyboard k)
+    {
+        if (k == null) return;
+        for (int d = 0; d <= 9; d++)
+        {
+            Key normal = (Key)((int)Key.Digit0 + d), numerico = (Key)((int)Key.Numpad0 + d);
+            if (k[normal].wasPressedThisFrame || k[numerico].wasPressedThisFrame) ClicarTecla(d.ToString());
+        }
+        if (k.periodKey.wasPressedThisFrame || k.numpadPeriodKey.wasPressedThisFrame || k.commaKey.wasPressedThisFrame) ClicarTecla(".");
+        if (k.backspaceKey.wasPressedThisFrame) ClicarTecla("Apagar");
+        if (k.deleteKey.wasPressedThisFrame) Limpar();
+        if (k.enterKey.wasPressedThisFrame || k.numpadEnterKey.wasPressedThisFrame) ClicarConfirmar();
     }
 
     private ImpressoraEstacao Estacao()
@@ -124,9 +168,10 @@ public class ImpressoraTela : MonoBehaviour
         RedeUi.BotaoFechar(painel, Fechar);
 
         RectTransform area = RedeUi.Cheio(painel, "Vistas", Color.clear);
-        vistas = new RectTransform[3];
-        for (int i = 0; i < 3; i++) vistas[i] = RedeUi.Cheio(area, "Vista" + (ImpressoraVista)i, Color.clear);
+        vistas = new RectTransform[4];
+        for (int i = 0; i < 4; i++) vistas[i] = RedeUi.Cheio(area, "Vista" + (ImpressoraVista)i, Color.clear);
 
+        ConstruirTeste(vistas[(int)ImpressoraVista.Teste]);
         ConstruirToner(vistas[(int)ImpressoraVista.Toner]);
         ConstruirPapel(vistas[(int)ImpressoraVista.Papel]);
         ConstruirPainel(vistas[(int)ImpressoraVista.Painel]);
@@ -141,102 +186,370 @@ public class ImpressoraTela : MonoBehaviour
         msgTxt.fontStyle = FontStyle.Bold;
     }
 
+    // Cantos arredondados (9-slice gerado uma vez): carcaça, cartões, campos e teclas.
+    private static Sprite Arredondado
+    {
+        get
+        {
+            if (arredondado != null) return arredondado;
+            const int n = 48, raio = 16;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    float dx = Mathf.Max(0f, Mathf.Max(raio - x - 0.5f, x + 0.5f - (n - raio)));
+                    float dy = Mathf.Max(0f, Mathf.Max(raio - y - 0.5f, y + 0.5f - (n - raio)));
+                    float a = Mathf.Clamp01(raio + 0.5f - Mathf.Sqrt(dx * dx + dy * dy));
+                    tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
+                }
+            tex.Apply();
+            arredondado = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect,
+                                        new Vector4(raio, raio, raio, raio));
+            return arredondado;
+        }
+    }
+
+    private static RectTransform Caixa(Transform pai, string nome, Color cor, Vector2 pos, Vector2 tam)
+    {
+        RectTransform rt = RedeUi.Imagem(pai, nome, cor, Arredondado);
+        Image img = rt.GetComponent<Image>();
+        img.type = Image.Type.Sliced;
+        img.color = cor;
+        img.raycastTarget = false;
+        RedeUi.Ancorar(rt, new Vector2(0.5f, 0.5f), tam, new Vector2(0.5f, 0.5f));
+        rt.anchoredPosition = pos;
+        return rt;
+    }
+
+    // Contorno tracejado do lugar vazio de uma peça.
+    private static RectTransform Tracejado(Transform pai, Vector2 pos, Vector2 tam)
+    {
+        RectTransform grupo = RedeUi.Imagem(pai, "LugarVazio", Color.clear);
+        grupo.GetComponent<Image>().raycastTarget = false;
+        RedeUi.Ancorar(grupo, new Vector2(0.5f, 0.5f), tam, new Vector2(0.5f, 0.5f));
+        grupo.anchoredPosition = pos;
+        var cor = new Color(0.75f, 0.8f, 0.88f, 0.45f);
+        for (int lado = 0; lado < 4; lado++)
+        {
+            bool horizontal = lado < 2;
+            float comp = horizontal ? tam.x : tam.y;
+            int n = Mathf.Max(2, Mathf.RoundToInt(comp / 34f));
+            for (int i = 0; i < n; i++)
+            {
+                RectTransform tr = RedeUi.Imagem(grupo, "Traco", cor);
+                tr.GetComponent<Image>().raycastTarget = false;
+                float f = (i + 0.5f) / n;
+                Vector2 a = horizontal ? new Vector2(f, lado == 0 ? 1f : 0f) : new Vector2(lado == 2 ? 0f : 1f, f);
+                RedeUi.Ancorar(tr, a, horizontal ? new Vector2(comp / n * 0.55f, 4f) : new Vector2(4f, comp / n * 0.55f), new Vector2(0.5f, 0.5f));
+            }
+        }
+        return grupo;
+    }
+
+    // Área com o modelo 3D da peça (a cópia é feita na primeira atualização: Preparar3D).
+    private static ModeloNaTela Area3D(Transform pai, string nome, Vector2 pos, Vector2 tam)
+    {
+        RectTransform area = RedeUi.Imagem(pai, nome, Color.clear);
+        area.GetComponent<Image>().raycastTarget = false;
+        RedeUi.Ancorar(area, new Vector2(0.5f, 0.5f), tam, new Vector2(0.5f, 0.5f));
+        area.anchoredPosition = pos;
+        return ModeloNaTela.Criar(area, "Modelo3D", new Vector2Int(Mathf.RoundToInt(tam.x), Mathf.RoundToInt(tam.y)));
+    }
+
+    private void ConstruirTeste(RectTransform vista)
+    {
+        // a impressora de frente (cópia do modelo 3D desta impressora) e, saindo dela, a folha de teste
+        impressoraModelo = Area3D(vista, "Impressora", new Vector2(0f, 90f), new Vector2(1100f, 640f));
+
+        // janela que recorta a folha: ela "nasce" na saída de papel (topo da janela) e desce para fora
+        folhaJanela = RedeUi.Imagem(vista, "SaidaFolha", Color.clear);
+        folhaJanela.GetComponent<Image>().raycastTarget = false;
+        RedeUi.Ancorar(folhaJanela, new Vector2(0.5f, 0.5f), new Vector2(360f, 420f), new Vector2(0.5f, 1f));
+        folhaJanela.anchoredPosition = new Vector2(0f, 170f);
+        folhaJanela.gameObject.AddComponent<RectMask2D>();
+        folha = Caixa(folhaJanela, "Folha", Color.white, Vector2.zero, new Vector2(300f, 390f));
+        folha.anchorMin = folha.anchorMax = new Vector2(0.5f, 1f);
+        folha.pivot = new Vector2(0.5f, 0f);   // a borda de baixo sai primeiro
+        folha.anchoredPosition = Vector2.zero;
+        Caixa(folha, "Titulo", new Color(0.24f, 0.46f, 0.8f), new Vector2(-50f, 160f), new Vector2(150f, 18f));
+        for (int i = 0; i < 6; i++)   // linhas de "texto"
+            Caixa(folha, "Linha" + i, new Color(0.7f, 0.72f, 0.76f), new Vector2(i % 2 == 0 ? -10f : -30f, 115f - i * 24f), new Vector2(i % 2 == 0 ? 220f : 180f, 9f));
+        float[] barras = { 40f, 75f, 55f, 95f, 70f };
+        Color[] cores = { new Color(0.24f, 0.46f, 0.8f), new Color(0.95f, 0.6f, 0.18f), new Color(0.36f, 0.75f, 0.45f) };
+        for (int i = 0; i < barras.Length; i++)   // gráfico de barras simples
+            Caixa(folha, "Barra" + i, cores[i % 3], new Vector2(-90f + i * 45f, -150f + barras[i] * 0.5f), new Vector2(30f, barras[i]));
+        folha.gameObject.SetActive(false);
+
+        // LED da impressora (pisca vermelho quando a impressão falha) e o selo de sucesso
+        ledTeste = MiniUi.ImagemCircular(vista, "LedTeste", new Color(0.3f, 0.34f, 0.4f), 26f);
+        ((RectTransform)ledTeste.transform).anchoredPosition = new Vector2(-300f, -330f);
+        ledTeste.raycastTarget = false;
+        Image selo = MiniUi.ImagemCircular(vista, "Sucesso", Verde, 120f);
+        selo.raycastTarget = false;
+        sucesso = (RectTransform)selo.transform;
+        sucesso.anchoredPosition = new Vector2(330f, -60f);
+        Text check = RedeUi.Texto(sucesso, "Check", "✓", 86, TextAnchor.MiddleCenter, Color.white);
+        check.fontStyle = FontStyle.Bold;
+        RedeUi.Esticar((RectTransform)check.transform);
+        sucesso.gameObject.SetActive(false);
+
+        RectTransform botao = Caixa(vista, "BotaoImprimir", new Color(0.24f, 0.46f, 0.8f), new Vector2(0f, -330f), new Vector2(520f, 86f));
+        Text rot = RedeUi.Texto(botao, "Rotulo", "Imprimir página de teste", 32, TextAnchor.MiddleCenter, Color.white);
+        rot.fontStyle = FontStyle.Bold;
+        RedeUi.Esticar((RectTransform)rot.transform);
+        TornarClicavel(botao, ClicarImprimirTeste);
+    }
+
+    private void ClicarImprimirTeste()
+    {
+        ImpressoraEstacao est = Estacao();
+        if (est == null || imprimindo != null) return;
+        sucesso.gameObject.SetActive(false);
+        bool ok = est.ImprimirTeste();
+        InteractionSounds.Raise(InteractionSound.PowerButton);
+        imprimindo = StartCoroutine(ok ? AnimarImpressao() : AnimarFalha());
+    }
+
+    private System.Collections.IEnumerator AnimarImpressao()
+    {
+        Mensagem("Imprimindo...", TextoFraco);
+        folha.anchoredPosition = Vector2.zero;
+        folha.gameObject.SetActive(true);
+        float h = folha.sizeDelta.y;
+        yield return new WaitForSecondsRealtime(0.35f);
+        InteractionSounds.Raise(InteractionSound.DrawerClosed);   // som curto de papel passando (o do gaveteiro)
+        for (float t = 0f; t < 1f; t += Time.unscaledDeltaTime / 1.6f)
+        {
+            // a folha desce aos trancos, como o papel puxado pelos roletes
+            float k = Mathf.Clamp01(Mathf.SmoothStep(0f, 1f, t) + Mathf.Sin(t * 40f) * 0.004f);
+            folha.anchoredPosition = new Vector2(0f, -h * k);
+            yield return null;
+        }
+        folha.anchoredPosition = new Vector2(0f, -h);
+        sucesso.gameObject.SetActive(true);
+        InteractionSounds.Raise(InteractionSound.PartInstalled);
+        Mensagem("Página de teste impressa.", Verde);
+        for (float t = 0f; t < 1f; t += Time.unscaledDeltaTime / 0.25f)
+        {
+            float x = t - 1f;
+            sucesso.localScale = Vector3.one * Mathf.LerpUnclamped(0.4f, 1f, 1f + 2.7f * x * x * x + 1.7f * x * x);
+            yield return null;
+        }
+        sucesso.localScale = Vector3.one;
+        imprimindo = null;
+    }
+
+    // Sem papel: nada sai; o LED pisca e a mensagem é neutra (o jogador investiga o motivo).
+    private System.Collections.IEnumerator AnimarFalha()
+    {
+        folha.gameObject.SetActive(false);
+        Mensagem("Imprimindo...", TextoFraco);
+        yield return new WaitForSecondsRealtime(0.8f);
+        InteractionSounds.Raise(InteractionSound.Error);
+        Mensagem("A impressão não foi concluída.", Vermelho);
+        Color apagado = new Color(0.3f, 0.34f, 0.4f);
+        for (int i = 0; i < 3; i++)
+        {
+            ledTeste.color = Vermelho;
+            yield return new WaitForSecondsRealtime(0.18f);
+            ledTeste.color = apagado;
+            yield return new WaitForSecondsRealtime(0.14f);
+        }
+        imprimindo = null;
+    }
+
+    private void OnDisable()
+    {
+        // fechou no meio da impressão: a animação para e a próxima abertura começa limpa
+        if (imprimindo != null) { StopCoroutine(imprimindo); imprimindo = null; }
+        if (folha != null) folha.gameObject.SetActive(false);
+        if (sucesso != null) sucesso.gameObject.SetActive(false);
+    }
+
     private void ConstruirToner(RectTransform vista)
     {
-        RectTransform corpo = RedeUi.Imagem(vista, "Corpo", CorCorpo);
-        RedeUi.Ancorar(corpo, new Vector2(0.5f, 0.5f), new Vector2(1000f, 600f), new Vector2(0.5f, 0.5f));
-        corpo.anchoredPosition = new Vector2(0f, 10f);
-
-        RectTransform dentro = RedeUi.Imagem(corpo, "Dentro", CorCorpoClaro);
-        RedeUi.Esticar(dentro, 12f);
-
-        Rotulo(dentro, "COMPARTIMENTO DO TONER", new Vector2(0f, 200f));
-
-        RectTransform furo = RedeUi.Imagem(dentro, "FuroToner", CorBorda);
-        RedeUi.Ancorar(furo, new Vector2(0.5f, 0.5f), new Vector2(560f, 170f), new Vector2(0.5f, 0.5f));
-        furo.anchoredPosition = new Vector2(0f, 40f);
-
-        tonerMiolo = RedeUi.Imagem(furo, "Miolo", CorVazio).GetComponent<Image>();
-        RedeUi.Esticar((RectTransform)tonerMiolo.transform, 7f);
-
-        tonerCartucho = RedeUi.Imagem(furo, "Cartucho", CorToner).GetComponent<Image>();
-        RedeUi.Esticar((RectTransform)tonerCartucho.transform, 7f);
-
-        RectTransform visor = RedeUi.Imagem((RectTransform)tonerCartucho.transform, "Cilindro", new Color(0.55f, 0.5f, 0.45f));
-        RedeUi.Ancorar(visor, new Vector2(0.5f, 0f), new Vector2(480f, 26f), new Vector2(0.5f, 0f));
-        visor.anchoredPosition = new Vector2(0f, 18f);
-
-        TornarClicavel(furo, () => ClicarEncaixe(ImpressoraParte.Toner));
+        // a impressora de frente com a tampa da frente aberta (baixada): o compartimento do cartucho no meio
+        Caixa(vista, "Carcaca", CorCarcacaSombra, new Vector2(0f, 26f), new Vector2(1180f, 640f));
+        Caixa(vista, "CarcacaFrente", CorCarcaca, new Vector2(0f, 40f), new Vector2(1160f, 612f));
+        Caixa(vista, "SaidaPapel", CorCarcacaSombra, new Vector2(0f, 300f), new Vector2(760f, 40f));
+        RectTransform cavidade = Caixa(vista, "Compartimento", CorCavidade, new Vector2(0f, 40f), new Vector2(900f, 360f));
+        Caixa(cavidade, "SombraTopo", new Color(0f, 0f, 0f, 0.35f), new Vector2(0f, 150f), new Vector2(880f, 50f));
+        foreach (float x in new[] { -380f, 380f })   // trilhos laterais onde o cartucho desliza
+            Caixa(cavidade, "Trilho", new Color(0.32f, 0.35f, 0.4f), new Vector2(x, -10f), new Vector2(26f, 280f));
+        Caixa(vista, "TampaAberta", CorCarcacaSombra, new Vector2(0f, -310f), new Vector2(1080f, 110f));
+        Caixa(vista, "Dobradica", new Color(0.45f, 0.48f, 0.53f), new Vector2(0f, -250f), new Vector2(1000f, 14f));
+        tonerVazio = Tracejado(cavidade, new Vector2(0f, -10f), new Vector2(700f, 220f));
+        tonerModelo = Area3D(cavidade, "Cartucho", new Vector2(0f, -10f), new Vector2(820f, 300f));
+        Alvo(cavidade, new Vector2(0f, -10f), new Vector2(760f, 280f), () => ClicarEncaixe(ImpressoraParte.Toner));
     }
 
     private void ConstruirPapel(RectTransform vista)
     {
-        RectTransform corpo = RedeUi.Imagem(vista, "Corpo", CorCorpo);
-        RedeUi.Ancorar(corpo, new Vector2(0.5f, 0.5f), new Vector2(1000f, 560f), new Vector2(0.5f, 0.5f));
-        corpo.anchoredPosition = new Vector2(0f, 30f);
-
-        RectTransform dentro = RedeUi.Imagem(corpo, "Dentro", CorCorpoClaro);
-        RedeUi.Esticar(dentro, 12f);
-
-        Rotulo(dentro, "BANDEJA DE PAPEL", new Vector2(0f, 190f));
-
-        RectTransform furo = RedeUi.Imagem(dentro, "FuroBandeja", CorBorda);
-        RedeUi.Ancorar(furo, new Vector2(0.5f, 0.5f), new Vector2(700f, 240f), new Vector2(0.5f, 0.5f));
-        furo.anchoredPosition = new Vector2(0f, -30f);
-
-        papelMiolo = RedeUi.Imagem(furo, "Miolo", CorVazio).GetComponent<Image>();
-        RedeUi.Esticar((RectTransform)papelMiolo.transform, 7f);
-
-        pilhaPapel = RedeUi.Imagem(furo, "Pilha", Color.clear);
-        RedeUi.Esticar(pilhaPapel, 10f);
-        for (int i = 0; i < 5; i++)
-        {
-            RectTransform folha = RedeUi.Imagem(pilhaPapel, "Folha" + i, i % 2 == 0 ? CorPapel : new Color(0.78f, 0.79f, 0.75f));
-            folha.anchorMin = new Vector2(0f, i * 0.18f);
-            folha.anchorMax = new Vector2(1f, i * 0.18f + 0.14f);
-            folha.offsetMin = Vector2.zero;
-            folha.offsetMax = new Vector2(0f, 0f);
-        }
-
-        TornarClicavel(furo, () => ClicarEncaixe(ImpressoraParte.Papel));
+        // a frente da impressora em cima e a bandeja puxada para fora, vista de cima
+        Caixa(vista, "Carcaca", CorCarcacaSombra, new Vector2(0f, 300f), new Vector2(1180f, 200f));
+        Caixa(vista, "CarcacaFrente", CorCarcaca, new Vector2(0f, 306f), new Vector2(1160f, 184f));
+        Caixa(vista, "Abertura", CorCavidade, new Vector2(0f, 230f), new Vector2(900f, 40f));
+        RectTransform bandeja = Caixa(vista, "Bandeja", CorCarcacaSombra, new Vector2(0f, -110f), new Vector2(960f, 600f));
+        RectTransform fundo = Caixa(bandeja, "Fundo", new Color(0.55f, 0.58f, 0.63f), new Vector2(0f, 20f), new Vector2(900f, 500f));
+        foreach (float x in new[] { -420f, 420f })   // guias azuis das laterais do papel
+            Caixa(fundo, "Guia", new Color(0.24f, 0.46f, 0.8f), new Vector2(x, 0f), new Vector2(22f, 220f));
+        Caixa(bandeja, "Puxador", CorCavidade, new Vector2(0f, -268f), new Vector2(220f, 26f));
+        papelVazio = Tracejado(fundo, Vector2.zero, new Vector2(700f, 400f));
+        papelModelo = Area3D(fundo, "Resma", Vector2.zero, new Vector2(800f, 470f));
+        Alvo(fundo, Vector2.zero, new Vector2(760f, 440f), () => ClicarEncaixe(ImpressoraParte.Papel));
     }
 
     private void ConstruirPainel(RectTransform vista)
     {
-        RectTransform lcd = RedeUi.Imagem(vista, "Lcd", CorLcd);
-        RedeUi.Ancorar(lcd, new Vector2(0.5f, 0.5f), new Vector2(920f, 230f), new Vector2(0.5f, 0.5f));
-        lcd.anchoredPosition = new Vector2(0f, 258f);
+        RectTransform cartao = Caixa(vista, "Cartao", CorCartao, new Vector2(0f, 10f), new Vector2(880f, 900f));
 
-        lcdStatus = RedeUi.Texto(lcd, "Status", "", 40, TextAnchor.MiddleCenter, TextoLcd);
-        RedeUi.Ancorar((RectTransform)lcdStatus.transform, new Vector2(0.5f, 1f), new Vector2(860f, 70f), new Vector2(0.5f, 1f));
-        ((RectTransform)lcdStatus.transform).anchoredPosition = new Vector2(0f, -26f);
+        Text titulo = RedeUi.Texto(cartao, "Titulo", "CONFIGURAÇÃO DE REDE", 30, TextAnchor.MiddleLeft, TextoClaro);
+        titulo.fontStyle = FontStyle.Bold;
+        RedeUi.Ancorar((RectTransform)titulo.transform, new Vector2(0f, 1f), new Vector2(560f, 50f), new Vector2(0f, 1f));
+        ((RectTransform)titulo.transform).anchoredPosition = new Vector2(48f, -40f);
+
+        // estado da impressora (o mesmo aviso neutro do painel 3D) com o LED ao lado
+        RectTransform chip = Caixa(cartao, "Estado", CorCampo, new Vector2(0f, 330f), new Vector2(784f, 70f));
+        lcdLed = MiniUi.ImagemCircular(chip, "Led", Amarelo, 22f);
+        var led = (RectTransform)lcdLed.transform;
+        led.anchorMin = led.anchorMax = new Vector2(0f, 0.5f);
+        led.anchoredPosition = new Vector2(34f, 0f);
+        lcdLed.raycastTarget = false;
+        lcdStatus = RedeUi.Texto(chip, "Status", "", 28, TextAnchor.MiddleLeft, TextoLcd);
+        var st = (RectTransform)lcdStatus.transform;
+        st.anchorMin = Vector2.zero; st.anchorMax = Vector2.one; st.offsetMin = new Vector2(64f, 0f); st.offsetMax = new Vector2(-20f, 0f);
         lcdStatus.fontStyle = FontStyle.Bold;
 
-        lcdIp = RedeUi.Texto(lcd, "Ip", "", 44, TextAnchor.MiddleCenter, TextoClaro);
-        RedeUi.Ancorar((RectTransform)lcdIp.transform, new Vector2(0.5f, 0f), new Vector2(860f, 70f), new Vector2(0.5f, 0f));
-        ((RectTransform)lcdIp.transform).anchoredPosition = new Vector2(0f, 34f);
+        Text rotulo = RedeUi.Texto(cartao, "RotuloIp", "Endereço IP", 22, TextAnchor.MiddleLeft, TextoFraco);
+        RedeUi.Ancorar((RectTransform)rotulo.transform, new Vector2(0.5f, 0.5f), new Vector2(784f, 30f), new Vector2(0.5f, 0.5f));
+        ((RectTransform)rotulo.transform).anchoredPosition = new Vector2(0f, 262f);
+        RectTransform campo = Caixa(cartao, "CampoIp", CorCampo, new Vector2(0f, 200f), new Vector2(784f, 84f));
+        Caixa(campo, "Borda", new Color(0.36f, 0.6f, 0.95f, 0.9f), new Vector2(0f, -40f), new Vector2(784f, 4f));
+        lcdIp = RedeUi.Texto(campo, "Ip", "", 44, TextAnchor.MiddleCenter, TextoClaro);
+        RedeUi.Esticar((RectTransform)lcdIp.transform);
+        lcdIp.fontStyle = FontStyle.Bold;
+        ipSalvoTxt = RedeUi.Texto(cartao, "IpSalvo", "", 22, TextAnchor.MiddleCenter, TextoFraco);
+        RedeUi.Ancorar((RectTransform)ipSalvoTxt.transform, new Vector2(0.5f, 0.5f), new Vector2(784f, 30f), new Vector2(0.5f, 0.5f));
+        ((RectTransform)ipSalvoTxt.transform).anchoredPosition = new Vector2(0f, 138f);
 
-        // Teclado numérico: 3 colunas x 4 linhas.
+        // teclado numérico 3 x 4
         for (int i = 0; i < Teclas.Length; i++)
         {
-            string rotulo = Teclas[i];
-            int coluna = i % 3;
-            int linha = i / 3;
-            RectTransform tecla = RedeUi.Botao(vista, "Tecla_" + rotulo, rotulo, CorTecla,
-                () => ClicarTecla(rotulo), rotulo.Length > 1 ? 20 : 30);
-            RedeUi.Ancorar(tecla, new Vector2(0.5f, 0.5f), rotulo.Length > 1 ? new Vector2(140f, 74f) : new Vector2(110f, 74f), new Vector2(0.5f, 0.5f));
-            tecla.anchoredPosition = new Vector2(-160f + coluna * 160f, 20f - linha * 100f);
+            string tecla = Teclas[i];
+            int coluna = i % 3, linha = i / 3;
+            RectTransform b = RedeUi.Botao(cartao, "Tecla_" + tecla, tecla == "Apagar" ? "Apagar" : tecla, CorTecla,
+                                           () => ClicarTecla(tecla), tecla == "Apagar" ? 26 : 38);
+            Arredondar(b);
+            RedeUi.Ancorar(b, new Vector2(0.5f, 0.5f), new Vector2(200f, 84f), new Vector2(0.5f, 0.5f));
+            b.anchoredPosition = new Vector2(-216f + coluna * 216f, 50f - linha * 98f);
         }
 
-        RectTransform limpar = RedeUi.Botao(vista, "Limpar", "Limpar", new Color(0.35f, 0.26f, 0.26f), () => { ImpressoraEstacao e = Estacao(); if (e != null) e.Sessao.Limpar(); InteractionSounds.Raise(InteractionSound.PowerButton); Mensagem("Campo do IP limpo.", TextoFraco); Atualizar(); }, 24);
-        RedeUi.Ancorar(limpar, new Vector2(0.5f, 0.5f), new Vector2(200f, 64f), new Vector2(0.5f, 0.5f));
-        limpar.anchoredPosition = new Vector2(440f, -370f);
+        RectTransform limpar = RedeUi.Botao(cartao, "Limpar", "Limpar", new Color(0.42f, 0.28f, 0.3f), Limpar, 26);
+        Arredondar(limpar);
+        RedeUi.Ancorar(limpar, new Vector2(0.5f, 0.5f), new Vector2(300f, 80f), new Vector2(0.5f, 0.5f));
+        limpar.anchoredPosition = new Vector2(-242f, -362f);
+        RectTransform confirmar = RedeUi.Botao(cartao, "Confirmar", "Confirmar", Verde, ClicarConfirmar, 28);
+        Arredondar(confirmar);
+        RedeUi.Ancorar(confirmar, new Vector2(0.5f, 0.5f), new Vector2(460f, 80f), new Vector2(0.5f, 0.5f));
+        confirmar.anchoredPosition = new Vector2(162f, -362f);
+        Text rc = confirmar.GetComponentInChildren<Text>();
+        if (rc != null) { rc.color = new Color(0.05f, 0.1f, 0.06f); rc.fontStyle = FontStyle.Bold; }
 
-        RectTransform confirmar = RedeUi.Botao(vista, "Confirmar", "Confirmar IP", Verde, ClicarConfirmar, 26);
-        RedeUi.Ancorar(confirmar, new Vector2(0.5f, 0.5f), new Vector2(420f, 64f), new Vector2(0.5f, 0.5f));
-        Text rotuloConfirmar = confirmar.GetComponentInChildren<Text>();
-        if (rotuloConfirmar != null) rotuloConfirmar.color = new Color(0.05f, 0.08f, 0.05f);
-        confirmar.anchoredPosition = new Vector2(0f, -370f);
+        Text dica = RedeUi.Texto(vista, "Dica", "Digite pelos botões ou pelo teclado  ·  Enter confirma  ·  Backspace apaga", 20,
+                                 TextAnchor.MiddleCenter, TextoFraco);
+        RedeUi.Ancorar((RectTransform)dica.transform, new Vector2(0.5f, 0.5f), new Vector2(1100f, 30f), new Vector2(0.5f, 0.5f));
+        ((RectTransform)dica.transform).anchoredPosition = new Vector2(0f, -462f);
+    }
+
+    private static void Arredondar(RectTransform botao)
+    {
+        Image img = botao.GetComponent<Image>();
+        img.sprite = Arredondado;
+        img.type = Image.Type.Sliced;
+    }
+
+    private void Limpar()
+    {
+        ImpressoraEstacao e = Estacao();
+        if (e == null) return;
+        e.Sessao.Limpar();
+        InteractionSounds.Raise(InteractionSound.PowerButton);
+        Mensagem("Campo do IP limpo.", TextoFraco);
+        Atualizar();
+    }
+
+    // Área clicável invisível com moldura amarela só com o mouse em cima (como os encaixes do gabinete e do notebook).
+    private static void Alvo(Transform pai, Vector2 pos, Vector2 tam, UnityAction acao)
+    {
+        var go = new GameObject("Alvo", typeof(RectTransform));
+        go.transform.SetParent(pai, false);
+        var rt = (RectTransform)go.transform;
+        RedeUi.Ancorar(rt, new Vector2(0.5f, 0.5f), tam, new Vector2(0.5f, 0.5f));
+        rt.anchoredPosition = pos;
+        var img = go.AddComponent<Image>();
+        img.color = new Color(0f, 0f, 0f, 0f);
+        var b = go.AddComponent<Button>();
+        b.targetGraphic = img;
+        b.transition = Selectable.Transition.None;
+        b.onClick.AddListener(acao);
+        RectTransform moldura = RedeUi.Imagem(rt, "Moldura", Color.clear);
+        RedeUi.Esticar(moldura);
+        moldura.GetComponent<Image>().raycastTarget = false;
+        var amarelo = new Color(1f, 0.86f, 0.2f, 0.95f);
+        foreach ((Vector2 min, Vector2 max) in new[] { (new Vector2(0f, 1f), new Vector2(1f, 1f)), (Vector2.zero, new Vector2(1f, 0f)),
+                                                       (Vector2.zero, new Vector2(0f, 1f)), (new Vector2(1f, 0f), Vector2.one) })
+        {
+            RectTransform l = RedeUi.Imagem(moldura, "Linha", amarelo);
+            l.anchorMin = min; l.anchorMax = max;
+            l.sizeDelta = min.y == max.y ? new Vector2(0f, 4f) : new Vector2(4f, 0f);
+            l.anchoredPosition = Vector2.zero;
+            l.GetComponent<Image>().raycastTarget = false;
+        }
+        moldura.gameObject.SetActive(false);
+        var hover = go.AddComponent<UnityEngine.EventSystems.EventTrigger>();
+        foreach (var (tipo, ativo) in new[] { (UnityEngine.EventSystems.EventTriggerType.PointerEnter, true),
+                                              (UnityEngine.EventSystems.EventTriggerType.PointerExit, false) })
+        {
+            var e = new UnityEngine.EventSystems.EventTrigger.Entry { eventID = tipo };
+            bool v = ativo;
+            e.callback.AddListener(_ => moldura.gameObject.SetActive(v));
+            hover.triggers.Add(e);
+        }
+    }
+
+    // Copia os modelos das peças para as vistas (uma vez) e enquadra: o cartucho de frente, a resma de cima.
+    private void Preparar3D()
+    {
+        // a impressora de frente: cópia (só visual) DESTA impressora, refeita se a tela abrir em outra
+        ImpressoraEstacao est = Estacao();
+        if (est != null && est != copiaDe && impressoraModelo != null)
+        {
+            copiaDe = est;
+            Transform copia = impressoraModelo.Copiar(est.gameObject);
+            if (copia != null)
+            {
+                Bounds b = impressoraModelo.BoundsLocal();
+                // a frente é o lado do painel de controle (ImpressoraPainel3D fica na face da frente)
+                Vector3 frente = Vector3.back;
+                Transform painel = null;
+                foreach (Transform t in copia.GetComponentsInChildren<Transform>(true)) if (t.name == "PainelControle") painel = t;
+                if (painel != null)
+                {
+                    Vector3 d = impressoraModelo.Modelo.InverseTransformPoint(painel.position) - b.center;
+                    d.y = 0f;
+                    // o painel fica num canto da face: vale a face (±X ou ±Z) em que ele encosta, relativa ao tamanho da caixa
+                    if (d.sqrMagnitude > 1e-6f)
+                        frente = Mathf.Abs(d.x) / Mathf.Max(b.extents.x, 1e-4f) > Mathf.Abs(d.z) / Mathf.Max(b.extents.z, 1e-4f) ? new Vector3(Mathf.Sign(d.x), 0f, 0f) : new Vector3(0f, 0f, Mathf.Sign(d.z));
+                }
+                impressoraModelo.Enquadrar(-frente + Vector3.down * 0.3f, Vector3.up, b, 0.08f);
+            }
+        }
+        if (modelosProntos) return;
+        modelosProntos = true;
+        if (modeloToner != null && tonerModelo.Copiar(modeloToner) != null)
+            tonerModelo.Enquadrar(new Vector3(0f, -0.35f, -1f), Vector3.up, tonerModelo.BoundsLocal(), 0.06f);
+        if (modeloPapel != null && papelModelo.Copiar(modeloPapel) != null)
+            papelModelo.Enquadrar(Vector3.down, Vector3.left, papelModelo.BoundsLocal(), 0.06f);
     }
 
     private void Rotulo(Transform pai, string texto, Vector2 pos)
@@ -263,8 +576,9 @@ public class ImpressoraTela : MonoBehaviour
 
     private void TrocarVista(int passo)
     {
-        int n = 3;
-        vista = (ImpressoraVista)(((int)vista + passo % n + n) % n);
+        int n = Ordem.Length;
+        int i = System.Array.IndexOf(Ordem, vista);
+        vista = Ordem[((i < 0 ? 0 : i) + passo % n + n) % n];
         Mensagem("", TextoFraco);
         Atualizar();
     }
@@ -344,37 +658,40 @@ public class ImpressoraTela : MonoBehaviour
         if (!construido) return;
         ImpressoraEstacao est = Estacao();
 
-        for (int i = 0; i < 3; i++) vistas[i].gameObject.SetActive(i == (int)vista);
+        for (int i = 0; i < vistas.Length; i++) vistas[i].gameObject.SetActive(i == (int)vista);
 
         if (est == null) return;
 
+        Preparar3D();
         if (vista == ImpressoraVista.Toner)
         {
             bool tem = est.Sessao.TemToner;
-            tonerCartucho.gameObject.SetActive(tem);
-            tonerMiolo.gameObject.SetActive(!tem);
+            tonerModelo.gameObject.SetActive(tem && modeloToner != null);
+            tonerVazio.gameObject.SetActive(!tem);
         }
         else if (vista == ImpressoraVista.Papel)
         {
             bool tem = est.Sessao.TemPapel;
-            pilhaPapel.gameObject.SetActive(tem);
-            papelMiolo.gameObject.SetActive(!tem);
+            papelModelo.gameObject.SetActive(tem && modeloPapel != null);
+            papelVazio.gameObject.SetActive(!tem);
         }
-        else AtualizarPainel(est.Sessao);
+        else if (vista == ImpressoraVista.Painel) AtualizarPainel(est.Sessao);
     }
 
     private void AtualizarPainel(ImpressoraSession s)
     {
         string status;
-        if (!s.TemToner) { status = "SEM TONER"; lcdStatus.color = Vermelho; }
-        else if (!s.TemPapel) { status = "SEM PAPEL"; lcdStatus.color = Vermelho; }
-        else if (!s.TemIp) { status = "CONFIGURE O IP"; lcdStatus.color = Amarelo; }
-        else { status = "PRONTA"; lcdStatus.color = TextoLcd; }
+        // Mesmo aviso genérico do painel 3D (ImpressoraPainel3D.Status): não revela o que falta.
+        status = ImpressoraPainel3D.Status(s);
+        lcdStatus.color = s.Pronta ? TextoLcd : Amarelo;
         lcdStatus.text = status;
+        lcdLed.color = s.Pronta ? Verde : Amarelo;
 
         string ip = s.IpDigitado;
-        if (ip.Length == 0) ip = s.IpSalvo.Length > 0 ? s.IpSalvo : "---.---.---.---";
-        lcdIp.text = "IP: " + ip;
+        bool cursor = Mathf.Repeat(Time.unscaledTime, 1f) < 0.55f;
+        if (ip.Length == 0) ip = s.IpSalvo.Length > 0 ? s.IpSalvo : "___.___.___.___";
+        lcdIp.text = s.IpDigitado.Length > 0 ? ip + (cursor ? "|" : " ") : ip;
+        ipSalvoTxt.text = s.TemIp ? "Configurado: " + s.IpSalvo : "Nenhum endereço configurado";
         lcdIp.color = s.IpDigitado.Length > 0
             ? (ImpressoraSession.IpEhValido(s.IpDigitado) ? Verde : TextoClaro)
             : (s.TemIp ? Verde : TextoFraco);

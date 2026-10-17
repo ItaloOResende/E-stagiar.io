@@ -193,7 +193,11 @@ MonoBehaviour:
   interactionMessage: Pegar
   promptIcon: {fileID: 0}
   holdPositionOffset: {x: 0, y: 0, z: 0}
-  holdEulerOffset: {x: -60, y: 0, z: 0}
+  holdEulerOffset: {x: 335, y: 354, z: 0}
+  holdScale: 1
+  useGripPoint: 1
+  gripLocalPoint: {x: 0, y: 0.0056499997, z: -0.02}
+  placedYawOffset: 0
   startsFrozen: 1
 --- !u!114 &306119793931227936
 MonoBehaviour:

@@ -122,4 +122,30 @@ public class NotebookEstacao : MonoBehaviour
     }
 
     public NotebookBotaoResultado PressPower() => Sessao.PressPower();
+
+    /// <summary>
+    /// Cenário/defeito: define as peças do notebook. <paramref name="ram"/>/<paramref name="ssd"/> são os objetos reais
+    /// instalados (guardados aqui, desativados, como os que o jogador instala); null = encaixe vazio. Peça que saía do
+    /// encaixe é destruída (o defeito a consome, como no PC). Nunca mexe em peças que continuam no lugar.
+    /// </summary>
+    public void DefinirPecas(GameObject ram, GameObject ssd, bool ssdTemSistema)
+    {
+        Trocar(NotebookParte.Ram, ram);
+        Trocar(NotebookParte.Ssd, ssd);
+        if (ssd != null)
+        {
+            NotebookPartItem p = ssd.GetComponentInParent<NotebookPartItem>(true);
+            if (p != null) p.TemSistema = ssdTemSistema;
+        }
+        Sessao.DefinirPecas(ram != null, ssd != null, ssdTemSistema);
+    }
+
+    private void Trocar(NotebookParte parte, GameObject novo)
+    {
+        GameObject atual = Instalada(parte);
+        if (atual == novo) return;
+        if (atual != null) Destroy(atual);
+        if (novo != null) instaladas[parte] = novo;
+        else instaladas.Remove(parte);
+    }
 }

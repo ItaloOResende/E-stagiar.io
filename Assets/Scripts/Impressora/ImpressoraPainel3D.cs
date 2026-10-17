@@ -41,10 +41,8 @@ public class ImpressoraPainel3D : MonoBehaviour
     public static string Status(ImpressoraSession s)
     {
         if (s == null) return "";
-        if (!s.TemToner) return "SEM TONER";
-        if (!s.TemPapel) return "SEM PAPEL";
-        if (!s.TemIp) return "CONFIGURE O IP";
-        return "PRONTA";
+        // Aviso genérico: o painel não diz o que está faltando (o técnico investiga a impressora).
+        return s.Pronta ? "PRONTA" : "ERRO - VERIFICAR";
     }
 
     /// <summary>Linha do IP para uma sessão (público para testes).</summary>

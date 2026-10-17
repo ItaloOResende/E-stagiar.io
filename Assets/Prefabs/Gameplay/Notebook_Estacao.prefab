@@ -270,6 +270,8 @@ GameObject:
   - component: {fileID: 8721039470186527920}
   - component: {fileID: 3264643437033664832}
   - component: {fileID: 9020335621968792861}
+  - component: {fileID: 214555124628752774}
+  - component: {fileID: 8609144611069045269}
   m_Layer: 0
   m_Name: Notebook_Estacao
   m_TagString: Untagged
@@ -320,7 +322,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 75082bb817a437147b2423ae7827a29f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UIScreenInteractable
-  interactionMessage: Usar o notebook
+  interactionMessage: "Manuten\xE7\xE3o"
   promptIcon: {fileID: 0}
   screen: {fileID: 4367188481490875051, guid: b9de2656e1fd235448211e816e038337, type: 3}
 --- !u!114 &9020335621968792861
@@ -330,7 +332,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3345724081896260347}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 113b9336eaeaa8f4689050ca3df6e1a1, type: 3}
   m_Name: 
@@ -338,6 +340,55 @@ MonoBehaviour:
   interactionMessage: Usar o notebook
   promptIcon: {fileID: 0}
   screen: {fileID: 4367188481490875051, guid: b9de2656e1fd235448211e816e038337, type: 3}
+  exigirAlicate: 0
+--- !u!54 &214555124628752774
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3345724081896260347}
+  serializedVersion: 5
+  m_Mass: 2
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 1
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
+--- !u!114 &8609144611069045269
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3345724081896260347}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ea4c660095cfbf24b8e4e4bcf1e3e072, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PickupInteractable
+  interactionMessage: Pegar
+  promptIcon: {fileID: 0}
+  holdPositionOffset: {x: -0.05, y: -0.06, z: 0.12}
+  holdEulerOffset: {x: 10, y: 0, z: 0}
+  holdScale: 0.8
+  useGripPoint: 0
+  gripLocalPoint: {x: 0, y: 0, z: 0}
+  placedYawOffset: 180
+  startsFrozen: 1
 --- !u!1 &5461920718348700969
 GameObject:
   m_ObjectHideFlags: 0

@@ -184,6 +184,19 @@ public class NotebookSession
         return NotebookEncaixeResultado.Instalado;
     }
 
+    /// <summary>
+    /// Fixa as peças (cenário inicial e defeitos de chamado), como o <c>ComputerCase.SetComponents</c> do PC: RAM, SSD e
+    /// se o SSD tem sistema. Não mexe nos parafusos nem no pendrive. Desliga se o novo estado não sustenta o ligado.
+    /// </summary>
+    public void DefinirPecas(bool ram, bool ssd, bool sistema)
+    {
+        TemRam = ram;
+        TemSsd = ssd;
+        SsdTemSistema = ssd && sistema;
+        Revalidar();
+        if (Ligado && !TemSistema && !Instalando) { Ligado = false; instalacaoRestante = -1f; }
+    }
+
     /// <summary>Marca se o SSD instalado tem o sistema (o chamador lê/grava isso no próprio item do SSD).</summary>
     public void DefinirSistemaNoSsd(bool tem) => SsdTemSistema = tem && TemSsd;
 

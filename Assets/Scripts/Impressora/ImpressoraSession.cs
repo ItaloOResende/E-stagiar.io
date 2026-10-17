@@ -66,6 +66,15 @@ public class ImpressoraSession
         return ImpressoraEncaixeResultado.Instalado;
     }
 
+    /// <summary>Cenário/defeito: define toner, papel e o IP salvo ("" = sem IP). Limpa a digitação.</summary>
+    public void DefinirEstado(bool toner, bool papel, string ip)
+    {
+        TemToner = toner;
+        TemPapel = papel;
+        IpSalvo = ip ?? "";
+        IpDigitado = "";
+    }
+
     // ---- painel: digitação do IP
     public void Digitar(string texto)
     {

@@ -68,3 +68,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 160a17ad78fd8d4489bfd17cc3ca0108, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ImpressoraTela
+  modeloToner: {fileID: 4127844422551974070, guid: acbc2860dc3408b46ac6610d9e230a9c, type: 3}
+  modeloPapel: {fileID: 76286239509117065, guid: 9ec268906caaaf545bcd554eef0a9779, type: 3}

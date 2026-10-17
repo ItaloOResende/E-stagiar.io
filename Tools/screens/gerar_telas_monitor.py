@@ -82,16 +82,12 @@ def bios(folder, hd_detectado=False, perfil="pc"):
         y += 13
     d.text((12, y + 1), t["ordem"], font=f, fill=cinza)
     d.rectangle([0, 118, W, H], fill=(0, 0, 120))
-    if hd_detectado:
-        d.text((8, 121), "No bootable device found.", font=f, fill=amarelo)
-        d.text((8, 134), t["sigla"] + " detectado, mas sem sistema operacional.", font=f, fill=branco)
-        d.text((8, 147), "Conecte o pendrive de instalação e reinicie.", font=f, fill=cinza)
-        save(img, folder, t["prefixo"] + "bios_sem_sistema.png")
-    else:
-        d.text((8, 121), "Nenhum dispositivo de armazenamento detectado.", font=f, fill=amarelo)
-        d.text((8, 134), "Instale um " + t["sigla"] + " e reinicie " + t["maquina"] + ".", font=f, fill=branco)
-        d.text((8, 147), "F10: Salvar e sair    Esc: Sair", font=f, fill=cinza)
-        save(img, folder, t["prefixo"] + "bios.png")
+    # Rodapé NEUTRO e igual nos dois casos: a tela não diz o que instalar nem o que fazer (o jogador investiga a
+    # tabela acima e o próprio equipamento).
+    d.text((8, 121), "Falha ao iniciar: nenhum sistema pôde ser carregado.", font=f, fill=amarelo)
+    d.text((8, 134), "Verifique " + t["maquina"] + " e reinicie.", font=f, fill=branco)
+    d.text((8, 147), "F10: Salvar e sair    Esc: Sair", font=f, fill=cinza)
+    save(img, folder, t["prefixo"] + ("bios_sem_sistema.png" if hd_detectado else "bios.png"))
 
 
 ETAPAS = ["Preparando a instalação...", "Copiando arquivos para o HD...", "Instalando recursos...",
@@ -206,7 +202,25 @@ def sistema(folder, rede=False, perfil="pc"):
     else:
         d.line([(nx + 11, H - 12), (nx + 17, H - 6)], fill=(235, 70, 60), width=2)
         d.line([(nx + 17, H - 12), (nx + 11, H - 6)], fill=(235, 70, 60), width=2)
-        d.text((x0 + 8, y0 + 46), "Rede: sem conexão (cabo desligado)", font=f, fill=(170, 60, 50))
+        # Aviso grande, legível no monitor 3D de longe. Diz só o SINTOMA (sem rede), nunca a causa/solução: o mesmo
+        # aviso vale para cabo solto, cabo defeituoso ou porta do rack desligada.
+        ax0, ay0, ax1, ay1 = 92, 34, 262, 112
+        d.rectangle([ax0 + 3, ay0 + 3, ax1 + 3, ay1 + 3], fill=(20, 30, 40))
+        d.rectangle([ax0, ay0, ax1, ay1], fill=(250, 244, 240), outline=(20, 30, 40))
+        d.rectangle([ax0, ay0, ax1, ay0 + 13], fill=(200, 55, 50))
+        d.text((ax0 + 5, ay0 + 1), "Rede", font=fb, fill=(255, 255, 255))
+        # ícone: dois computadores ligados por uma linha cortada por um X vermelho
+        ix, iy = ax0 + 10, ay0 + 24
+        for dx in (0, 30):
+            d.rectangle([ix + dx, iy, ix + dx + 14, iy + 10], fill=(60, 80, 110), outline=(20, 30, 40))
+            d.rectangle([ix + dx + 5, iy + 11, ix + dx + 9, iy + 13], fill=(60, 80, 110))
+        d.line([(ix + 14, iy + 5), (ix + 30, iy + 5)], fill=(90, 100, 110), width=1)
+        d.line([(ix + 18, iy + 1), (ix + 26, iy + 9)], fill=(220, 50, 45), width=3)
+        d.line([(ix + 26, iy + 1), (ix + 18, iy + 9)], fill=(220, 50, 45), width=3)
+        d.text((ax0 + 60, ay0 + 20), "Sem acesso", font=font(12), fill=(180, 40, 35))
+        d.text((ax0 + 60, ay0 + 34), "à rede", font=font(12), fill=(180, 40, 35))
+        d.text((ax0 + 10, ay0 + 52), "Internet e arquivos", font=f, fill=(50, 60, 70))
+        d.text((ax0 + 10, ay0 + 62), "compartilhados indisponíveis.", font=f, fill=(50, 60, 70))
     save(img, folder, "PH_ui_tela_sistema_rede.png" if rede else "PH_ui_tela_sistema.png")
 
 
