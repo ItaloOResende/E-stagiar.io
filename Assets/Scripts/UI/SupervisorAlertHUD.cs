@@ -6,9 +6,10 @@ using UnityEngine.UI;
 ///  - borda vermelha breve e discreta (não cobre o centro, não recebe cliques);
 ///  - indicador direcional: seta na borda da tela apontando para o supervisor quando ele está fora da visão (inclusive
 ///    atrás), ou um "!" sobre a cabeça dele quando está na tela. A câmera do jogador nunca é girada;
-///  - cartão no alto: ícone, título e a mensagem do motivo (queda, dano, desorganização), com entrada/saída animadas;
+///  - cartão no lado esquerdo: ícone, título, a mensagem do motivo (queda, dano, desorganização) e a penalidade REAL
+///    lançada pelo <see cref="ScoreKeeper"/> (ex.: "−5 PTS"; o motivo fica na mensagem), com entrada/saída animadas;
 ///  - som curto de alerta (<see cref="InteractionSound.SupervisorAlert"/>, sem posição: ouvido mesmo de costas).
-/// Só informa o que foi visto; nenhuma penalidade é mostrada (não existe ainda). Monta os próprios elementos (formas
+/// Sem ScoreKeeper na cena, a linha de pontos fica vazia. Monta os próprios elementos (formas
 /// geradas por código, fonte padrão da UI do projeto): sem assets novos.
 /// </summary>
 public class SupervisorAlertHUD : MonoBehaviour
@@ -34,21 +35,33 @@ public class SupervisorAlertHUD : MonoBehaviour
 
     private RectTransform root, card, indicator, arrow, bang;
     private Image vignette;
-    private Text titleText, messageText;
+    private Text titleText, messageText, penaltyText;
+    private Infraction current;
     private Transform supervisor;
     private float shownAt = -100f, indicatorUntil = -100f, vignetteAt = -100f;
 
     /// <summary>Cartão visível agora.</summary>
     public bool IsShowing => card != null && card.gameObject.activeSelf;
     public string CurrentMessage => messageText != null ? messageText.text : "";
+    /// <summary>Linha da penalidade do cartão atual (vazia se não houve lançamento).</summary>
+    public string CurrentPenalty => penaltyText != null ? penaltyText.text : "";
     public bool IndicatorVisible => indicator != null && indicator.gameObject.activeSelf;
     /// <summary>Indicador em modo seta (supervisor fora da tela).</summary>
     public bool IndicatorOffscreen => IndicatorVisible && arrow.gameObject.activeSelf;
     public float VignetteAlpha => vignette != null ? vignette.color.a : 0f;
 
     private void Awake() => Build();
-    private void OnEnable() => InfractionLog.Witnessed += OnWitnessed;
-    private void OnDisable() => InfractionLog.Witnessed -= OnWitnessed;
+    private void OnEnable()
+    {
+        InfractionLog.Witnessed += OnWitnessed;
+        ScoreKeeper.InfractionPenalized += OnPenalized;
+    }
+
+    private void OnDisable()
+    {
+        InfractionLog.Witnessed -= OnWitnessed;
+        ScoreKeeper.InfractionPenalized -= OnPenalized;
+    }
 
     /// <summary>Mostra o aviso de uma infração presenciada por <paramref name="witness"/>.</summary>
     public void Show(Infraction inf, Transform witness)
@@ -59,6 +72,10 @@ public class SupervisorAlertHUD : MonoBehaviour
                    : inf.Kind == InfractionKind.ItemLeftOnFloor ? floorMessage : droppedMessage;
         titleText.text = title;
         messageText.text = string.Format(fmt, inf.ItemName);
+        current = inf;
+        // a pontuação pode ter sido lançada antes deste aviso (ordem dos assinantes do Witnessed)
+        ScoreKeeper keeper = FindFirstObjectByType<ScoreKeeper>();
+        SetPenalty(keeper != null ? keeper.EntryFor(inf) : null, inf);
         shownAt = vignetteAt = Time.unscaledTime;
         indicatorUntil = Time.unscaledTime + indicatorDuration;
         card.gameObject.SetActive(true);
@@ -66,6 +83,17 @@ public class SupervisorAlertHUD : MonoBehaviour
     }
 
     private void OnWitnessed(Infraction inf, Transform witness) => Show(inf, witness);
+
+    private void OnPenalized(Infraction inf, ScoreEntry entry)
+    {
+        if (inf == current) SetPenalty(entry, inf);
+    }
+
+    private void SetPenalty(ScoreEntry entry, Infraction inf)
+    {
+        if (entry == null) { penaltyText.text = ""; return; }
+        penaltyText.text = entry.Points < 0 ? $"−{-entry.Points} PTS" : "0 PTS";
+    }
 
     private void LateUpdate()
     {
@@ -87,7 +115,7 @@ public class SupervisorAlertHUD : MonoBehaviour
             {
                 float inK = Mathf.Clamp01(c / 0.3f), outK = Mathf.Clamp01((cardDuration - c) / 0.3f);
                 float k = Mathf.Min(EaseOut(inK), EaseOut(outK));
-                card.anchoredPosition = new Vector2(0f, Mathf.Lerp(160f, -28f, k));
+                card.anchoredPosition = new Vector2(Mathf.Lerp(-card.sizeDelta.x - 40f, 28f, k), -150f);
                 card.localScale = Vector3.one * Mathf.Lerp(0.9f, 1f, k);
             }
         }
@@ -158,21 +186,33 @@ public class SupervisorAlertHUD : MonoBehaviour
         Label(bang, "!", 40, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
         indicator.gameObject.SetActive(false);
 
-        // cartão no alto
+        // cartão no lado esquerdo (abaixo do canto, fora do centro da mira): entra deslizando da borda
         card = New("Cartao", root);
-        card.anchorMin = card.anchorMax = new Vector2(0.5f, 1f);
-        card.pivot = new Vector2(0.5f, 1f);
-        card.sizeDelta = new Vector2(640f, 120f);
+        card.anchorMin = card.anchorMax = new Vector2(0f, 1f);
+        card.pivot = new Vector2(0f, 1f);
+        card.sizeDelta = new Vector2(600f, 168f);
         var bg = card.gameObject.AddComponent<Image>();
         bg.sprite = Rounded(alertColor, cardColor);
         bg.type = Image.Type.Sliced;
         bg.raycastTarget = false;
         RectTransform icon = Circle("Icone", card, alertColor, 78f);
         icon.anchorMin = icon.anchorMax = new Vector2(0f, 0.5f);
-        icon.anchoredPosition = new Vector2(62f, 0f);
+        icon.anchoredPosition = new Vector2(62f, 10f);
         Label(icon, "!", 54, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
         titleText = Label(Area(card, 118f, 16f, 36f), "", 28, FontStyle.Bold, alertColor, TextAnchor.UpperLeft);
-        messageText = Label(Area(card, 118f, 56f, 52f), "", 26, FontStyle.Normal, textColor, TextAnchor.UpperLeft);
+        messageText = Label(Area(card, 118f, 54f, 40f), "", 24, FontStyle.Normal, textColor, TextAnchor.UpperLeft);
+        // faixa da penalidade: destaque em vermelho, na base do cartão
+        RectTransform faixa = New("Penalidade", card);
+        faixa.anchorMin = new Vector2(0f, 0f); faixa.anchorMax = new Vector2(1f, 0f); faixa.pivot = new Vector2(0.5f, 0f);
+        faixa.offsetMin = new Vector2(12f, 12f); faixa.offsetMax = new Vector2(-12f, 58f);
+        var faixaImg = faixa.gameObject.AddComponent<Image>();
+        faixaImg.sprite = Rounded(alertColor, alertColor);
+        faixaImg.type = Image.Type.Sliced;
+        faixaImg.raycastTarget = false;
+        penaltyText = Label(faixa, "", 28, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+        var sombra = penaltyText.gameObject.AddComponent<Shadow>();
+        sombra.effectColor = new Color(0f, 0f, 0f, 0.35f);
+        sombra.effectDistance = new Vector2(2f, -2f);
         card.gameObject.SetActive(false);
     }
 

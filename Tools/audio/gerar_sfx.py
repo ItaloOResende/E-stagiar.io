@@ -114,6 +114,9 @@ def main(folder):
     tone2 = np.sin(2 * np.pi * 622 * tt + 0.4 * np.sin(2 * np.pi * 7 * tt)) * env(len(tt), 0.01, 0.16)
     save(folder, "sfx_supervisor_alerta", mix(0.5, [(0.0, tone1 * 0.8), (0.16, tone2)]))
     save(folder, "sfx_gaveta_fechar", mix(0.5, [(0.0, slide(0.35, 300, 1600) * 0.7), (0.33, thud(150, 0.15, 0.03))]))
+    # pegar bloqueado (gabinete com cabos na tomada): dois "tums" graves e curtos, de recusa (sempre por último:
+    # não muda o sorteio dos sons acima)
+    save(folder, "sfx_bloqueado", mix(0.32, [(0.0, thud(150, 0.12, 0.03) * 0.8), (0.13, thud(115, 0.16, 0.04))]))
 
 
 if __name__ == "__main__":

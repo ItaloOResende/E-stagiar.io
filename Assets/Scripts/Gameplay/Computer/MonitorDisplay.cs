@@ -8,7 +8,7 @@ using UnityEngine;
 /// tela de manutenção e as portas dele não são usadas; a imagem continua, ela só depende do cabo).
 /// Só apresentação: troca a textura/cor do renderer por MaterialPropertyBlock (o material compartilhado não muda).
 /// </summary>
-public class MonitorDisplay : MonoBehaviour
+public class MonitorDisplay : MonoBehaviour, IPickupBlocker
 {
     [Tooltip("PC (root lógico do gabinete) que alimenta este monitor.")]
     [SerializeField] private ComputerPower source;
@@ -33,6 +33,14 @@ public class MonitorDisplay : MonoBehaviour
     private MaterialPropertyBlock block;
 
     public ComputerPower Source => source;
+
+    /// <summary>
+    /// O monitor não é carregado com cabo de energia na tomada ou vídeo ligado ao gabinete
+    /// (<see cref="ComputerPower.MonitorTetheredLinks"/>). Fica no filho da tela; o <c>PickupInteractable</c> do monitor
+    /// consulta os bloqueadores dos filhos.
+    /// </summary>
+    public bool BlocksPickup => source != null && source.MonitorTetheredLinks().Count > 0;
+    public string BlockReason => source != null ? source.MonitorBlockReason : "";
 
     private void Awake()
     {

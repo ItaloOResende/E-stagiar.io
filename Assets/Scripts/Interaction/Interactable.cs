@@ -15,6 +15,9 @@ public class Interactable : MonoBehaviour
     /// <summary>Texto curto da ação mostrado no prompt do HUD (padrão: <see cref="interactionMessage"/>).</summary>
     public virtual string PromptText => interactionMessage;
 
+    /// <summary>A ação existe mas está bloqueada agora (o HUD mostra o motivo em <see cref="PromptText"/> e o ícone de bloqueio).</summary>
+    public virtual bool IsBlocked => false;
+
     /// <summary>O objeto aceita interação agora? (controla a mãozinha e o clique)</summary>
     public virtual bool CanInteract(InteractionDetector interactor) => isActiveAndEnabled;
 

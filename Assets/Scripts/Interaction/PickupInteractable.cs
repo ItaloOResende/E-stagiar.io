@@ -38,6 +38,13 @@ public class PickupInteractable : Interactable
     [Tooltip("Escala do objeto SÓ enquanto está na mão (1 = tamanho real). Para objetos grandes (monitor, gabinete) não " +
              "cobrirem a visão. Ao soltar, volta ao tamanho real.")]
     [Range(0.2f, 1.5f)] [SerializeField] private float holdScale = 1f;
+    [Tooltip("Ligado: quem fica no ponto de mão é a EMPUNHADURA (Grip Local Point), não o centro do objeto, e a " +
+             "rotação Hold Euler Offset passa a ser em relação aos eixos locais do item (não depende do giro em que ele " +
+             "estava). Para ferramentas: segurar pelo cabo, nunca pela ponta.")]
+    [SerializeField] private bool useGripPoint;
+    [Tooltip("Ponto de pega no espaço LOCAL deste objeto (root lógico), ex.: o meio do cabo da chave de fenda. " +
+             "Hold Position Offset continua somado a ele.")]
+    [SerializeField] private Vector3 gripLocalPoint = Vector3.zero;
 
     [Header("Ao colocar numa superfície")]
     [Tooltip("Giro (graus) somado à direção do jogador ao colocar o item numa superfície mirada. 0 = frente do item para " +
@@ -80,6 +87,16 @@ public class PickupInteractable : Interactable
     }
 
     /// <summary>Ajusta como o objeto fica na mão (usado por scripts de configuração; vale na próxima vez que for pego).</summary>
+    public bool UsesGripPoint => useGripPoint;
+    public Vector3 GripLocalPoint => gripLocalPoint;
+
+    /// <summary>Configura a empunhadura (ver <see cref="useGripPoint"/>). Usado pelos scripts de configuração.</summary>
+    public void SetGrip(bool use, Vector3 localPoint)
+    {
+        useGripPoint = use;
+        gripLocalPoint = localPoint;
+    }
+
     public void SetHoldPose(Vector3 positionOffset, Vector3 eulerOffset, float scale)
     {
         holdPositionOffset = positionOffset;
@@ -103,7 +120,7 @@ public class PickupInteractable : Interactable
         if (body != null) return;
         body = GetComponent<Rigidbody>();
         renderers = GetComponentsInChildren<Renderer>(true);
-        blockers = GetComponents<IPickupBlocker>();
+        blockers = GetComponentsInChildren<IPickupBlocker>(true);   // ex.: MonitorDisplay fica no filho da tela
 
         restWorldScale = transform.lossyScale;
         restWorldRotation = transform.rotation;
@@ -112,7 +129,9 @@ public class PickupInteractable : Interactable
         restCenterOffset = b.center - transform.position;
         horizontalRadius = Mathf.Max(b.extents.x, b.extents.z);
 
-        colliders = GetComponentsInChildren<Collider>(true);
+        // Só os colliders LIGADOS em repouso: os desligados de propósito (ex.: visual antigo trocado por outro modelo)
+        // não podem voltar a ligar quando o item é solto.
+        colliders = System.Array.FindAll(GetComponentsInChildren<Collider>(true), c => c.enabled);
         if (colliders.Length == 0)
         {
             var box = gameObject.AddComponent<BoxCollider>();
@@ -129,18 +148,47 @@ public class PickupInteractable : Interactable
 
     private Bounds RenderBounds()
     {
-        if (renderers.Length == 0) return new Bounds(transform.position, Vector3.one * 0.1f);
-        Bounds b = renderers[0].bounds;
-        for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
+        // Renderers desligados (visual antigo escondido) não contam: o centro na mão é o do modelo que aparece.
+        bool any = false;
+        Bounds b = new Bounds(transform.position, Vector3.one * 0.1f);
+        foreach (Renderer r in renderers)
+        {
+            if (r == null || !r.enabled) continue;
+            if (!any) { b = r.bounds; any = true; }
+            else b.Encapsulate(r.bounds);
+        }
         return b;
     }
 
     // Mensagem não personalizada no Inspector = "Pegar".
-    public override string PromptText =>
-        string.IsNullOrEmpty(interactionMessage) || interactionMessage == "Interagir" ? "Pegar" : interactionMessage;
+    // Bloqueado: o motivo do bloqueador (ex.: "Desconecte o cabo de energia").
+    public override string PromptText
+    {
+        get
+        {
+            string reason = BlockReason;
+            if (reason != null) return reason;
+            return string.IsNullOrEmpty(interactionMessage) || interactionMessage == "Interagir" ? "Pegar" : interactionMessage;
+        }
+    }
+
+    public override bool IsBlocked => IsPickupBlocked;
+
+    /// <summary>Motivo do bloqueio (null = não está bloqueado; "Não pode ser pego" se o bloqueador não disser).</summary>
+    public string BlockReason
+    {
+        get
+        {
+            Init();
+            foreach (IPickupBlocker b in blockers)
+                if (b as Object != null && b.BlocksPickup)
+                    return string.IsNullOrEmpty(b.BlockReason) ? "Não pode ser pego" : b.BlockReason;
+            return null;
+        }
+    }
 
     /// <summary>
-    /// Algum <see cref="IPickupBlocker"/> do objeto impede pegá-lo agora (ex.: gabinete aberto). Só o pegar é
+    /// Algum <see cref="IPickupBlocker"/> do objeto impede pegá-lo agora (ex.: gabinete com cabos presos à estação). Só o pegar é
     /// bloqueado: colliders e as outras interações do objeto (como abrir a tela de manutenção) continuam valendo.
     /// </summary>
     public bool IsPickupBlocked
@@ -154,12 +202,20 @@ public class PickupInteractable : Interactable
         }
     }
 
+    /// <summary>
+    /// Bloqueado (<see cref="IsPickupBlocked"/>) continua sendo alvo, para o HUD explicar o motivo; o clique só toca o
+    /// som de bloqueio e não pega.
+    /// </summary>
     public override bool CanInteract(InteractionDetector interactor)
-        => base.CanInteract(interactor) && !IsHeld && !IsPickupBlocked && interactor.Holder != null && !interactor.Holder.IsHolding;
+        => base.CanInteract(interactor) && !IsHeld && interactor.Holder != null && !interactor.Holder.IsHolding;
 
     public override void Interact(InteractionDetector interactor)
     {
-        if (IsPickupBlocked) return;
+        if (IsPickupBlocked)
+        {
+            InteractionSounds.Raise(InteractionSound.PickupBlocked, transform.position);
+            return;
+        }
         if (interactor.Holder.Pick(this)) InteractionSounds.Raise(InteractionSound.ItemPickedUp, transform.position);
     }
 
@@ -184,12 +240,25 @@ public class PickupInteractable : Interactable
         Vector3 hs = holdPoint.lossyScale;
         transform.localScale = new Vector3(restWorldScale.x / hs.x, restWorldScale.y / hs.y, restWorldScale.z / hs.z) * holdScale;
 
-        Quaternion rot = holdPoint.rotation * Quaternion.Euler(holdEulerOffset) * restWorldRotation;
+        // Com empunhadura a pose é a mesma qualquer que seja o giro em que o item estava (gaveta, mesa): rotação
+        // relativa aos eixos LOCAIS do item. Sem ela, a rotação de repouso entra (comportamento antigo).
+        Quaternion rot = useGripPoint
+            ? holdPoint.rotation * Quaternion.Euler(holdEulerOffset)
+            : holdPoint.rotation * Quaternion.Euler(holdEulerOffset) * restWorldRotation;
         transform.rotation = rot;
 
-        // Centro visual (e não o pivô) fica no ponto de mão.
-        Vector3 centerOffset = (rot * Quaternion.Inverse(restWorldRotation)) * restCenterOffset * holdScale;
-        transform.position = holdPoint.TransformPoint(holdPositionOffset) - centerOffset;
+        if (useGripPoint)
+        {
+            // A empunhadura (ponto local configurado) fica no ponto de mão: a mão segura o cabo, não o meio do item.
+            Vector3 grip = transform.TransformPoint(gripLocalPoint) - transform.position;
+            transform.position = holdPoint.TransformPoint(holdPositionOffset) - grip;
+        }
+        else
+        {
+            // Centro visual (e não o pivô) fica no ponto de mão.
+            Vector3 centerOffset = (rot * Quaternion.Inverse(restWorldRotation)) * restCenterOffset * holdScale;
+            transform.position = holdPoint.TransformPoint(holdPositionOffset) - centerOffset;
+        }
 
         PickedUp?.Invoke(this);
     }

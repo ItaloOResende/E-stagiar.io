@@ -34,6 +34,9 @@ public class UIScreenManager : MonoBehaviour
     private int closedFrame = -1;
 
     public UIScreen Current => current;
+
+    /// <summary>Uma tela 2D abriu a partir de um objeto do mundo (<c>source</c>). Ex.: chamados contam "inspecionar".</summary>
+    public static event System.Action<UIScreen, GameObject> AnyScreenOpened;
     public bool IsOpen => current != null;
 
     /// <summary>Gerenciador ativo da cena. O celular usa para saber se há tela 2D aberta e para pegar a mãozinha.</summary>
@@ -81,6 +84,7 @@ public class UIScreenManager : MonoBehaviour
         ApplyDefaultCursor();   // antes de mostrar: a tela pode trocar o cursor ao abrir
         instance.transform.SetAsLastSibling();
         instance.Show(this);
+        AnyScreenOpened?.Invoke(instance, source);
         return true;
     }
 
@@ -97,6 +101,17 @@ public class UIScreenManager : MonoBehaviour
         StartCoroutine(RestorePlayerNextFrame());
     }
 
+    /// <summary>
+    /// Cursor coerente com o estado atual: com tela 2D aberta, livre e visível; no 3D, travado no centro da janela e
+    /// escondido. Quem mexe no cursor por conta própria (celular) chama isto ao devolver o controle.
+    /// </summary>
+    public void ApplyCursorForCurrentState()
+    {
+        bool tela = IsOpen;
+        Cursor.lockState = tela ? CursorLockMode.None : CursorLockMode.Locked;
+        Cursor.visible = tela;
+    }
+
     /// <summary>Volta ao cursor padrão das telas (mãozinha); sem textura configurada, o do sistema.</summary>
     public void ApplyDefaultCursor()
     {
@@ -106,6 +121,16 @@ public class UIScreenManager : MonoBehaviour
 
     private void Update()
     {
+        // Rede de segurança: no 3D (sem tela, sem celular, sem relatório) e com a janela em foco, o cursor fica
+        // travado. Algo que solte o cursor e não o devolva (ex.: fechar uma tela por outro caminho) não deixa o
+        // jogador com o mouse saindo da janela.
+        if (!IsOpen && !TicketTabletPrototype.CelularAberto && !StageReportScreen.Showing && Application.isFocused
+            && Time.frameCount > closedFrame + 1 && Cursor.lockState != CursorLockMode.Locked)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
+
         if (closeWithEscape && IsOpen && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
             Close();
     }

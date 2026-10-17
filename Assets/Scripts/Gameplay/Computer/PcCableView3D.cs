@@ -96,7 +96,7 @@ public class PcCableView3D : MonoBehaviour
             power.PortsOf(link, out PcPort pa, out PcPort pb);
             bool a = power.IsEndPlugged(link, true), b = power.IsEndPlugged(link, false);
             if (!a && !b) continue;
-            Transform ta = Anchor(pa), tb = Anchor(pb);
+            Transform ta = Anchor(pa, link), tb = Anchor(pb, link);
             CableStyle style = Style(ComputerPower.CableFor(link));
             if (style == null || (a && ta == null) || (b && tb == null)) continue;
             built[link] = Build(link, style, a ? ta : null, b ? tb : null);
@@ -109,7 +109,20 @@ public class PcCableView3D : MonoBehaviour
     /// <summary>Portas padrão do cabo. A tomada real de um cabo de energia: <see cref="ComputerPower.PortsOf"/>.</summary>
     public static void Ports(PcLink link, out PcPort endA, out PcPort endB) => ComputerPower.DefaultPorts(link, out endA, out endB);
 
-    private Transform Anchor(PcPort port)
+    // Porta da parede de um cabo ligado no ponto elétrico de OUTRA estação: usa as âncoras daquele ponto.
+    private Transform Anchor(PcPort port, PcLink link)
+    {
+        WallConnectionPoint wall = ComputerPower.IsWallPort(port) ? power.WallOf(link) : null;
+        if (wall != null && wall.Source != power)
+        {
+            Transform t = wall.AnchorFor(port);
+            if (t != null) return t;
+        }
+        return LocalAnchor(port);
+    }
+
+    /// <summary>Âncora configurada neste componente para a porta (null = nenhuma).</summary>
+    public Transform LocalAnchor(PcPort port)
     {
         foreach (PortAnchor a in anchors) if (a.port == port && a.anchor != null) return a.anchor;
         return null;

@@ -88,13 +88,14 @@ public class ScrewData
 /// Fechar: recolocando os parafusos (<see cref="TryInstallScrew"/>); com todos os obrigatórios de volta, o gabinete
 /// aberto volta a ficar fechado (os opcionais também não contam para fechar).
 /// Os componentes internos são sorteados uma única vez por instância (ou fixados no Inspector).
-/// Aberto, o gabinete não pode ser pego nem carregado (<see cref="IPickupBlocker"/>); fechado, segue as regras normais.
+/// Aberto ou sem parafusos, o gabinete continua podendo ser carregado; concluir um chamado assim conta como gabinete
+/// incompleto (<see cref="IsIncomplete"/>), o que a pontuação pode penalizar.
 /// Abrir também exige o gabinete APOIADO numa superfície de trabalho marcada com <see cref="WorkSurface"/> (mesa,
 /// bancada): no chão ou em outro móvel não há manutenção nenhuma (<see cref="IsOnWorkSurface"/>): a tela 2D não abre
 /// (<see cref="IScreenBlocker"/>) e parafusos, tampa e peças recusam (<c>NotOnWorkSurface</c>). Fechado, pode ser carregado.
 /// Sem dependência de modelo, UI, tag ou nome.
 /// </summary>
-public class ComputerCase : MonoBehaviour, IPickupBlocker, IScreenBlocker
+public class ComputerCase : MonoBehaviour, IScreenBlocker
 {
     [SerializeField] private List<ScrewData> screws = new List<ScrewData>();
     [SerializeField] private CaseState state = CaseState.Closed;
@@ -239,8 +240,8 @@ public class ComputerCase : MonoBehaviour, IPickupBlocker, IScreenBlocker
         return null;
     }
 
-    /// <summary>Gabinete aberto não é transportado (as peças ficariam soltas); vale em qualquer lugar onde ele esteja.</summary>
-    public bool BlocksPickup => state == CaseState.Open;
+    /// <summary>Computador incompleto: tampa aberta ou algum parafuso obrigatório fora (os opcionais não contam).</summary>
+    public bool IsIncomplete => state == CaseState.Open || !RequiredScrewsInstalled;
 
     /// <summary>Fora de uma mesa/bancada a tela de manutenção não abre (com <see cref="RequiresWorkSurface"/>).</summary>
     public bool BlocksScreen => !MaintenanceAllowed;

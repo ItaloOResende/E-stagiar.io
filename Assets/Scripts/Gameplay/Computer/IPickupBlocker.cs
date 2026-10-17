@@ -1,13 +1,16 @@
 /// <summary>
 /// Componente que pode impedir, por enquanto, que o objeto em que está seja pego e carregado
 /// (o <c>PickupInteractable</c> do mesmo GameObject consulta todos antes de oferecer "Pegar").
-/// Ex.: <see cref="ComputerCase"/> aberto. Fica neste assembly (o mais baixo do projeto) para que a lógica do
+/// Ex.: <see cref="ComputerPower"/> com cabos ligando o gabinete à parede ou ao monitor. Fica neste assembly (o mais baixo do projeto) para que a lógica do
 /// gameplay possa implementá-la sem depender do código de interação.
 /// </summary>
 public interface IPickupBlocker
 {
     /// <summary>Verdadeiro enquanto o objeto não pode ser pego.</summary>
     bool BlocksPickup { get; }
+
+    /// <summary>Texto curto do motivo, mostrado no HUD no lugar de "Pegar" (vazio = texto padrão).</summary>
+    string BlockReason { get; }
 }
 
 /// <summary>

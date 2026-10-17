@@ -20,6 +20,10 @@ public class InteractionPrompt : MonoBehaviour
     [SerializeField] private Sprite defaultPrimaryIcon;
     [Tooltip("{0} = ação (PromptText do alvo).")]
     [SerializeField] private string primaryFormat = "Esq.: {0}";
+    [Tooltip("Ação bloqueada (ex.: gabinete com cabos na tomada): ícone no lugar do da ação. Vazio = mantém o ícone.")]
+    [SerializeField] private Sprite blockedIcon;
+    [Tooltip("Cor do texto quando a ação está bloqueada.")]
+    [SerializeField] private Color blockedColor = new Color(0.9f, 0.25f, 0.2f);
 
     [Header("Clique direito")]
     [SerializeField] private GameObject secondaryRoot;
@@ -37,17 +41,20 @@ public class InteractionPrompt : MonoBehaviour
     {
         Interactable primary = detector != null && detector.isActiveAndEnabled ? detector.CurrentTarget : null;
         Interactable secondary = detector != null && detector.isActiveAndEnabled ? detector.CurrentSecondaryTarget : null;
-        Apply(primary, primaryRoot, primaryIcon, primaryLabel, defaultPrimaryIcon, primaryFormat);
-        Apply(secondary, secondaryRoot, secondaryIcon, secondaryLabel, defaultSecondaryIcon, secondaryFormat);
+        Apply(primary, primaryRoot, primaryIcon, primaryLabel, defaultPrimaryIcon, primaryFormat, true);
+        Apply(secondary, secondaryRoot, secondaryIcon, secondaryLabel, defaultSecondaryIcon, secondaryFormat, false);
     }
 
-    private static void Apply(Interactable target, GameObject root, Image icon, Text label, Sprite fallback, string format)
+    private Color? normalColor;
+
+    private void Apply(Interactable target, GameObject root, Image icon, Text label, Sprite fallback, string format, bool primarySide)
     {
         if (root != null && root.activeSelf != (target != null)) root.SetActive(target != null);
         if (target == null) return;
         if (icon != null)
         {
             Sprite s = target.promptIcon != null ? target.promptIcon : fallback;
+            if (primarySide && target.IsBlocked && blockedIcon != null) s = blockedIcon;
             icon.sprite = s;
             icon.enabled = s != null;
         }
@@ -55,6 +62,12 @@ public class InteractionPrompt : MonoBehaviour
         {
             string text = string.Format(format, target.PromptText); // o texto pode mudar sem trocar de alvo (abrir/fechar)
             if (label.text != text) label.text = text;
+            if (primarySide)
+            {
+                if (normalColor == null) normalColor = label.color;
+                Color c = target.IsBlocked ? blockedColor : normalColor.Value;
+                if (label.color != c) label.color = c;
+            }
         }
     }
 }

@@ -246,6 +246,44 @@ public class DrawerContents : MonoBehaviour
         }
     }
 
+    /// <summary>Entradas configuradas (prefab e quantidade inicial), para a reposição de estoque.</summary>
+    public int EntryCount => entries.Count;
+    public PickupInteractable EntryPrefab(int index) => index >= 0 && index < entries.Count ? entries[index].prefab : null;
+    public int EntryQuantity(int index) => index >= 0 && index < entries.Count ? entries[index].quantity : 0;
+    /// <summary>Entregas diretas que ainda restam nesta entrada.</summary>
+    public int DirectRemaining(int index) => directRemaining != null && index >= 0 && index < directRemaining.Length ? directRemaining[index] : 0;
+
+    /// <summary>
+    /// Reposição de estoque (<see cref="ReposicaoEstoque"/>): devolve à entrada a quantidade INICIAL, nos mesmos lugares
+    /// do começo (físicos) ou como entregas diretas. Quem chama garante que não sobrou nenhuma unidade do tipo.
+    /// </summary>
+    public int Restock(int index)
+    {
+        if (index < 0 || index >= entries.Count || entries[index].prefab == null) return 0;
+        Entry entry = entries[index];
+        if (entry.delivery == Delivery.DirectToHand)
+        {
+            directRemaining[index] = entry.quantity;
+        }
+        else
+        {
+            Transform parent = openable.MovingPart;
+            bool visible = openable.IsOpen || !hideContentsWhenClosed;
+            for (int i = 0; i < entry.quantity; i++)
+            {
+                Vector3 pos = parent.TransformPoint(entry.localPosition + entry.step * i);
+                Quaternion rot = parent.rotation * Quaternion.Euler(entry.localEuler);
+                PickupInteractable item = Instantiate(entry.prefab, pos, rot, parent);
+                item.PickedUp += OnItemTaken;
+                item.MarkStored(this);
+                inside.Add(item);
+                if (!visible) item.gameObject.SetActive(false);
+            }
+        }
+        emptiedRaised = false;
+        return entry.quantity;
+    }
+
     private void CheckEmptied()
     {
         if (emptiedRaised || !IsEmpty) return;

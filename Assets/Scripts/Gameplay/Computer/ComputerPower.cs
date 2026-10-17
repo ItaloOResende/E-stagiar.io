@@ -63,7 +63,9 @@ public enum PortResult
     /// O equipamento da porta (ponto elétrico ou monitor) está longe do gabinete (ver <see cref="ComputerPower.CanReachPort"/>):
     /// nada muda. Valor novo no fim.
     /// </summary>
-    OutOfReach
+    OutOfReach,
+    /// <summary>A tomada/o ponto de rede já está com o cabo de OUTRO PC (<see cref="WallConnectionPoint.OccupantOf"/>). Valor novo no fim.</summary>
+    Occupied
 }
 
 public enum PowerButtonResult { TurnedOn, TurnedOff, MissingRequirements }
@@ -102,7 +104,7 @@ public enum PowerButtonResult { TurnedOn, TurnedOff, MissingRequirements }
 /// Sem dependência de UI, modelo, tag ou nome.
 /// </summary>
 [RequireComponent(typeof(ComputerCase))]
-public class ComputerPower : MonoBehaviour
+public class ComputerPower : MonoBehaviour, IPickupBlocker
 {
     private class Cable
     {
@@ -110,6 +112,7 @@ public class ComputerPower : MonoBehaviour
         public bool endA; // ponta "de fora": tomada / saída de vídeo do gabinete / ponto de rede
         public bool endB; // ponta do equipamento: gabinete / monitor
         public int outlet = -1; // cabos de energia: tomada da parede onde está a ponta A (0 ou 1; -1 = nenhuma)
+        public WallConnectionPoint wall; // ponto elétrico onde está a ponta A (energia/rede); null = nenhum ou sem ponto na cena
         public bool Attached => endA || endB;
         public bool Complete => endA && endB;
     }
@@ -166,14 +169,94 @@ public class ComputerPower : MonoBehaviour
     public bool MonitorInRange =>
         monitor == null || (monitor.position - transform.position).sqrMagnitude <= monitorRange * monitorRange;
 
-    /// <summary>Ponto elétrico da parede deste PC (tomadas + rede; registrado pelo <see cref="WallConnectionPoint"/>). Vazio = sem limite.</summary>
-    public Transform WallPoint => wallPoint;
+    /// <summary>
+    /// Ponto elétrico em uso agora: o <see cref="CurrentWall"/> (qualquer estação); sem nenhum por perto, o da estação
+    /// deste PC (registrado pelo <see cref="WallConnectionPoint"/>, ou por <see cref="AttachWallPoint"/> nos testes).
+    /// </summary>
+    public Transform WallPoint
+    {
+        get
+        {
+            WallConnectionPoint w = CurrentWall;
+            return w != null ? w.transform : wallPoint;
+        }
+    }
 
     /// <summary>
-    /// O ponto elétrico deste PC está perto do GABINETE (distância horizontal até <see cref="WallConnectionPoint"/>
-    /// <c>Case Range</c>). Longe (ex.: gabinete levado para a bancada), tomadas e rede não são usadas nem mostradas.
+    /// Ponto elétrico ativo mais próximo do GABINETE, de qualquer estação (<see cref="WallConnectionPoint.Nearest"/>).
+    /// Null = nenhum ao alcance (ou nenhum na cena).
     /// </summary>
-    public bool IsWallPointInRange => WithinReach(wallPoint, wallPointRange, transform.position);
+    public WallConnectionPoint CurrentWall => WallConnectionPoint.Nearest(transform.position);
+
+    /// <summary>
+    /// Há um ponto elétrico perto do GABINETE (distância horizontal até o <c>Case Range</c> do ponto). Com pontos na
+    /// cena, vale qualquer um (o gabinete pode ser religado em outra estação); sem nenhum, vale o registrado por
+    /// <see cref="AttachWallPoint"/> (sem registro = sem limite). Longe, tomadas e rede não são usadas nem mostradas.
+    /// </summary>
+    public bool IsWallPointInRange =>
+        WallConnectionPoint.AnyActive ? CurrentWall != null : WithinReach(wallPoint, wallPointRange, transform.position);
+
+    // ------------------------------------------------------------------ transporte do gabinete
+
+    /// <summary>
+    /// O gabinete está preso à estação: algum cabo tem uma ponta no gabinete e a outra conectada fora (tomada, ponto de
+    /// rede ou monitor). Cabos presos só no gabinete, o cabo de energia do MONITOR e o pendrive não bloqueiam: vão
+    /// junto (o estado fica neste componente) e podem ser ligados em qualquer ponto elétrico no destino.
+    /// </summary>
+    public bool BlocksPickup => TetheredLinks().Count > 0;
+
+    /// <summary>Texto curto do motivo do bloqueio para o HUD (vazio = não bloqueia).</summary>
+    public string BlockReason
+    {
+        get
+        {
+            List<PcLink> links = TetheredLinks();
+            if (links.Count == 0) return "";
+            var names = new List<string>();
+            foreach (PcLink l in links)
+            {
+                string n = l == PcLink.Power ? "energia" : l == PcLink.Network ? "rede" : "vídeo";
+                if (!names.Contains(n)) names.Add(n);
+            }
+            return "Desconecte o cabo de " + string.Join(", ", names);
+        }
+    }
+
+    /// <summary>
+    /// Cabos que prendem o MONITOR agora: energia do monitor ligada nas duas pontas (parede ↔ monitor) e VGA/HDMI ligado
+    /// nas duas pontas (gabinete ↔ monitor). Cabo pendurado só no monitor vai junto com ele.
+    /// </summary>
+    public List<PcLink> MonitorTetheredLinks()
+    {
+        var list = new List<PcLink>();
+        foreach (PcLink link in new[] { PcLink.MonitorPower, PcLink.Vga, PcLink.Hdmi })
+            if (cables.TryGetValue(link, out Cable c) && c.Complete) list.Add(link);
+        return list;
+    }
+
+    /// <summary>Texto do bloqueio do monitor para o HUD (vazio = livre).</summary>
+    public string MonitorBlockReason
+    {
+        get
+        {
+            List<PcLink> links = MonitorTetheredLinks();
+            if (links.Count == 0) return "";
+            bool energia = links.Contains(PcLink.MonitorPower), video = links.Count > (energia ? 1 : 0);
+            return "Desconecte o cabo de " + (energia && video ? "energia, vídeo" : energia ? "energia" : "vídeo");
+        }
+    }
+
+    /// <summary>Cabos que prendem o gabinete à estação agora (uma ponta no gabinete, a outra conectada fora).</summary>
+    public List<PcLink> TetheredLinks()
+    {
+        var list = new List<PcLink>();
+        foreach (PcLink link in Enum.GetValues(typeof(PcLink)))
+        {
+            if (link == PcLink.MonitorPower || !cables.TryGetValue(link, out Cable c)) continue;
+            if (c.Complete) list.Add(link);   // energia/rede: gabinete <-> parede; VGA/HDMI: gabinete <-> monitor
+        }
+        return list;
+    }
 
     /// <summary>Distância HORIZONTAL (a altura não conta) entre <paramref name="point"/> e <paramref name="from"/> dentro de <paramref name="reach"/>; sem ponto ou alcance 0 = sem limite.</summary>
     public static bool WithinReach(Transform point, float reach, Vector3 from)
@@ -222,7 +305,27 @@ public class ComputerPower : MonoBehaviour
     public bool HdmiConnected => IsComplete(PcLink.Hdmi);
     /// <summary>Há imagem chegando ao monitor (VGA ou HDMI).</summary>
     public bool VideoConnected => VgaConnected || HdmiConnected;
-    public bool NetworkConnected => IsComplete(PcLink.Network);
+    /// <summary>
+    /// Cabo de rede nas duas pontas E, se houver regra registrada (<see cref="NetworkPathCheck"/>), o caminho até a
+    /// rede funciona (cabo sem defeito, ligação no rack). Sem regra registrada: só o cabo, como antes.
+    /// </summary>
+    public bool NetworkConnected => IsComplete(PcLink.Network) && (NetworkPathCheck == null || NetworkPathCheck(this));
+
+    /// <summary>
+    /// Regra extra de conectividade, registrada pelo sistema de rede (fora desta assembly). Null = só o cabo conta.
+    /// Quem muda algo que afeta a regra chama <see cref="NotifyNetworkChanged"/>.
+    /// </summary>
+    public static Func<ComputerPower, bool> NetworkPathCheck;
+
+    /// <summary>O objeto do cabo guardado nesta ligação (null = nenhum cabo).</summary>
+    public GameObject CableItemOf(PcLink link) => cables.TryGetValue(link, out Cable c) ? c.item : null;
+
+    /// <summary>Algo fora do PC (rack, defeito do cabo) mudou a conectividade: a tela e o monitor se atualizam.</summary>
+    public void NotifyNetworkChanged()
+    {
+        ConnectionsChanged?.Invoke();
+        DisplayChanged?.Invoke();
+    }
     /// <summary>No sistema operacional e com o cabo de rede ligado.</summary>
     public bool Online => state == PcPowerState.OperatingSystem && NetworkConnected;
 
@@ -426,20 +529,41 @@ public class ComputerPower : MonoBehaviour
         int index = OutletIndex(outlet);
         if (index < 0) return null;
         foreach (PcLink link in PowerLinks)
-            if (cables.TryGetValue(link, out Cable c) && c.endA && c.outlet == index) return link;
+            if (cables.TryGetValue(link, out Cable c) && c.endA && c.outlet == index && IsOnCurrentWall(c)) return link;
         return null;
+    }
+
+    // A ponta A do cabo está no ponto elétrico em uso agora (sem ponto registrado: sempre).
+    private bool IsOnCurrentWall(Cable c) => c.wall == null || c.wall == CurrentWall;
+
+    /// <summary>
+    /// A ponta "de fora" deste cabo NÃO está num ponto elétrico distante: solta, ou no ponto em uso agora. A tela 2D só
+    /// desenha cabos de parede que estão aqui (ex.: o cabo do monitor continua na tomada da estação de origem).
+    /// </summary>
+    public bool IsWallEndHere(PcLink link) => !cables.TryGetValue(link, out Cable c) || !c.endA || IsOnCurrentWall(c);
+
+    /// <summary>Outro PC está usando esta porta do ponto elétrico atual (aparece como plugue, sem linha).</summary>
+    public bool IsWallPortTakenByOther(PcPort port)
+    {
+        WallConnectionPoint w = IsWallPort(port) ? CurrentWall : null;
+        ComputerPower other = w != null ? w.OccupantOf(port) : null;
+        return other != null && other != this;
     }
 
     public bool IsPlugged(PcPort port)
     {
         if (!Enum.IsDefined(typeof(PcPort), port)) return false;
+        if (IsWallPortTakenByOther(port)) return true;
         if (OutletIndex(port) >= 0) return OutletLink(port).HasValue;
         PcLink link = LinkFor(port, out bool isEndA);
-        return cables.TryGetValue(link, out Cable c) && (isEndA ? c.endA : c.endB);
+        return cables.TryGetValue(link, out Cable c) && (isEndA ? c.endA && (!IsWallPort(port) || IsOnCurrentWall(c)) : c.endB);
     }
 
     /// <summary>A ponta A ("de fora") ou B (equipamento) deste cabo está conectada.</summary>
     public bool IsEndPlugged(PcLink link, bool endA) => cables.TryGetValue(link, out Cable c) && (endA ? c.endA : c.endB);
+
+    /// <summary>Ponto elétrico onde está a ponta "de fora" do cabo (energia/rede); null = solta ou sem ponto na cena.</summary>
+    public WallConnectionPoint WallOf(PcLink link) => cables.TryGetValue(link, out Cable c) && c.endA ? c.wall : null;
 
     /// <summary>Portas padrão das duas pontas de um cabo (energia do PC: tomada 1 ↔ fonte; do monitor: tomada 2 ↔ monitor).</summary>
     public static void DefaultPorts(PcLink link, out PcPort endA, out PcPort endB)
@@ -477,6 +601,8 @@ public class ComputerPower : MonoBehaviour
         itemForHand = null;
         if (!Enum.IsDefined(typeof(PcPort), port)) return PortResult.Invalid;
 
+        if (IsWallPortTakenByOther(port)) return PortResult.Occupied;
+
         PortResult result;
         PcLink link;
         int outlet = OutletIndex(port);
@@ -490,10 +616,12 @@ public class ComputerPower : MonoBehaviour
         {
             link = LinkFor(port, out bool isEndA);
             Cable cable = Get(link);
+            // a outra ponta está num ponto elétrico distante, ou no monitor longe: não dá para puxar o cabo até aqui
+            if (!IsPlugged(port) && !OtherEndHere(link, isEndA)) return PortResult.OutOfReach;
             if (IsPlugged(port))
             {
                 if (holdingSomething) return PortResult.HandsFull;
-                SetEnd(cable, isEndA, false);
+                SetEnd(cable, isEndA, false, port);
                 if (cable.Attached) result = PortResult.Unplugged;
                 else
                 {
@@ -504,7 +632,7 @@ public class ComputerPower : MonoBehaviour
             }
             else if (cable.Attached || (!isEndA && IsPowerLink(link) && TakeWallOnlyPowerCable(link, out cable)))
             {
-                SetEnd(cable, isEndA, true);
+                SetEnd(cable, isEndA, true, port);
                 result = PortResult.PluggedOtherEnd;
             }
             else
@@ -512,7 +640,7 @@ public class ComputerPower : MonoBehaviour
                 if (heldCable == null) return PortResult.NeedsCable;
                 if (heldCable.Type != CableFor(port)) return PortResult.WrongCable;
                 cable.item = heldCable.gameObject;
-                SetEnd(cable, isEndA, true);
+                SetEnd(cable, isEndA, true, port);
                 result = PortResult.PluggedFromHand;
             }
         }
@@ -523,10 +651,41 @@ public class ComputerPower : MonoBehaviour
         return result;
     }
 
-    private static void SetEnd(Cable cable, bool endA, bool value)
+    private void SetEnd(Cable cable, bool endA, bool value, PcPort port)
     {
         if (endA) cable.endA = value;
         else cable.endB = value;
+        if (!endA || !IsWallPort(port)) return;
+        if (value) PlugWall(cable, port);
+        else UnplugWall(cable, port);
+    }
+
+    // Ponta A ligada no ponto elétrico atual: guarda qual é e marca a porta como ocupada por este PC.
+    private void PlugWall(Cable c, PcPort port)
+    {
+        c.wall = CurrentWall;
+        if (c.wall != null) c.wall.TryOccupy(port, this);
+    }
+
+    private void UnplugWall(Cable c, PcPort port)
+    {
+        if (c.wall != null) c.wall.Release(port, this);
+        c.wall = null;
+    }
+
+    // A ponta oposta à porta clicada está solta, ou alcançável daqui (ponto elétrico atual / monitor perto).
+    private bool OtherEndHere(PcLink link, bool clickedEndA)
+    {
+        if (!cables.TryGetValue(link, out Cable c)) return true;
+        DefaultPorts(link, out PcPort pa, out PcPort pb);
+        if (clickedEndA)
+        {
+            if (c.endA && IsWallPort(pa)) return false;   // a ponta de parede já está noutro ponto elétrico
+            return !c.endB || !IsMonitorPort(pb) || MonitorAvailable;
+        }
+        if (!c.endA) return true;
+        if (IsPowerLink(link) || IsWallPort(pa)) return IsOnCurrentWall(c) && IsWallPointInRange;
+        return true;
     }
 
     /// <summary>
@@ -546,6 +705,7 @@ public class ComputerPower : MonoBehaviour
             Cable c = Get(link);
             c.endA = false;
             c.outlet = -1;
+            UnplugWall(c, OutletPort(outlet));
             if (c.Attached) return PortResult.Unplugged;
             itemForHand = c.item;
             c.item = null;
@@ -556,6 +716,7 @@ public class ComputerPower : MonoBehaviour
         foreach (PcLink l in PowerLinks)
         {
             Cable c = Get(l);
+            if (l == PcLink.MonitorPower && !MonitorAvailable) continue;   // o cabo do monitor só vem do monitor que está perto
             if (c.endB && !c.endA && (hanging == null || l == LastChangedLink)) hanging = l;
         }
         if (hanging.HasValue)
@@ -564,6 +725,7 @@ public class ComputerPower : MonoBehaviour
             Cable c = Get(link);
             c.endA = true;
             c.outlet = outlet;
+            PlugWall(c, OutletPort(outlet));
             return PortResult.PluggedOtherEnd;
         }
 
@@ -578,6 +740,7 @@ public class ComputerPower : MonoBehaviour
             c.item = heldCable.gameObject;
             c.endA = true;
             c.outlet = outlet;
+            PlugWall(c, OutletPort(outlet));
             return PortResult.PluggedFromHand;
         }
         return PortResult.Invalid;   // os dois cabos de energia já estão em uso
@@ -595,7 +758,7 @@ public class ComputerPower : MonoBehaviour
         {
             if (l == target) continue;
             Cable c = Get(l);
-            if (c.endA && !c.endB && (from == null || l == LastChangedLink)) from = l;
+            if (c.endA && !c.endB && IsOnCurrentWall(c) && (from == null || l == LastChangedLink)) from = l;
         }
         if (!from.HasValue) return false;
         cable = cables[from.Value];

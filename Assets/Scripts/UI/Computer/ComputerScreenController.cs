@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
@@ -106,6 +107,7 @@ public class ComputerScreenController : MonoBehaviour
     private ComputerView current = ComputerView.Front;
     // Cabo cuja 1ª ponta acabou de ser conectada: a ponta livre segue o mouse até a outra porta.
     private PcLink? carriedLink;
+    private readonly List<RaycastResult> pointerHits = new List<RaycastResult>();
     private readonly List<ScrewView> views = new List<ScrewView>();
     // Última vista de cada gabinete: ao reabrir a tela, volta onde o jogador parou (só durante a execução).
     private readonly Dictionary<ComputerCase, ComputerView> lastViews = new Dictionary<ComputerCase, ComputerView>();
@@ -199,6 +201,7 @@ public class ComputerScreenController : MonoBehaviour
             BuildScrewViews();
         }
         Subscribe();
+        carriedLink = null;   // reabrir a tela nunca retoma um arraste antigo
         // Interior só se a tampa ainda estiver aberta (ShowView cai para a Traseira se não estiver).
         ShowView(lastViews.TryGetValue(found, out ComputerView last) ? last : ComputerView.Front);
     }
@@ -207,6 +210,7 @@ public class ComputerScreenController : MonoBehaviour
     {
         if (boundPower != null) boundPower.InstallPaused = false;   // tela fechada: segue no monitor 3D
         Unsubscribe();
+        carriedLink = null;   // fechar (Esc/Fechar) solta a ponta que seguia o mouse; o cabo fica pendurado
         UICursor.Reset();
         nextRoutine = null;                                        // corrotinas param junto com o objeto
         if (nextRect != null) { nextRect.anchoredPosition = nextRestPosition; nextRect.localScale = Vector3.one; }
@@ -215,6 +219,20 @@ public class ComputerScreenController : MonoBehaviour
     /// <summary>As setas do teclado fazem o MESMO que os botões ◄ ► da tela (Voltar/Avançar).</summary>
     private void Update()
     {
+        // clique numa área sem botão (fundo, imagens) solta a ponta que segue o mouse: o cabo fica pendurado
+        // clique no plugue solto de um cabo pendurado: ele passa a seguir o mouse na hora (antes só a porta reagia)
+        Mouse mouse = Mouse.current;
+        if (mouse != null && mouse.leftButton.wasPressedThisFrame)
+        {
+            Vector2 pos = mouse.position.ReadValue();
+            if (!PointerOverButton(pos))
+            {
+                PcLink? picked = LooseEndAt(pos);
+                if (picked.HasValue && picked != carriedLink) { carriedLink = picked; RefreshHardware(); }
+                else if (!picked.HasValue && carriedLink.HasValue) DropCarriedCable();
+            }
+        }
+
         Keyboard teclado = Keyboard.current;
         if (teclado == null || boundCase == null) return;
         if (teclado.leftArrowKey.wasPressedThisFrame) Back();
@@ -416,7 +434,9 @@ public class ComputerScreenController : MonoBehaviour
                 fromWall = ComputerPower.IsWallPort(pa);
             }
             if (a == b && carriedLink == line.Link) carriedLink = null;  // completo ou solto: ninguém está levando
-            bool visible = current == ComputerView.Rear && (monitorNear || !toMonitor) && (wallNear || !fromWall);
+            // cabo cuja ponta de parede ficou noutra estação (ex.: o do monitor, com o gabinete levado): não é desenhado aqui
+            bool wallHere = !fromWall || (wallNear && boundPower.IsWallEndHere(line.Link));
+            bool visible = current == ComputerView.Rear && (monitorNear || !toMonitor) && wallHere;
             line.SetState(visible, a, b, carriedLink == line.Link);
         }
 
@@ -489,6 +509,44 @@ public class ComputerScreenController : MonoBehaviour
         if (boundPower == null) return;
         InteractionSounds.Raise(InteractionSound.PowerButton);
         boundPower.PressPower();
+    }
+
+    /// <summary>Cabo cuja ponta solta segue o mouse agora (null = nenhum).</summary>
+    public PcLink? CarriedLink => carriedLink;
+
+    /// <summary>
+    /// Solta a ponta que segue o mouse: a conexão não muda (a outra ponta continua presa) e o cabo fica pendurado.
+    /// Depois, outro cabo pode ser desconectado; vários podem ficar pendurados ao mesmo tempo.
+    /// </summary>
+    public void DropCarriedCable()
+    {
+        if (!carriedLink.HasValue) return;
+        carriedLink = null;
+        RefreshHardware();
+    }
+
+    // Cabo pendurado (uma ponta só) cujo plugue solto está sob o ponteiro (null = nenhum).
+    private PcLink? LooseEndAt(Vector2 screenPosition)
+    {
+        if (current != ComputerView.Rear) return null;
+        foreach (CableLineView line in cableLines)
+            if (line != null && line.gameObject.activeInHierarchy && line.LooseEndContains(screenPosition)) return line.Link;
+        return null;
+    }
+
+    // Há um botão (porta, parafuso, encaixe, navegação) sob o ponteiro: o clique é dele, não "no vazio".
+    private bool PointerOverButton(Vector2 screenPosition)
+    {
+        EventSystem es = EventSystem.current;
+        if (es == null) return false;
+        pointerHits.Clear();
+        es.RaycastAll(new PointerEventData(es) { position = screenPosition }, pointerHits);
+        foreach (RaycastResult hit in pointerHits)
+        {
+            Selectable sel = hit.gameObject != null ? hit.gameObject.GetComponentInParent<Selectable>() : null;
+            if (sel != null && sel.IsInteractable()) return true;
+        }
+        return false;
     }
 
     // Itens conectados/instalados saem da mão e ficam guardados no objeto do mundo (nunca destruídos).

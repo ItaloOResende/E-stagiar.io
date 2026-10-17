@@ -30,7 +30,9 @@ public enum InteractionSound
     /// Ação recusada — peça no encaixe errado, cabo na porta errada, ferramenta errada na mão, ordem errada.
     /// Som curto de "isso não dá", só para avisar que o clique não valeu.
     /// </summary>
-    Error
+    Error,
+    /// <summary>Tentou pegar algo que está preso agora (ex.: gabinete com cabos na tomada). Valor novo no fim.</summary>
+    PickupBlocked
 }
 
 /// <summary>

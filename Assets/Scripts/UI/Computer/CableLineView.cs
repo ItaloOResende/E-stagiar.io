@@ -119,6 +119,15 @@ public class CableLineView : MonoBehaviour
         curve.SetPoints(pts);
     }
 
+    /// <summary>O ponto de tela está sobre o plugue solto deste cabo (visível)?</summary>
+    public bool LooseEndContains(Vector2 screenPosition)
+    {
+        if (looseEnd == null || !looseEnd.gameObject.activeInHierarchy) return false;
+        Canvas canvas = GetComponentInParent<Canvas>();
+        Camera cam = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
+        return RectTransformUtility.RectangleContainsScreenPoint(looseEnd.rectTransform, screenPosition, cam);
+    }
+
     private bool TryPointer(out Vector2 local)
     {
         local = default;
