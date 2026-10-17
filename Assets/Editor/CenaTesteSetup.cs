@@ -28,6 +28,9 @@ public static class CenaTesteSetup
     public const string TestScene = "Assets/Scenes/Escritorio_Teste.unity";
     private const string Ticket = "Assets/TicketsData/Ticket_ComputadorNaoLiga.asset";
     private const float ChanceCaboSoltoProblema = 0.35f;
+    // Estação direita: o espelho exato (x = -0,746) punha o gabinete em cima do mouse/mousepad (que fica à direita de
+    // quem senta) e ele tombava ~10° ao iniciar. Mais para a ponta da mesa: 5 cm do mouse e 9 cm da borda.
+    public const float CaseXRight = -0.85f;
 
     // Objetos do escritório novo (Matheus) que ficam só na Office_Placeholder.
     private static readonly string[] EscritorioNovo =
@@ -58,6 +61,8 @@ public static class CenaTesteSetup
             Vector3 e = t.localEulerAngles;
             t.localEulerAngles = new Vector3(e.x, -e.y, -e.z);
         }
+        Vector3 cp = Case(right).transform.localPosition;
+        Case(right).transform.localPosition = new Vector3(CaseXRight, cp.y, cp.z);
         Save(right, RightStation);
 
         foreach (bool direita in new[] { false, true })
@@ -81,6 +86,28 @@ public static class CenaTesteSetup
                 so.ApplyModifiedPropertiesWithoutUndo();
                 Save(s, StationPath(direita, funcional));
             }
+    }
+
+    /// <summary>
+    /// Só move o gabinete da estação direita para <see cref="CaseXRight"/> no prefab existente (sem regravar as
+    /// variantes, que herdam a posição). Idempotente.
+    /// </summary>
+    [MenuItem("Tools/E-stagiar.io/Estação direita: gabinete fora do mouse")]
+    public static void AjustarGabineteDireita()
+    {
+        GameObject root = PrefabUtility.LoadPrefabContents(RightStation);
+        try
+        {
+            Transform t = root.GetComponentsInChildren<ComputerCase>(true).Single().transform;
+            Vector3 p = t.localPosition;
+            t.localPosition = new Vector3(CaseXRight, p.y, p.z);
+            PrefabUtility.SaveAsPrefabAsset(root, RightStation);
+            Debug.Log("CenaTesteSetup: gabinete da estação direita em x " + CaseXRight);
+        }
+        finally
+        {
+            PrefabUtility.UnloadPrefabContents(root);
+        }
     }
 
     private static GameObject Instantiate(string path)

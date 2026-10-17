@@ -142,22 +142,22 @@ public static class EstacaoInteracaoSetup
     // ------------------------------------------------------------------ tela 2D
     // Frente: monitor e gabinete centralizados juntos e um pouco mais baixos (lado fixo). Traseira: layout original
     // (monitor + gabinete à esquerda; ponto elétrico à direita com as três conexões uma abaixo da outra) e a miniatura do
-    // item da mão embaixo, no centro (HeldItemSlot). Interior: não muda. Âncoras absolutas: rodar de novo dá o mesmo.
+    // item da mão à direita (HeldItemSlot), como nas outras vistas. Interior: não muda. Âncoras absolutas: rodar de novo dá o mesmo.
     private static readonly (string path, Rect anchors)[] Equipment =
     {
         ("Frente/Monitor", Rect.MinMaxRect(0.4182f, 0.20f, 0.7995f, 0.8769f)),
         ("Frente/Gabinete", Rect.MinMaxRect(0.2005f, 0.20f, 0.3557f, 0.6806f)),
         ("Traseira/Monitor", Rect.MinMaxRect(0.1302f, 0.1574f, 0.5115f, 0.8343f)),
-        ("Traseira/ContainerTraseira_Area", Rect.MinMaxRect(0.574f, 0.1574f, 0.7292f, 0.638f)),
+        ("Traseira/ContainerTraseira_Area", Rect.MinMaxRect(0.53f, 0.1574f, 0.6852f, 0.638f)),   // um pouco à esquerda: a miniatura da mão fica à direita
     };
     // (parte, eixo do espelhamento): a Frente em torno do centro da tela; na Traseira, monitor e gabinete em torno do centro
     // da área deles e o ponto elétrico vai para a borda do lado do gabinete
     private static readonly (string path, float center)[] SideViews =
     {
         ("Frente/Monitor", 0.5f), ("Frente/Gabinete", 0.5f),
-        ("Traseira/Monitor", 0.455f), ("Traseira/ContainerTraseira_Area", 0.455f), ("Traseira/PainelConexoes", 0.5f),
+        ("Traseira/Monitor", 0.455f), ("Traseira/ContainerTraseira_Area", 0.455f), ("Traseira/PainelConexoes", 0.43f),   // espelhado volta à borda (0.03–0.15)
     };
-    private static readonly Rect PanelAnchors = Rect.MinMaxRect(0.85f, 0.16f, 0.97f, 0.88f);   // coluna original
+    private static readonly Rect PanelAnchors = Rect.MinMaxRect(0.71f, 0.16f, 0.83f, 0.88f);   // à esquerda da miniatura da mão
     // de cima para baixo, como antes: tomada 1, tomada 2, rede (âncoras dentro do painel)
     private static readonly (string name, float yMin, float yMax)[] PanelTiles =
     {
@@ -216,15 +216,16 @@ public static class EstacaoInteracaoSetup
         Transform cabos = Find(rear, "Cabos");
         if (panel.GetSiblingIndex() > cabos.GetSiblingIndex()) panel.SetSiblingIndex(cabos.GetSiblingIndex());
 
-        // lugar da miniatura do item da mão na Traseira: embaixo, no centro (onde estava o painel)
+        // lugar da miniatura do item da mão na Traseira: à DIREITA, como nas outras vistas (mesmo tamanho e altura da
+        // moldura padrão MaoAtual/Moldura); o painel de tomadas e o gabinete ficam um pouco à esquerda para não cobrir
         Transform slot = rear.Find("SlotMao");
         if (slot == null) slot = new GameObject("SlotMao", typeof(RectTransform), typeof(HeldItemSlot)).transform;
         slot.SetParent(rear, false);
         var srt = (RectTransform)slot;
-        srt.anchorMin = srt.anchorMax = new Vector2(0.5f, 0f);
-        srt.pivot = new Vector2(0.5f, 0f);
-        srt.anchoredPosition = new Vector2(0f, 12f);
-        srt.sizeDelta = new Vector2(150f, 150f);
+        srt.anchorMin = srt.anchorMax = new Vector2(0.915f, 0.5f);
+        srt.pivot = new Vector2(0.5f, 0.5f);
+        srt.anchoredPosition = new Vector2(0f, 30f);
+        srt.sizeDelta = new Vector2(190f, 190f);
 
         var ctrl = root.GetComponent<ComputerScreenController>();
         var so = new SerializedObject(ctrl);
@@ -269,6 +270,7 @@ public static class EstacaoInteracaoSetup
         (InteractionSound.DrawerOpened, "sfx_gaveta_abrir", 0.4f),
         (InteractionSound.DrawerClosed, "sfx_gaveta_fechar", 0.4f),
         (InteractionSound.SupervisorAlert, "sfx_supervisor_alerta", 0.55f),
+        (InteractionSound.PickupBlocked, "sfx_bloqueado", 0.45f),
     };
 
     // ------------------------------------------------------------------ cena

@@ -62,6 +62,29 @@ public static class GaveteirosSetup
         ("rede", new[] { new Item("Pickup_CaboRede", 2, -0.14f, 0.13f, 0.28f) }),
     };
 
+    // Gaveteiro de suprimentos (notebook e impressora): memória SO-DIMM e SSD, pendrives, toner e papel.
+    private static readonly (string label, Item[] items)[] SupplyDrawers =
+    {
+        ("memoria_ssd", new[] { new Item("Pickup_RamSodimm", 3, -0.15f, 0.11f, 0.13f), new Item("Pickup_Ssd", 3, -0.15f, -0.09f, 0.13f) }),
+        ("pendrive", new[] { new Item("Pickup_Pendrive", 3, -0.15f, 0f, 0.15f) }),
+        ("toner", new[] { new Item("Pickup_Toner", 2, 0f, 0.11f, 0f, -0.2f) }),
+        ("papel", new[] { new Item("Pickup_ResmaPapel", 2, -0.13f, 0f, 0.26f) }),
+    };
+
+    /// <summary>
+    /// Monta o prefab Gaveteiro_Suprimentos (mesmo corpo, gavetas, puxador do Matheus e plaquinhas dos outros dois)
+    /// com as peças do notebook e da impressora. Usa as malhas já gravadas pelo "Montar gaveteiros".
+    /// </summary>
+    public static GameObject BuildSupplies()
+    {
+        Mesh body = AssetDatabase.LoadAssetAtPath<Mesh>(Meshes + "Gaveteiro_Corpo.asset");
+        Mesh drawer = AssetDatabase.LoadAssetAtPath<Mesh>(Meshes + "Gaveteiro_Gaveta.asset");
+        Mesh handle = AssetDatabase.LoadAssetAtPath<Mesh>(Meshes + "Gaveteiro_Puxador.asset");
+        Mesh plate = AssetDatabase.LoadAssetAtPath<Mesh>(Meshes + "Gaveteiro_Plaquinha.asset");
+        if (body == null || drawer == null || handle == null || plate == null) { Debug.LogError("GaveteirosSetup: rode 'Montar gaveteiros' antes."); return null; }
+        return BuildCabinet("Gaveteiro_Suprimentos", "suprimentos", body, drawer, handle, plate, SupplyDrawers);
+    }
+
     /// <summary>
     /// Só reescreve o estoque (lista de itens de cada gaveta) dos prefabs já montados, sem remontar malhas, cena
     /// ou gaveteiros. Menu: Tools > E-stagiar.io > Atualizar estoque das gavetas.

@@ -184,7 +184,7 @@ public static class ManutencaoVisualSetup
         Anchor(r.Find("Frente/Gabinete"), R(0.2005f, 0.1574f, 0.3557f, 0.6380f));
         Anchor(r.Find("Frente/Monitor"), R(0.4182f, 0.1574f, 0.7995f, 0.8343f));
         Anchor(r.Find("Traseira/Monitor"), R(0.1302f, 0.1574f, 0.5115f, 0.8343f));
-        Anchor(r.Find("Traseira/ContainerTraseira_Area"), R(0.5740f, 0.1574f, 0.7292f, 0.6380f));
+        Anchor(r.Find("Traseira/ContainerTraseira_Area"), R(0.5300f, 0.1574f, 0.6852f, 0.6380f));   // à esquerda da miniatura da mão (EstacaoInteracaoSetup)
         foreach (string p in new[] { "Frente/Gabinete", "Frente/Monitor", "Traseira/Monitor", "Traseira/Tomada", "Traseira/Tomada_Monitor",
                                      "Traseira/PontoRede", "Traseira/ContainerTraseira_Area/ContainerTraseira/Imagem",
                                      "Interior/ContainerInterior_Area/ContainerInterior/Imagem" })

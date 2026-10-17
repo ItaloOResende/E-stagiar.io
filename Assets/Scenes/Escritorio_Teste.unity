@@ -3197,6 +3197,10 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8351381821162388463, guid: 99e3c538418ff64438bb6a003dffcadf, type: 3}
+      propertyPath: player
+      value: 
+      objectReference: {fileID: 1638108195}
     m_RemovedComponents: []
     m_RemovedGameObjects:
     - {fileID: 7021804952662693668, guid: 99e3c538418ff64438bb6a003dffcadf, type: 3}
@@ -3445,6 +3449,8 @@ MonoBehaviour:
   primaryLabel: {fileID: 1670675824}
   defaultPrimaryIcon: {fileID: -4434039937346478508, guid: e33886b47fcf252499b55c0cea6c75bf, type: 3}
   primaryFormat: 'Esq.: {0}'
+  blockedIcon: {fileID: 0}
+  blockedColor: {r: 0.9, g: 0.25, b: 0.2, a: 1}
   secondaryRoot: {fileID: 1704693817}
   secondaryIcon: {fileID: 1704693819}
   secondaryLabel: {fileID: 900083668}
@@ -3529,6 +3535,8 @@ GameObject:
   - component: {fileID: 1238468672}
   - component: {fileID: 1238468671}
   - component: {fileID: 1238468670}
+  - component: {fileID: 1238468674}
+  - component: {fileID: 1238468675}
   m_Layer: 0
   m_Name: Chamados
   m_TagString: Untagged
@@ -3555,6 +3563,7 @@ MonoBehaviour:
   disableWhileTabletOpen:
   - {fileID: 1638108196}
   - {fileID: 1638108190}
+  showDebugButtons: 1
 --- !u!114 &1238468671
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3568,7 +3577,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StageController
   ticketManager: {fileID: 1238468672}
-  stageNumber: 1
+  stageNumber: 3
   durationMinutes: 15
   startAutomatically: 1
 --- !u!114 &1238468672
@@ -3584,13 +3593,28 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TicketManager
   catalog:
-  - {fileID: 11400000, guid: 19abb5904e561d24380036f270c934c8, type: 2}
+  - {fileID: 11400000, guid: 3043927f553e2e5499982d969b56d22a, type: 2}
+  - {fileID: 11400000, guid: 62627fe5d16690f489984ee68c82cd97, type: 2}
+  - {fileID: 11400000, guid: 6558beb180f015b488a61ccae606c680, type: 2}
+  - {fileID: 11400000, guid: db5a7b395bb4c684fb972efe8f8f240e, type: 2}
+  - {fileID: 11400000, guid: 602f7760020a6264c822033c8942f05b, type: 2}
+  - {fileID: 11400000, guid: cc05b8358fb96394a878ba05d2d0c1fc, type: 2}
+  - {fileID: 11400000, guid: cac3378bd868b2a4ea2cb5f24abd431c, type: 2}
+  - {fileID: 11400000, guid: f28f2e2732d9d664e87be0d7a5b22c9e, type: 2}
+  - {fileID: 11400000, guid: 0c66f0d215cd2f24ebf0ad61d146511a, type: 2}
+  - {fileID: 11400000, guid: edeaad3de115f4748a1dc9037d4e913c, type: 2}
+  - {fileID: 11400000, guid: 62f0ab9b94b25d340a0d33d1614a731a, type: 2}
+  - {fileID: 11400000, guid: 6a83e5034397bb14a8b759ca01353a85, type: 2}
   tutorialTicket: {fileID: 0}
   maximumOpenTickets: 2
   minimumArrivalSeconds: 120
   maximumArrivalSeconds: 165
   firstPhaseRestSeconds: 15
   stopGeneratingBeforeEndSeconds: 90
+  estimatedTicketSeconds: 180
+  arrivalFraction: 0.75
+  arrivalJitter: 0.12
+  instantNextTicketOnFirstStage: 1
 --- !u!4 &1238468673
 Transform:
   m_ObjectHideFlags: 0
@@ -3606,6 +3630,41 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1238468674
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1238468669}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd88c7c0af5ee8d4e909f7f821325a36, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ScoreKeeper
+  ticketManager: {fileID: 1238468672}
+  stageController: {fileID: 1238468671}
+  ticketCompletedPoints: 0
+  incompleteCasePenalty: 0
+  infractionPenalties: []
+  starThresholds: 
+--- !u!114 &1238468675
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1238468669}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: def60ea0bbb16a6408d8f70f0095a831, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StageTimerHUD
+  stageController: {fileID: 1238468671}
+  ticketManager: {fileID: 1238468672}
+  width: 410
+  barHeight: 16
+  topMargin: 12
 --- !u!1001 &1245706784
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3902,13 +3961,49 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 9127348283968183316, guid: 5078c08a9609d4943990ee00848eb961, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1314520329}
   m_SourcePrefab: {fileID: 100100000, guid: 5078c08a9609d4943990ee00848eb961, type: 3}
 --- !u!4 &1314520327 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4969915713884433847, guid: 5078c08a9609d4943990ee00848eb961, type: 3}
   m_PrefabInstance: {fileID: 1314520326}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1314520328 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 9127348283968183316, guid: 5078c08a9609d4943990ee00848eb961, type: 3}
+  m_PrefabInstance: {fileID: 1314520326}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1314520329
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1314520328}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4b4821954e43bb49961075de50ea886, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PcTicketBridge
+  ticketManager: {fileID: 1238468672}
+  deviceLabel: "PC da Esta\xE7\xE3o 1"
+  acceptedTicketIds:
+  - pc-sem-energia
+  - pc-sem-ram
+  - pc-sem-hd
+  - pc-sem-rede
+  - pc-sem-sistema
+  - pc-pecas-ausentes
+  - pc-montagem-completa
+  - pc-sem-video-e-rede
+  - monitor-sem-imagem
+  prepareProblemOnClaim: 1
+  deviceRoot: {fileID: 0}
+  checkInterval: 0.25
+  scoreKeeper: {fileID: 1238468674}
 --- !u!1001 &1328462073
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4090,6 +4185,11 @@ MonoBehaviour:
   - sound: 18
     clips:
     - {fileID: 8300000, guid: afa5cf30efd0c1f4cac63aa38ad02721, type: 3}
+    volume: 0.45
+    pitchVariation: 0.05
+  - sound: 19
+    clips:
+    - {fileID: 8300000, guid: af088bfef6811ec43ba42670c8ed1245, type: 3}
     volume: 0.45
     pitchVariation: 0.05
   uiSource: {fileID: 1392670273}
@@ -5458,9 +5558,17 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5552396071932669157, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
+      propertyPath: randomizeComponents
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5573758479837562980, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
       propertyPath: m_Name
       value: Estacao_2
+      objectReference: {fileID: 0}
+    - target: {fileID: 7412061865077696597, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
+      propertyPath: chanceCaboSolto
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -5469,6 +5577,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 9009184486882563329, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1802587127}
+    - targetCorrespondingSourceObject: {fileID: 9009184486882563329, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1802587128}
   m_SourcePrefab: {fileID: 100100000, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
 --- !u!4 &1802587125 stripped
 Transform:
@@ -5496,6 +5607,35 @@ MonoBehaviour:
   ticketManager: {fileID: 1238468672}
   ticketId: pc-nao-liga
   stepId: abrir-gabinete
+  scoreKeeper: {fileID: 1238468674}
+--- !u!114 &1802587128
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1802587126}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4b4821954e43bb49961075de50ea886, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PcTicketBridge
+  ticketManager: {fileID: 1238468672}
+  deviceLabel: "PC da Esta\xE7\xE3o 2"
+  acceptedTicketIds:
+  - pc-sem-energia
+  - pc-sem-ram
+  - pc-sem-hd
+  - pc-sem-rede
+  - pc-sem-sistema
+  - pc-pecas-ausentes
+  - pc-montagem-completa
+  - pc-sem-video-e-rede
+  - monitor-sem-imagem
+  prepareProblemOnClaim: 1
+  deviceRoot: {fileID: 0}
+  checkInterval: 0.25
+  scoreKeeper: {fileID: 1238468674}
 --- !u!1001 &1846349967
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6115,8 +6255,35 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 3345724081896260347, guid: 5423bdec95cbb3c47b1c3ecb951e89fc, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 457234014083383921}
   m_SourcePrefab: {fileID: 100100000, guid: 5423bdec95cbb3c47b1c3ecb951e89fc, type: 3}
+--- !u!1 &457234014083383920 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3345724081896260347, guid: 5423bdec95cbb3c47b1c3ecb951e89fc, type: 3}
+  m_PrefabInstance: {fileID: 457234014083383919}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &457234014083383921
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 457234014083383920}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 055075898864f9c44aded2daac477cc4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NotebookTicketBridge
+  ticketManager: {fileID: 1238468672}
+  deviceLabel: Notebook (mesa dos minigames)
+  acceptedTicketIds:
+  - notebook-sem-boot
+  prepareProblemOnClaim: 1
+  deviceRoot: {fileID: 0}
+  checkInterval: 0.25
 --- !u!1001 &514160492579941173
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6289,8 +6456,35 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 7531677317861025362, guid: 946adda25dcf2444184dbee4fa4073ed, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 826010793176915008}
   m_SourcePrefab: {fileID: 100100000, guid: 946adda25dcf2444184dbee4fa4073ed, type: 3}
+--- !u!1 &826010793176915007 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7531677317861025362, guid: 946adda25dcf2444184dbee4fa4073ed, type: 3}
+  m_PrefabInstance: {fileID: 826010793176915006}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &826010793176915008
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 826010793176915007}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: edd143f2c78a52c4b825fe733037a2b5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ImpressoraTicketBridge
+  ticketManager: {fileID: 1238468672}
+  deviceLabel: Impressora
+  acceptedTicketIds:
+  - impressora-sem-impressao
+  prepareProblemOnClaim: 1
+  deviceRoot: {fileID: 0}
+  checkInterval: 0.25
 --- !u!1001 &2391026992788693074
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6419,8 +6613,35 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1097450875799826206, guid: d056d92e7dcde1b43a32a41ef01cfe79, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4102714429740115984}
   m_SourcePrefab: {fileID: 100100000, guid: d056d92e7dcde1b43a32a41ef01cfe79, type: 3}
+--- !u!1 &4102714429740115983 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1097450875799826206, guid: d056d92e7dcde1b43a32a41ef01cfe79, type: 3}
+  m_PrefabInstance: {fileID: 4102714429740115982}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &4102714429740115984
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4102714429740115983}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 40cd116f0b8d7fb4b92918afb1fd7389, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RedeTicketBridge
+  ticketManager: {fileID: 1238468672}
+  deviceLabel: Caixa do cabo de rede (teste no rack)
+  acceptedTicketIds:
+  - crimpar-cabo
+  prepareProblemOnClaim: 1
+  deviceRoot: {fileID: 0}
+  checkInterval: 0.25
 --- !u!1001 &4447356883840368335
 PrefabInstance:
   m_ObjectHideFlags: 0

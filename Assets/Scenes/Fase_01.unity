@@ -6611,6 +6611,8 @@ MonoBehaviour:
   primaryLabel: {fileID: 1670675824}
   defaultPrimaryIcon: {fileID: -4434039937346478508, guid: e33886b47fcf252499b55c0cea6c75bf, type: 3}
   primaryFormat: 'Esq.: {0}'
+  blockedIcon: {fileID: 0}
+  blockedColor: {r: 0.9, g: 0.25, b: 0.2, a: 1}
   secondaryRoot: {fileID: 1704693817}
   secondaryIcon: {fileID: 1704693819}
   secondaryLabel: {fileID: 900083668}
@@ -6781,6 +6783,7 @@ GameObject:
   - component: {fileID: 1238468671}
   - component: {fileID: 1238468670}
   - component: {fileID: 1238468674}
+  - component: {fileID: 1238468675}
   m_Layer: 0
   m_Name: Chamados
   m_TagString: Untagged
@@ -6788,20 +6791,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1238468674
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1238468669}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: def60ea0bbb16a6408d8f70f0095a831, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::StageTimerHUD
-  stageController: {fileID: 1238468671}
-  ticketManager: {fileID: 1238468672}
 --- !u!114 &1238468670
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6821,6 +6810,7 @@ MonoBehaviour:
   disableWhileTabletOpen:
   - {fileID: 1638108196}
   - {fileID: 1638108190}
+  showDebugButtons: 1
 --- !u!114 &1238468671
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6857,6 +6847,10 @@ MonoBehaviour:
   maximumArrivalSeconds: 165
   firstPhaseRestSeconds: 15
   stopGeneratingBeforeEndSeconds: 90
+  estimatedTicketSeconds: 180
+  arrivalFraction: 0.75
+  arrivalJitter: 0.12
+  instantNextTicketOnFirstStage: 1
 --- !u!4 &1238468673
 Transform:
   m_ObjectHideFlags: 0
@@ -6872,6 +6866,41 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1238468674
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1238468669}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: def60ea0bbb16a6408d8f70f0095a831, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StageTimerHUD
+  stageController: {fileID: 1238468671}
+  ticketManager: {fileID: 1238468672}
+  width: 410
+  barHeight: 16
+  topMargin: 12
+--- !u!114 &1238468675
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1238468669}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd88c7c0af5ee8d4e909f7f821325a36, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ScoreKeeper
+  ticketManager: {fileID: 1238468672}
+  stageController: {fileID: 1238468671}
+  ticketCompletedPoints: 0
+  incompleteCasePenalty: 0
+  infractionPenalties: []
+  starThresholds: 
 --- !u!1001 &1245706784
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7580,6 +7609,11 @@ MonoBehaviour:
   - sound: 18
     clips:
     - {fileID: 8300000, guid: afa5cf30efd0c1f4cac63aa38ad02721, type: 3}
+    volume: 0.45
+    pitchVariation: 0.05
+  - sound: 19
+    clips:
+    - {fileID: 8300000, guid: af088bfef6811ec43ba42670c8ed1245, type: 3}
     volume: 0.45
     pitchVariation: 0.05
   uiSource: {fileID: 1392670273}
@@ -10416,6 +10450,7 @@ MonoBehaviour:
   ticketManager: {fileID: 1238468672}
   ticketId: pc-nao-liga
   stepId: abrir-gabinete
+  scoreKeeper: {fileID: 1238468675}
 --- !u!114 &1938675309
 MonoBehaviour:
   m_ObjectHideFlags: 0
