@@ -14,13 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TicketDefinition
   ticketId: pc-montagem-completa
   title: Preparar uma nova estacao de trabalho
-  description: Chegou um computador novo para o setor. Precisamos que ele seja montado
-    e fique pronto para uso.
+  description: Chegou um computador novo para o setor. O gabinete e o monitor estao
+    na sala de TI; leve-os ate a mesa da estacao, monte e deixe tudo pronto para uso.
   requester: Augusto
   department: TI
   minimumStage: 3
   tutorialOnly: 0
   steps:
+  - id: posicionar-equipamentos
+    description: Levar o gabinete e o monitor da sala de TI ate a mesa
+    weight: 2
   - id: abrir-gabinete
     description: Abrir o gabinete
     weight: 1
@@ -39,11 +42,17 @@ MonoBehaviour:
   - id: instalar-hd
     description: Instalar o armazenamento
     weight: 1
+  - id: fechar-gabinete
+    description: Fechar o gabinete
+    weight: 1
   - id: conectar-energia
     description: Conectar a alimentacao
     weight: 1
   - id: conectar-video
     description: Conectar o monitor
+    weight: 1
+  - id: conectar-rede
+    description: Conectar o cabo de rede
     weight: 1
   - id: instalar-sistema
     description: Instalar o sistema operacional

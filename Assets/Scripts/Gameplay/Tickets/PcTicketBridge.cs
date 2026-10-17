@@ -37,6 +37,8 @@ public class PcTicketBridge : TicketDeviceBridge
         power = GetComponent<ComputerPower>();
         if (scoreKeeper == null) scoreKeeper = FindAnyObjectByType<ScoreKeeper>();
         RedeConectividade.Garantir();
+        if (HomeStation != null) homeDesk = HomeStation.GetComponentInChildren<WorkSurface>(true);
+        Peripherals();
     }
 
     protected override bool Knows(string id)
@@ -52,6 +54,7 @@ public class PcTicketBridge : TicketDeviceBridge
             case "validar-imagem": case "validar-rede":
             case "remover-cabo-defeituoso": case "religar-rack":
             case "preparar-cabo": case "crimpar-cabo": case "testar-cabo":
+            case "posicionar-equipamentos":
                 return true;
             default:
                 return false;
@@ -66,9 +69,11 @@ public class PcTicketBridge : TicketDeviceBridge
             case "inspecionar-pc": case "inspecionar-video": case "verificar-rede": case "verificar-armazenamento":
                 return Inspected;
             case "abrir-gabinete": return pcCase.State == CaseState.Open;
+            // estação nova: o gabinete e o monitor trazidos da sala de TI estão apoiados na mesa DESTA estação
+            case "posicionar-equipamentos": return EquipmentOnHomeDesk();
             // o cabo estragado saiu do PC (desconectado nas duas pontas); testá-lo e descartá-lo é opcional
             case "remover-cabo-defeituoso": return caboDefeituoso == null || power.CableItemOf(PcLink.Network) != caboDefeituoso;
-            // o par da porta desta estação está ligado no rack com um cabo bom (sem vínculo: vale a rede do PC)
+            // o par da porta desta estação está CERTO no rack (P N ↔ S N, cabo bom, sem laço) — sem vínculo: a rede do PC
             case "religar-rack": return portaRack > 0 ? RedeGame.Garantir().PortaFunciona(portaRack) : power.NetworkConnected;
             // crimpar-cabo (chamado da estação): investigar o PC, crimpar um cabo novo e a estação voltar a ter rede
             // COM um cabo crimpado depois do chamado ligado ao gabinete (o cabo estragado não serve)
@@ -119,15 +124,27 @@ public class PcTicketBridge : TicketDeviceBridge
                 RelatarRede("cabo de rede da estação com defeito");
                 break;
             case TestadorCabo.ChamadoRack:
-                if (portaRack > 0) RedeGame.Garantir().Desligar(portaRack, out _);
+                // o rack fica errado de verdade: ou o cabo do patch panel desta porta sai, ou vai parar numa porta
+                // TROCADA do switch (conexão física existe, mas fora da topologia: só P N ↔ S N dá rede)
+                if (portaRack > 0)
+                {
+                    RedeGame g = RedeGame.Garantir();
+                    int trocada = Random.value < 0.5f ? g.TrocarParaPortaErrada(portaRack) : 0;
+                    if (trocada == 0) g.Desligar(portaRack, out _);
+                    RelatarRede(trocada > 0 ? $"P{portaRack} ligado em S{trocada} no rack" : $"par {portaRack} desligado no rack");
+                }
                 else Debug.LogWarning("PcTicketBridge: o ponto de rede desta estação não tem porta no rack (PontoDeRedeRack).", this);
-                RelatarRede($"par {portaRack} desligado no rack");
                 break;
             case "pc-montagem-completa":
+                // estação "nova": a mesa começa VAZIA. Gabinete (sem peças), monitor, teclado, mouse e todos os cabos
+                // (soltos das duas pontas) vão para a bancada da sala de TI (AssemblyPickupPoint); o jogador os traz,
+                // monta e liga tudo. Sem ponto de retirada na cena, tudo fica na mesa (comportamento antigo).
                 pcCase.SetComponents(PcComponent.None, false);
-                UnplugWallEnd(PcLink.Power);
-                UnplugWallEnd(PcLink.MonitorPower);
-                UnplugVideo();
+                var kit = new System.Collections.Generic.List<PickupInteractable>();
+                int n = 0;
+                foreach (PcLink link in new[] { PcLink.Power, PcLink.MonitorPower, PcLink.Vga, PcLink.Hdmi, PcLink.Network })
+                    if (RemoveCable(link, n, kit)) n++;
+                MoveKitToItRoom(kit);
                 break;
         }
     }
@@ -166,6 +183,99 @@ public class PcTicketBridge : TicketDeviceBridge
         power.UsePort(wallEnd, null, false, out _);
     }
 
+    // Equipamentos da estação levados à sala de TI no chamado de estação nova (o gabinete é este objeto).
+    private void MoveKitToItRoom(System.Collections.Generic.List<PickupInteractable> cables)
+    {
+        AssemblyPickupPoint point = AssemblyPickupPoint.Nearest(transform.position);
+        if (point == null)
+        {
+            Debug.LogWarning($"PcTicketBridge ({DeviceLabel}): sem AssemblyPickupPoint na cena; o gabinete e o monitor ficam na mesa.", this);
+            return;
+        }
+        var kit = new System.Collections.Generic.List<PickupInteractable>();
+        kit.Add(GetComponent<PickupInteractable>());
+        PickupInteractable monitorItem = MonitorItem();
+        if (monitorItem != null) kit.Add(monitorItem);
+        kit.AddRange(Peripherals());
+        kit.AddRange(cables);
+        kit.RemoveAll(p => p == null);
+        for (int i = kit.Count - 1; i > 0; i--) if (kit.IndexOf(kit[i]) < i) kit.RemoveAt(i);   // sem repetidos, na ordem
+        point.Place(kit);
+        Debug.Log($"[Montagem] {DeviceLabel}: mesa vazia; {kit.Count} itens na sala de TI ({point.name}).", this);
+    }
+
+    private PickupInteractable MonitorItem() =>
+        power.Monitor != null ? power.Monitor.GetComponentInParent<PickupInteractable>() : null;
+
+    // Teclado e mouse do PC_Escritorio (pegáveis irmãos do gabinete, lidos no Awake: depois de pegos saem da hierarquia).
+    private System.Collections.Generic.List<PickupInteractable> peripherals;
+    private System.Collections.Generic.List<PickupInteractable> Peripherals()
+    {
+        if (peripherals != null) return peripherals;
+        peripherals = new System.Collections.Generic.List<PickupInteractable>();
+        Transform pc = transform.parent;
+        if (pc == null) return peripherals;
+        PickupInteractable monitorItem = MonitorItem();
+        foreach (PickupInteractable p in pc.GetComponentsInChildren<PickupInteractable>(true))
+        {
+            if (p.transform == transform || p.transform.IsChildOf(transform) || p == monitorItem) continue;
+            if (p.GetComponentInChildren<MonitorDisplay>(true) != null) continue;   // o monitor vai à parte (MonitorItem)
+            if (p.GetComponentInParent<CableItem>(true) != null || p.GetComponent<ComputerPartItem>() != null) continue;
+            if (!p.gameObject.activeInHierarchy) continue;
+            peripherals.Add(p);
+        }
+        return peripherals;
+    }
+
+    // Mesa da estação dona deste PC (lida no Awake).
+    private WorkSurface homeDesk;
+
+    private bool EquipmentOnHomeDesk()
+    {
+        if (homeDesk == null) return pcCase.IsOnWorkSurface;   // fora de estação: qualquer mesa/bancada
+        if (pcCase.SupportingSurface() != homeDesk) return false;
+        PickupInteractable monitorItem = MonitorItem();
+        return monitorItem == null || (!monitorItem.IsHeld && SurfaceUnder(monitorItem) == homeDesk);
+    }
+
+    // Superfície de trabalho logo abaixo de um item (raio para baixo a partir da base dele, ignorando o próprio item).
+    private static WorkSurface SurfaceUnder(PickupInteractable item)
+    {
+        Bounds b = item.WorldBounds;
+        Vector3 from = new Vector3(b.center.x, b.min.y + 0.05f, b.center.z);
+        RaycastHit[] hits = Physics.RaycastAll(from, Vector3.down, 0.3f, ~0, QueryTriggerInteraction.Ignore);
+        System.Array.Sort(hits, (x, y) => x.distance.CompareTo(y.distance));
+        foreach (RaycastHit h in hits)
+        {
+            if (h.collider.transform.IsChildOf(item.transform)) continue;
+            return h.collider.GetComponentInParent<WorkSurface>();
+        }
+        return null;
+    }
+
+    // Tira o cabo das duas pontas e o deixa sobre a mesa, ao lado do gabinete (nunca é destruído).
+    private bool RemoveCable(PcLink link, int slot, System.Collections.Generic.List<PickupInteractable> removed = null)
+    {
+        if (power.CableItemOf(link) == null) return false;
+        power.PortsOf(link, out PcPort a, out PcPort b);
+        GameObject item = null;
+        foreach (PcPort port in new[] { a, b })
+        {
+            power.UsePort(port, null, false, out GameObject back);
+            if (back != null) item = back;
+        }
+        if (item == null) return false;
+        item.SetActive(true);
+        PickupInteractable pickup = item.GetComponentInChildren<PickupInteractable>(true);
+        if (pickup != null)
+        {
+            removed?.Add(pickup);
+            Vector3 lado = transform.right * (0.32f + slot * 0.09f);
+            pickup.OnDropped(transform.position + lado + Vector3.up * 0.005f, transform.eulerAngles.y);
+        }
+        return true;
+    }
+
     // Solta o vídeo na saída do gabinete: o cabo fica pendurado no monitor.
     private void UnplugVideo()
     {
@@ -175,6 +285,17 @@ public class PcTicketBridge : TicketDeviceBridge
             power.PortsOf(link, out PcPort caseEnd, out _);
             power.UsePort(caseEnd, null, false, out _);
         }
+    }
+
+    // Entrega com o gabinete aberto (tampa aberta ou parafuso obrigatório fora) contraria o procedimento: o chamado não
+    // é concluído e a tentativa é penalizada (ScoreKeeper). Durante as etapas o gabinete aberto é legítimo.
+    protected override string DeliveryBlocker()
+    {
+        if (pcCase.IsIncomplete) return "o gabinete ainda está aberto: feche a tampa e recoloque os parafusos";
+        // estação nova: só é entregue montada NA MESA dela (gabinete e monitor apoiados ali)
+        if (Current != null && Current.Definition != null && Current.Definition.ticketId == "pc-montagem-completa" && !EquipmentOnHomeDesk())
+            return "o gabinete e o monitor precisam estar na mesa da estação";
+        return null;
     }
 
     protected override void OnTicketCompleted(TicketInstance ticket)

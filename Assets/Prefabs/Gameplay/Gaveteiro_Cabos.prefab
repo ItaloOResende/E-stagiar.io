@@ -1601,6 +1601,7 @@ GameObject:
   - component: {fileID: 1265989996737953050}
   - component: {fileID: 3487333804099456859}
   - component: {fileID: 2457693813324900724}
+  - component: {fileID: 6290840817923829651}
   m_Layer: 0
   m_Name: Gaveta_4
   m_TagString: Untagged
@@ -1722,6 +1723,22 @@ MonoBehaviour:
   onEmptied:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &6290840817923829651
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6677825367150269274}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c21f4e4eb2de50f43bc2e7c18f1a5b52, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DrawerTicketLock
+  ticketManager: {fileID: 0}
+  lockedDuringTickets:
+  - crimpar-cabo
+  reason: Gaveta trancada durante este atendimento
 --- !u!1 &6900266020135124881
 GameObject:
   m_ObjectHideFlags: 0

@@ -48,8 +48,29 @@ public class OpenableInteractable : Interactable
         Apply();
     }
 
-    public override string PromptText =>
-        string.IsNullOrEmpty(interactionMessage) || interactionMessage == "Interagir" ? (IsOpen ? "Fechar" : "Abrir") : interactionMessage;
+    public override string PromptText
+    {
+        get
+        {
+            string motivo = LockReason;
+            if (motivo != null) return motivo;
+            return string.IsNullOrEmpty(interactionMessage) || interactionMessage == "Interagir" ? (IsOpen ? "Fechar" : "Abrir") : interactionMessage;
+        }
+    }
+
+    /// <summary>Trancado agora por um <see cref="IOpenLock"/> do objeto (só impede ABRIR; fechar sempre pode).</summary>
+    public override bool IsBlocked => LockReason != null;
+
+    private string LockReason
+    {
+        get
+        {
+            if (targetOpen) return null;
+            foreach (IOpenLock l in GetComponents<IOpenLock>())
+                if (l as Object != null && l.IsLocked) return string.IsNullOrEmpty(l.LockReason) ? "Trancada" : l.LockReason;
+            return null;
+        }
+    }
 
     public override bool CanInteract(InteractionDetector interactor)
         => base.CanInteract(interactor) && !IsMoving
@@ -57,6 +78,13 @@ public class OpenableInteractable : Interactable
 
     public override void Interact(InteractionDetector interactor)
     {
+        if (IsBlocked)
+        {
+            // trancada: não abre; som de recusa e um tranco curto na gaveta
+            InteractionSounds.Raise(InteractionSound.PickupBlocked, MovingPart.position);
+            StartCoroutine(Tranco());
+            return;
+        }
         Toggle();
         if (targetOpen) OpenedBy?.Invoke(interactor);
     }
@@ -70,6 +98,18 @@ public class OpenableInteractable : Interactable
         InteractionSounds.Raise(open ? InteractionSound.DrawerOpened : InteractionSound.DrawerClosed, MovingPart.position);
         (open ? onOpened : onClosed).Invoke();
         if (open) Opened?.Invoke();
+    }
+
+    private System.Collections.IEnumerator Tranco()
+    {
+        Vector3 axis = closedLocalRot * localAxis.normalized;
+        for (float t = 0f; t < 0.25f; t += Time.deltaTime)
+        {
+            if (!IsMoving && !targetOpen && mode == Mode.Slide)
+                movingPart.localPosition = closedLocalPos + axis * (Mathf.Sin(t / 0.25f * Mathf.PI) * 0.012f);
+            yield return null;
+        }
+        if (!targetOpen && !IsMoving) Apply();
     }
 
     private void Update()
@@ -90,4 +130,12 @@ public class OpenableInteractable : Interactable
         else
             movingPart.localRotation = closedLocalRot * Quaternion.AngleAxis(openAmount * t, axis);
     }
+}
+
+/// <summary>Tranca um <see cref="OpenableInteractable"/> do mesmo objeto (ex.: gaveta bloqueada durante um chamado).</summary>
+public interface IOpenLock
+{
+    bool IsLocked { get; }
+    /// <summary>Texto curto do HUD (ex.: "Gaveta trancada").</summary>
+    string LockReason { get; }
 }

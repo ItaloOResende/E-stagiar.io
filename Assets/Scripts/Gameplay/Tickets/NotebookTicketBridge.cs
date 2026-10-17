@@ -68,6 +68,10 @@ public class NotebookTicketBridge : TicketDeviceBridge
         Debug.Log($"[Notebook] {DeviceLabel}: defeito '{ticketId}' aplicado.", this);
     }
 
+    // Notebook com parafuso da tampa de baixo fora não é entregue (tampa solta): o chamado não conclui e a tentativa é penalizada.
+    protected override string DeliveryBlocker() =>
+        estacao.Sessao.TodosParafusosInstalados ? null : "o notebook ainda está aberto: recoloque os parafusos da tampa";
+
     protected override bool Knows(string id) =>
         id == "diagnosticar-notebook" || id == "reparar-notebook" || id == "validar-notebook" ||
         id == "instalar-ram-notebook" || id == "instalar-ssd-notebook" || id == "instalar-sistema-notebook";

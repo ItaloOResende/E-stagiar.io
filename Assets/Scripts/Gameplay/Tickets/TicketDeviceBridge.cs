@@ -33,6 +33,9 @@ public abstract class TicketDeviceBridge : MonoBehaviour
     [SerializeField] private bool prepareProblemOnClaim = true;
     [Tooltip("Raiz do equipamento: tela 2D aberta a partir dela (ou de um filho) conta como inspeção. Vazio = este objeto.")]
     [SerializeField] private Transform deviceRoot;
+    [Tooltip("Depois de atender um chamado, este equipamento fica fora da escolha por este tempo (s), se houver outro livre: " +
+             "evita, por exemplo, um \"sem rede\" no mesmo PC que acabou de ser montado.")]
+    [Min(0f)] [SerializeField] private float recentCooldownSeconds = 180f;
     [Tooltip("Intervalo (s) entre verificações do estado do equipamento.")]
     [Min(0.05f)] [SerializeField] private float checkInterval = 0.25f;
 
@@ -44,6 +47,10 @@ public abstract class TicketDeviceBridge : MonoBehaviour
     public TicketInstance Current { get; private set; }
     /// <summary>Quantos chamados este equipamento já atendeu nesta sessão (usado na distribuição).</summary>
     public int ClaimCount { get; private set; }
+    /// <summary>Time.time da última conclusão de chamado neste equipamento (-inf = nunca).</summary>
+    public float LastFinishedAt { get; private set; } = float.NegativeInfinity;
+    /// <summary>Atendido há pouco (dentro de <see cref="recentCooldownSeconds"/>).</summary>
+    public bool RecentlyServed => Time.time - LastFinishedAt < recentCooldownSeconds;
     /// <summary>O jogador abriu a tela deste equipamento desde que o chamado foi reservado.</summary>
     protected bool Inspected { get; private set; }
     public string DeviceLabel => deviceLabel;
@@ -69,8 +76,16 @@ public abstract class TicketDeviceBridge : MonoBehaviour
         return !anyAccepts;
     }
 
+    /// <summary>
+    /// Estação dona deste equipamento, lida no Awake: o gabinete/notebook pode ser carregado (sai da hierarquia da
+    /// estação ao ser pego), mas continua sendo o equipamento DAQUELA estação.
+    /// </summary>
+    protected StationEmployee HomeStation { get; private set; }
+    private StationEmployee Station => HomeStation != null ? HomeStation : StationEmployee.Of(this);
+
     protected virtual void Awake()
     {
+        HomeStation = StationEmployee.Of(this);
         if (deviceRoot == null) deviceRoot = transform;
         if (ticketManager == null) ticketManager = FindAnyObjectByType<TicketManager>();
     }
@@ -114,6 +129,7 @@ public abstract class TicketDeviceBridge : MonoBehaviour
     private void OnTicketFinished(TicketInstance ticket)
     {
         if (ticket != Current) return;
+        LastFinishedAt = Time.time;
         OnTicketCompleted(ticket);
         Release();
         AssignAll(ticketManager);   // chamados iniciados que estavam sem equipamento livre
@@ -128,9 +144,14 @@ public abstract class TicketDeviceBridge : MonoBehaviour
             if (t.Status != TicketStatus.InProgress || owners.ContainsKey(t)) continue;
             TicketDeviceBridge best = null;
             int ties = 0;
+            // equipamento recém-atendido só entra se não houver outro livre (nada de chamado contraditório em seguida)
+            bool anyFresh = false;
+            foreach (TicketDeviceBridge b in active)
+                if (b != null && b.isActiveAndEnabled && b.ticketManager == manager && b.Accepts(t) && b.Free && !b.RecentlyServed) anyFresh = true;
             foreach (TicketDeviceBridge b in active)
             {
                 if (b == null || !b.isActiveAndEnabled || b.ticketManager != manager || !b.Accepts(t) || !b.Free) continue;
+                if (anyFresh && b.RecentlyServed) continue;
                 // a estação do PRÓPRIO solicitante da ficha vem primeiro; depois, a que atendeu menos
                 bool dono = b.IsRequesterStation(t), bestDono = best != null && best.IsRequesterStation(t);
                 if (best != null && bestDono && !dono) continue;
@@ -143,7 +164,7 @@ public abstract class TicketDeviceBridge : MonoBehaviour
 
     private bool IsRequesterStation(TicketInstance t)
     {
-        StationEmployee e = StationEmployee.Of(this);
+        StationEmployee e = Station;
         return e != null && t.Definition != null && e.employeeName == t.Definition.requester;
     }
 
@@ -158,7 +179,7 @@ public abstract class TicketDeviceBridge : MonoBehaviour
         t.Location = deviceLabel;
         t.AssignedNpc = stationNpc != null ? stationNpc.name : "";
         // o chamado é do funcionário da estação (placa da mesa); o local é a estação, nunca o rack ou o testador
-        StationEmployee dono = StationEmployee.Of(this);
+        StationEmployee dono = Station;
         if (dono != null)
         {
             t.Requester = dono.employeeName;
@@ -234,6 +255,30 @@ public abstract class TicketDeviceBridge : MonoBehaviour
             if (Current != t) return;   // concluiu o chamado (TicketManager sem finalização explícita)
         }
     }
+
+    /// <summary>
+    /// Motivo para o equipamento do chamado NÃO poder ser entregue agora, mesmo com todas as etapas feitas (null = pode).
+    /// Só vale para chamados com equipamento reservado; os outros nunca são bloqueados.
+    /// </summary>
+    public static string DeliveryBlockerFor(TicketInstance t)
+    {
+        if (t == null || !owners.TryGetValue(t, out TicketDeviceBridge b) || b == null) return null;
+        string estado = b.DeliveryBlocker();   // primeiro o estado do equipamento (ex.: gabinete aberto)
+        if (!string.IsNullOrEmpty(estado)) return estado;
+        // coerência: uma etapa já concluída cujo estado real voltou atrás (ex.: tirou a RAM depois de instalar) impede a
+        // entrega; o tablet mostra qual
+        if (t.Definition != null && t.Definition.steps != null)
+            foreach (TicketStepDefinition step in t.Definition.steps)
+                if (step != null && !string.IsNullOrWhiteSpace(step.id) && t.HasCompleted(step.id) && b.Knows(step.id) && !b.Condition(step.id))
+                    return $"a etapa \"{step.description}\" deixou de valer";
+        return null;
+    }
+
+    /// <summary>
+    /// Condição de entrega do equipamento (padrão: sempre pode). Ex.: o PC não é entregue com o gabinete aberto. Só é
+    /// consultada com todas as etapas feitas: enquanto há etapa pendente, um equipamento aberto é parte do trabalho.
+    /// </summary>
+    protected virtual string DeliveryBlocker() => null;
 
     /// <summary>Este equipamento sabe avaliar a etapa?</summary>
     protected abstract bool Knows(string stepId);

@@ -92,6 +92,13 @@ public class TicketInstance
     public string Department { get; set; }
     /// <summary>Tentativas de finalizar com etapas pendentes (TicketManager.TryFinishTicket).</summary>
     public int RejectedFinishAttempts { get; internal set; }
+    /// <summary>
+    /// Motivo da última recusa de finalização: vazio = etapas pendentes; preenchido = todas as etapas feitas, mas o
+    /// equipamento não está em condição de entrega (ex.: "gabinete aberto"), ver TicketDeviceBridge.DeliveryBlocker.
+    /// </summary>
+    public string LastRejectReason { get; internal set; } = "";
+    /// <summary>Tentativas de entregar com o equipamento aberto/incompleto (todas as etapas feitas).</summary>
+    public int RejectedDeliveryAttempts { get; internal set; }
     /// <summary>Nome do NPC da estação que recebeu o atendimento (vazio = nenhum).</summary>
     public string AssignedNpc { get; set; } = "";
     /// <summary>Em atendimento com todas as etapas feitas: falta o jogador finalizar (TicketManager.FinishTicket).</summary>

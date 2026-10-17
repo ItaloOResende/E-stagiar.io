@@ -45,8 +45,17 @@ public class TicketManager : MonoBehaviour
     public event Action<TicketInstance> TicketFinished;
     /// <summary>Um chamado aberto acabou de passar do prazo (uma vez por chamado). Ele continua aberto.</summary>
     public event Action<TicketInstance> TicketOverdue;
-    /// <summary>O jogador tentou finalizar um chamado com etapas pendentes (uma vez por tentativa). Nada foi concluído.</summary>
+    /// <summary>
+    /// O jogador tentou finalizar e foi recusado (uma vez por tentativa; nada foi concluído): etapas pendentes
+    /// (<see cref="TicketInstance.LastRejectReason"/> vazio) ou equipamento em condição de não entrega (motivo preenchido).
+    /// </summary>
     public event Action<TicketInstance> FinishRejected;
+    /// <summary>
+    /// Não vão chegar mais chamados (fim da geração: faltam menos de <c>stopGeneratingBeforeEndSeconds</c>) e nenhum
+    /// está aberto: o expediente pode acabar antes do relógio (o StageController encerra a fase). Uma vez por fase.
+    /// </summary>
+    public event Action AllWorkDone;
+    private bool allWorkDoneRaised;
 
     private readonly List<TicketInstance> tickets = new List<TicketInstance>();
     private int nextTicketNumber = 1;
@@ -58,6 +67,12 @@ public class TicketManager : MonoBehaviour
     private bool arrivalClockStarted;
 
     public IReadOnlyList<TicketInstance> Tickets => tickets;
+    /// <summary>
+    /// Chamados sem fim (Speed Run, <see cref="GameMode.SpeedRun"/>): a geração não para perto do fim da fase, sempre há
+    /// pelo menos um chamado aberto (ao concluir o último, o próximo chega na hora) e <see cref="AllWorkDone"/> nunca
+    /// dispara — quem encerra é o relógio do <see cref="StageController"/>. Definido antes do <see cref="BeginStage"/>.
+    /// </summary>
+    public bool EndlessMode { get; set; }
     public bool RequirePlayerToFinish { get => requirePlayerToFinish; set => requirePlayerToFinish = value; }
 
     /// <summary>
@@ -81,6 +96,7 @@ public class TicketManager : MonoBehaviour
         previousDefinition = null;
         nextTicketNumber = 1;
         running = true;
+        allWorkDoneRaised = false;
         arrivalClockStarted = false;
         maximumOpenTickets = stageNumber <= 1 ? 1 : Mathf.Min(4, stageNumber);
         CreateTicket();
@@ -95,11 +111,18 @@ public class TicketManager : MonoBehaviour
         CancelInvoke();
     }
 
-    private bool CanGenerate() => running && remainingStageTime > stopGeneratingBeforeEndSeconds;
+    private bool CanGenerate() => running && (EndlessMode || remainingStageTime > stopGeneratingBeforeEndSeconds);
 
     private void Update()
     {
         TickTickets(); // O relogio de cada chamado corre independente da geracao de novos chamados.
+
+        if (running && !EndlessMode && !allWorkDoneRaised && stageNumber >= 1 && tickets.Count > 0 && !CanGenerate() && OpenCount == 0)
+        {
+            allWorkDoneRaised = true;
+            Debug.Log("Sem chamados pendentes e sem novos chamados até o fim: expediente concluído.", this);
+            AllWorkDone?.Invoke();
+        }
 
         if (!CanGenerate() || stageNumber < 2 || !arrivalClockStarted) return;
         if (Time.time < nextArrivalAt || OpenCount >= maximumOpenTickets) return;
@@ -148,6 +171,12 @@ public class TicketManager : MonoBehaviour
     private void OnTicketClosed()
     {
         if (!CanGenerate()) return;
+        if (EndlessMode && OpenCount == 0)
+        {
+            // Speed Run: nunca fica sem chamado (o ritmo é o do jogador)
+            if (CreateTicket() && stageNumber >= 2) ScheduleNextArrival(Time.time);
+            return;
+        }
         if (stageNumber == 1 && OpenCount == 0)
         {
             if (instantNextTicketOnFirstStage) CreateTicket();
@@ -247,7 +276,19 @@ public class TicketManager : MonoBehaviour
     {
         TicketInstance ticket = Find(number);
         if (!running || ticket == null || ticket.Status != TicketStatus.InProgress) return false;
-        if (ticket.ReadyToFinish) { Finish(ticket); return true; }
+        if (ticket.ReadyToFinish)
+        {
+            // etapas feitas, mas o equipamento não pode ser entregue assim (ex.: gabinete/notebook aberto): recusa e avisa
+            string blocker = TicketDeviceBridge.DeliveryBlockerFor(ticket);
+            if (string.IsNullOrEmpty(blocker)) { ticket.LastRejectReason = ""; Finish(ticket); return true; }
+            ticket.RejectedDeliveryAttempts++;
+            ticket.LastRejectReason = blocker;
+            Debug.Log($"Chamado #{ticket.Number}: entrega recusada ({blocker}).", this);
+            FinishRejected?.Invoke(ticket);
+            TicketChanged?.Invoke(ticket);
+            return false;
+        }
+        ticket.LastRejectReason = "";
         ticket.RejectedFinishAttempts++;
         Debug.Log($"Chamado #{ticket.Number}: tentativa de finalizar com etapas pendentes ({ticket.Progress:P0}).", this);
         FinishRejected?.Invoke(ticket);

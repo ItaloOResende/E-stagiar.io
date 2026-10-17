@@ -1920,7 +1920,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DrawerContents
   entries:
   - prefab: {fileID: 2176237405103854348, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
-    quantity: 3
+    quantity: 1
     delivery: 0
     localPosition: {x: -0.15, y: -0.071, z: 0}
     localEuler: {x: 0, y: 0, z: 0}

@@ -66,7 +66,7 @@ public static class GaveteirosSetup
     private static readonly (string label, Item[] items)[] SupplyDrawers =
     {
         ("memoria_ssd", new[] { new Item("Pickup_RamSodimm", 3, -0.15f, 0.11f, 0.13f), new Item("Pickup_Ssd", 3, -0.15f, -0.09f, 0.13f) }),
-        ("pendrive", new[] { new Item("Pickup_Pendrive", 3, -0.15f, 0f, 0.15f) }),
+        ("pendrive", new[] { new Item("Pickup_Pendrive", 1, -0.15f, 0f, 0.15f) }),   // 2026-10-17: era 3 (balanceamento)
         ("toner", new[] { new Item("Pickup_Toner", 2, 0f, 0.11f, 0f, -0.2f) }),
         ("papel", new[] { new Item("Pickup_ResmaPapel", 2, -0.13f, 0f, 0.26f) }),
     };
