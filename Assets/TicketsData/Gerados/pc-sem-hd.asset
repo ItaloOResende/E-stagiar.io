@@ -13,20 +13,21 @@ MonoBehaviour:
   m_Name: pc-sem-hd
   m_EditorClassIdentifier: Assembly-CSharp::TicketDefinition
   ticketId: pc-sem-hd
-  title: Computador nao encontra armazenamento
-  description: O computador abre uma tela estranha e nao encontra onde iniciar. Voces
-    conseguem resolver?
+  title: Computador nao inicia
+  description: O computador liga, mas para numa tela azul e nao entra no sistema.
   requester: Joao
   department: Administrativo
   minimumStage: 2
   tutorialOnly: 0
   steps:
   - id: abrir-gabinete
-    description: Abrir o gabinete
+    description: Investigar o equipamento
     weight: 1
   - id: instalar-hd
-    description: Instalar a unidade de armazenamento
+    description: Corrigir a causa do problema
     weight: 2
   - id: validar-armazenamento
-    description: Verificar que o HD foi reconhecido
+    description: Confirmar que voltou a funcionar
     weight: 1
+  complexity: 2
+  slaSecondsOverride: 0

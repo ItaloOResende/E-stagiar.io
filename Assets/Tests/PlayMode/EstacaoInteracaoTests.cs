@@ -210,7 +210,7 @@ public class EstacaoInteracaoTests
         next.onClick.Invoke(); yield return null;
         Assert.AreEqual("Interior", Get(ctrl, "CurrentView").ToString());
         Assert.AreEqual(CaseState.Open, pcCase.State);
-        Assert.IsFalse((bool)Call(pick, "CanInteract", detector), "aberto: não pode ser carregado");
+        Assert.IsTrue((bool)Call(pick, "CanInteract", detector), "aberto: pode ser carregado (2026-10-15; fica incompleto)");
 
         Button hdSlot = screen.GetComponentsInChildren<Button>(true).First(b => b.name == "Encaixe_HD");
         hdSlot.onClick.Invoke(); yield return null;
@@ -228,6 +228,52 @@ public class EstacaoInteracaoTests
         Call(manager, "Close"); yield return null; yield return null;
         Call(holder, "Stow", Vector3.down * 10f);
         Assert.IsTrue((bool)Call(pick, "CanInteract", detector), "fechado de novo: pode ser carregado");
+    }
+
+    // ---- cabos no canvas: soltar a ponta sem Esc, vários pendurados, nada de arraste ao reabrir -----------------------
+
+    [UnityTest]
+    public IEnumerator Cabos_SoltarPonta_VariosPendurados_ReabrirSemArraste()
+    {
+        GameObject st = Spawn(StationPath, Vector3.zero);
+        yield return null;
+        var power = st.GetComponentInChildren<ComputerPower>();
+        power.GetComponent<Rigidbody>().isKinematic = true;
+        Assert.AreEqual(PortResult.PluggedFromHand, power.UsePort(PcPort.CasePower, Spawn("Assets/Prefabs/Gameplay/Pickup_CaboEnergia.prefab", Vector3.down * 10f).GetComponent<CableItem>(), true, out _));
+        Assert.AreEqual(PortResult.PluggedOtherEnd, power.UsePort(PcPort.Outlet, null, false, out _));
+        Assert.AreEqual(PortResult.PluggedFromHand, power.UsePort(PcPort.CaseNetwork, Spawn("Assets/Prefabs/Gameplay/Pickup_CaboRede.prefab", Vector3.down * 10f).GetComponent<CableItem>(), true, out _));
+        Assert.AreEqual(PortResult.PluggedOtherEnd, power.UsePort(PcPort.NetworkJack, null, false, out _));
+
+        Stand(power.transform.position + new Vector3(0f, -1f, 1.2f), power.transform.position);
+        GameObject screen = OpenScreen(power.gameObject); yield return null;
+        Component ctrl = screen.GetComponent(T("ComputerScreenController"));
+        ButtonNamed(screen, "BotaoAvancar").onClick.Invoke(); yield return null;     // Traseira
+
+        ButtonNamed(screen, "Porta_Tomada").onClick.Invoke(); yield return null;
+        Assert.AreEqual(PcLink.Power, Get(ctrl, "CarriedLink"), "a ponta da tomada segue o mouse");
+        Call(ctrl, "DropCarriedCable"); yield return null;                           // clique no vazio
+        Assert.IsNull(Get(ctrl, "CarriedLink"), "soltou sem Esc");
+        Assert.IsTrue(power.IsEndPlugged(PcLink.Power, false) && !power.IsEndPlugged(PcLink.Power, true), "pendurado no gabinete");
+
+        ButtonNamed(screen, "Porta_Rede").onClick.Invoke(); yield return null;
+        Assert.AreEqual(PcLink.Network, Get(ctrl, "CarriedLink"));
+        Call(ctrl, "DropCarriedCable"); yield return null;
+        Assert.IsTrue(power.IsEndPlugged(PcLink.Network, false) && !power.IsEndPlugged(PcLink.Network, true));
+        Assert.IsTrue(power.IsEndPlugged(PcLink.Power, false), "os dois ficam pendurados ao mesmo tempo");
+        Assert.IsFalse(power.BlocksPickup, "nada preso à parede");
+
+        // solta uma ponta e fecha (Esc/Fechar) no meio do arraste: ao reabrir, nada segue o mouse
+        ButtonNamed(screen, "Porta_EnergiaGabinete").onClick.Invoke(); yield return null;
+        Assert.IsNull(Get(ctrl, "CarriedLink"), "soltou as duas pontas: o cabo volta para a mão, sem arraste");
+        Assert.IsTrue(Holding);
+        ButtonNamed(screen, "Porta_Tomada").onClick.Invoke(); yield return null;     // liga o cabo da mão na tomada
+        Assert.AreEqual(PcLink.Power, Get(ctrl, "CarriedLink"));
+        Call(manager, "Close"); yield return null; yield return null;
+        Assert.IsTrue(power.IsEndPlugged(PcLink.Power, true), "fechar não desfaz a conexão");
+        screen = OpenScreen(power.gameObject); yield return null;
+        ctrl = screen.GetComponent(T("ComputerScreenController"));
+        Assert.IsNull(Get(ctrl, "CarriedLink"), "reabrir não retoma o arraste");
+        Call(manager, "Close"); yield return null;
     }
 
     // ---- 9/10/12. painel de conexões e monitor por alcance -----------------------------------------------------------
@@ -274,7 +320,9 @@ public class EstacaoInteracaoTests
         ButtonNamed(screen, "Porta_Rede").onClick.Invoke(); yield return null;
         Assert.IsFalse(power.IsPlugged(PcPort.NetworkJack), "fora do alcance não conecta");
         Assert.IsTrue(Holding, "o cabo continua na mão");
-        Assert.IsTrue(power.IsPlugged(PcPort.Outlet), "o cabo ligado antes continua ligado");
+        Assert.IsTrue(power.IsEndPlugged(PcLink.Power, true), "o cabo ligado antes continua ligado (na tomada da estação)");
+        Assert.IsNotNull(power.WallOf(PcLink.Power), "ponta presa ao ponto elétrico de origem");
+        Assert.IsFalse(power.IsPlugged(PcPort.Outlet), "longe: a tomada mostrada é a do ponto atual (nenhum)");
     }
 
     // ---- 11. painel horizontal na ordem do ponto elétrico 3D --------------------------------------------------------
@@ -285,7 +333,7 @@ public class EstacaoInteracaoTests
         Transform painel = Prefab(ScreenPath).transform.Find("Traseira/PainelConexoes");
         Assert.IsNotNull(painel);
         var pr = (RectTransform)painel;
-        Assert.Greater(pr.anchorMin.x, 0.8f, "à direita");
+        Assert.Greater(pr.anchorMin.x, 0.65f, "à direita do gabinete (a miniatura do item da mão fica na borda direita)");
         Assert.Greater(pr.anchorMax.y - pr.anchorMin.y, pr.anchorMax.x - pr.anchorMin.x, "coluna (mais alta que larga)");
         string[] top2bottom = new[] { "Tomada", "Tomada_Monitor", "PontoRede" };
         var rects = top2bottom.Select(n => (RectTransform)painel.Find(n)).ToList();

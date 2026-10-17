@@ -75,7 +75,11 @@ public class EstacoesLadosTests
         var caseD = d.GetComponentInChildren<ComputerCase>();
         var wallE = e.GetComponentInChildren<WallConnectionPoint>();
         var wallD = d.GetComponentInChildren<WallConnectionPoint>();
-        Assert.AreEqual(-Lado(e, caseE), Lado(d, caseD), 0.02f, "gabinete espelhado (a física assenta o gabinete na mesa)");
+        // direita: não é o espelho exato (-0,746 punha o gabinete em cima do mouse); fica em x -0,85 (CenaTesteSetup.CaseXRight)
+        Assert.AreEqual(-0.85f, Lado(d, caseD), 0.02f, "gabinete do lado direito, na ponta da mesa");
+        Assert.AreEqual(-Math.Sign(Lado(e, caseE)), Math.Sign(Lado(d, caseD)), "lado oposto ao da estação esquerda");
+        Assert.Less(caseD.transform.eulerAngles.z % 360f < 180f ? caseD.transform.eulerAngles.z % 360f : 360f - caseD.transform.eulerAngles.z % 360f, 1f,
+            "gabinete reto (antes tombava ~10° sobre o mouse)");
         Assert.AreEqual(-Lado(e, wallE), Lado(d, wallD), 0.02f, "ponto elétrico espelhado");
         Assert.AreEqual(Math.Sign(Lado(d, caseD)), Math.Sign(Lado(d, wallD)), "ponto do mesmo lado do gabinete");
         Assert.IsTrue(caseD.GetComponent<ComputerPower>().IsWallPointInRange);

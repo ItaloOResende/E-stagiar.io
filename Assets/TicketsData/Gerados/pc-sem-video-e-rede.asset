@@ -22,14 +22,16 @@ MonoBehaviour:
   tutorialOnly: 0
   steps:
   - id: conectar-video
-    description: Restabelecer o sinal de video
+    description: Restabelecer a imagem
     weight: 2
   - id: validar-imagem
     description: Confirmar que o monitor funciona
     weight: 1
   - id: conectar-rede
-    description: Restabelecer a ligacao de rede
+    description: Restabelecer a conexao
     weight: 2
   - id: validar-rede
     description: Confirmar que a rede funciona
     weight: 1
+  complexity: 2
+  slaSecondsOverride: 0

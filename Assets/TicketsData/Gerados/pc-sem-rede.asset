@@ -22,11 +22,13 @@ MonoBehaviour:
   tutorialOnly: 0
   steps:
   - id: verificar-rede
-    description: Diagnosticar a conexao de rede
+    description: Investigar o problema
     weight: 1
   - id: conectar-rede
-    description: Conectar ou corrigir o cabo de rede
+    description: Restabelecer a conexao
     weight: 2
   - id: validar-rede
-    description: Confirmar que a conexao funciona
+    description: Confirmar que voltou a funcionar
     weight: 1
+  complexity: 1
+  slaSecondsOverride: 0

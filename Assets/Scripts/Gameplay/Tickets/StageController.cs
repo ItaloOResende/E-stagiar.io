@@ -10,6 +10,8 @@ public class StageController : MonoBehaviour
     [SerializeField] private bool startAutomatically = true;
 
     public event Action<float> TimeChanged;
+    /// <summary>A fase começou (<see cref="StartStage"/>): a pontuação zera aqui.</summary>
+    public event Action StageStarted;
     public event Action StageEnded;
 
     public float SecondsRemaining { get; private set; }
@@ -55,8 +57,20 @@ public class StageController : MonoBehaviour
         }
         SecondsRemaining = DurationSeconds;
         IsRunning = true;
+        StageStarted?.Invoke();
         ticketManager.BeginStage(stageNumber, SecondsRemaining);
         TimeChanged?.Invoke(SecondsRemaining);
+    }
+
+    /// <summary>Encerra a fase agora (como se o tempo tivesse acabado): pontuação final e relatório.</summary>
+    [ContextMenu("TESTE: Encerrar a fase agora")]
+    public void EndStageNow()
+    {
+        if (!IsRunning) return;
+        IsRunning = false;
+        ticketManager.EndStage();
+        StageEnded?.Invoke();
+        Debug.Log("Fase encerrada manualmente.", this);
     }
 
     private void Update()

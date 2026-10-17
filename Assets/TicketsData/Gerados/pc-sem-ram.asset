@@ -13,20 +13,21 @@ MonoBehaviour:
   m_Name: pc-sem-ram
   m_EditorClassIdentifier: Assembly-CSharp::TicketDefinition
   ticketId: pc-sem-ram
-  title: Computador nao inicia apos manutencao
-  description: Depois da manutencao, o computador nao inicia. Poderiam conferir se
-    falta alguma peca?
+  title: Computador nao inicia
+  description: Depois da manutencao, o computador nao inicia.
   requester: Carmen
   department: Atendimento
   minimumStage: 1
   tutorialOnly: 0
   steps:
   - id: abrir-gabinete
-    description: Abrir o gabinete
+    description: Investigar o equipamento
     weight: 1
   - id: instalar-ram
-    description: Instalar a memoria RAM corretamente
+    description: Corrigir a causa do problema
     weight: 2
   - id: ligar-pc
-    description: Ligar e testar o computador
+    description: Confirmar que voltou a funcionar
     weight: 1
+  complexity: 2
+  slaSecondsOverride: 0

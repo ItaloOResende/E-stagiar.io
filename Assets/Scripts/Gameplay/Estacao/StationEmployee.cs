@@ -1,0 +1,28 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+/// <summary>
+/// Funcionário dono de uma estação de trabalho. Fica no ROOT da estação (Estacao_N); os equipamentos dela (gabinete,
+/// notebook) acham este componente subindo na hierarquia, então reorganizar ou mover a estação não quebra a ligação.
+/// Ao reservar um equipamento da estação para um chamado, o chamado passa a ser DESTE funcionário
+/// (<see cref="TicketInstance.Requester"/>); a reserva prefere a estação cujo funcionário é o solicitante da ficha.
+/// A plaquinha da mesa (<see cref="StationNamePlate"/>) mostra o nome.
+/// </summary>
+[DisallowMultipleComponent]
+public class StationEmployee : MonoBehaviour
+{
+    private static readonly List<StationEmployee> all = new List<StationEmployee>();
+
+    [Tooltip("Nome do funcionário (o mesmo usado como solicitante nas fichas de chamado).")]
+    public string employeeName = "Funcionário";
+    [Tooltip("Setor (mostrado no celular junto do nome).")]
+    public string department = "Escritório";
+
+    public static IReadOnlyList<StationEmployee> All => all;
+
+    /// <summary>Estação (funcionário) de um objeto qualquer dela (gabinete, notebook...). Null = fora de estação.</summary>
+    public static StationEmployee Of(Component c) => c != null ? c.GetComponentInParent<StationEmployee>() : null;
+
+    private void OnEnable() { if (!all.Contains(this)) all.Add(this); }
+    private void OnDisable() => all.Remove(this);
+}

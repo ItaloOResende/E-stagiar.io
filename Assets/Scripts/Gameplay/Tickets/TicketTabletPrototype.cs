@@ -85,6 +85,8 @@ public class TicketTabletPrototype : MonoBehaviour
     /// (alicate, chave de fenda) da frente do celular: fora dele o cursor continua sendo a ferramenta.
     /// </summary>
     public static bool PonteiroSobreOAparelho { get; private set; }
+    /// <summary>Algum celular está aberto (ele solta o cursor por conta própria).</summary>
+    public static bool CelularAberto { get; private set; }
 
     private bool aberto;
     private bool mostrarCores;
@@ -98,6 +100,9 @@ public class TicketTabletPrototype : MonoBehaviour
     // do outro ("ArgumentException: Getting control N's position in a group with only N controls"). As duas
     // ações ficam guardadas aqui e são aplicadas no Update, fora do OnGUI.
     private int iniciarChamadoPendente = -1;
+    private int finalizarChamadoPendente = -1;
+    private int recusaNumero = -1;       // chamado da última tentativa de finalizar incompleta (aviso curto)
+    private float recusaEm = -100f;
     private bool fecharPendente;
 
     // Aviso de chamado novo (o "toast" que sobe acima do celular).
@@ -149,6 +154,12 @@ public class TicketTabletPrototype : MonoBehaviour
             ticketManager.StartTicket(iniciarChamadoPendente);
             iniciarChamadoPendente = -1;
         }
+        if (finalizarChamadoPendente >= 0 && ticketManager != null)
+        {
+            int n = finalizarChamadoPendente;
+            finalizarChamadoPendente = -1;
+            if (!ticketManager.TryFinishTicket(n)) { recusaNumero = n; recusaEm = Time.unscaledTime; }
+        }
 
         if (Keyboard.current != null && Keyboard.current[toggleKey].wasPressedThisFrame) SetAberto(!aberto);
         AtualizarBloqueio();
@@ -199,6 +210,7 @@ public class TicketTabletPrototype : MonoBehaviour
     {
         if (aberto == abrir) return;
         aberto = abrir;
+        CelularAberto = abrir;
 
         if (abrir)
         {
@@ -215,8 +227,11 @@ public class TicketTabletPrototype : MonoBehaviour
         }
         else
         {
-            Cursor.lockState = travaDoCursor;
-            Cursor.visible = cursorEraVisivel;
+            // O estado do cursor ao fechar vem do jogo AGORA, não do que era ao abrir: o celular aberto durante uma
+            // tela 2D (ex.: padrão de cores na crimpagem) guardava "livre", e se a tela fechasse antes do celular o
+            // cursor ficava solto no 3D, fora da janela.
+            if (UIScreenManager.Active != null) UIScreenManager.Active.ApplyCursorForCurrentState();
+            else { Cursor.lockState = travaDoCursor; Cursor.visible = cursorEraVisivel; }
             AtualizarCursorDeMao(false);   // fechou: a mãozinha sai e o cursor de baixo volta
             InteractionSounds.Raise(InteractionSound.DrawerClosed);
         }
@@ -359,6 +374,7 @@ public class TicketTabletPrototype : MonoBehaviour
         // O GUI.color é global do IMGUI. Como DesenharRetangulo agora multiplica por ele (para o aviso poder
         // aparecer e sumir de uma vez), garanto que ninguém entrou aqui com um tint pendurado de outro OnGUI.
         GUI.color = Color.white;
+        if (StageReportScreen.Showing) return;   // relatório final na frente: o celular não aparece
 
         if (aberto)
         {
@@ -633,14 +649,29 @@ public class TicketTabletPrototype : MonoBehaviour
 
         if (chamado.Status == TicketStatus.Pending)
         {
-            if (GUILayout.Button("Iniciar atendimento", sBotao, GUILayout.Height(32f * e)))
+            // só inicia se houver um equipamento livre que atenda esse chamado (TicketDeviceBridge reserva ao iniciar)
+            bool livre = TicketDeviceBridge.CanStart(chamado);
+            bool habilitado = GUI.enabled;
+            GUI.enabled = habilitado && livre;
+            if (GUILayout.Button(livre ? "Iniciar atendimento" : "Aguardando equipamento livre", sBotao, GUILayout.Height(32f * e)))
                 iniciarChamadoPendente = chamado.Number;
+            GUI.enabled = habilitado;
         }
         else if (chamado.Status == TicketStatus.InProgress)
         {
-            GUILayout.Label(chamado.Definition.requester + " - " + chamado.Definition.department, sFraco);
+            GUILayout.Label(chamado.Requester + " - " + chamado.Department, sFraco);
+            // onde atender (o equipamento reservado) e quem pediu
+            if (!string.IsNullOrEmpty(chamado.Location))
+                GUILayout.Label("Local: " + chamado.Location +
+                                (string.IsNullOrEmpty(chamado.AssignedNpc) ? "" : " (com " + chamado.AssignedNpc + ")"), sFraco);
             if (!string.IsNullOrWhiteSpace(chamado.Definition.description))
                 GUILayout.Label(chamado.Definition.description, sTexto);
+            // finalização explícita (TicketManager.RequirePlayerToFinish): etapas feitas, falta o jogador encerrar
+            // sempre disponível: com etapas pendentes a tentativa é recusada (aviso + penalidade no ScoreKeeper)
+            if (GUILayout.Button("Finalizar atendimento", sBotao, GUILayout.Height(32f * e)))
+                finalizarChamadoPendente = chamado.Number;
+            if (recusaNumero == chamado.Number && Time.unscaledTime - recusaEm < 3.5f)
+                GUILayout.Label("Ainda há etapas pendentes neste atendimento.", sRuim);
         }
         else
         {
@@ -650,7 +681,11 @@ public class TicketTabletPrototype : MonoBehaviour
         if (!chamado.IsClosed)
         {
             Rect barra = GUILayoutUtility.GetRect(10f, 14f * e, GUILayout.ExpandWidth(true));
-            TicketTimeBar.Desenhar(barra, chamado.TimeFraction);
+            TicketTimeBar.Desenhar(barra, chamado);
+            // o SLA é referência: atrasado continua podendo ser iniciado e concluído
+            float seg = chamado.IsOverdue ? chamado.OverdueSeconds : chamado.SecondsLeft;
+            string tempo = $"{Mathf.FloorToInt(seg / 60f)}:{Mathf.FloorToInt(seg % 60f):00}";
+            GUILayout.Label(chamado.IsOverdue ? "Atrasado há " + tempo : "Prazo: " + tempo, chamado.IsOverdue ? sRuim : sFraco);
         }
 
         GUILayout.EndVertical();
@@ -686,7 +721,7 @@ public class TicketTabletPrototype : MonoBehaviour
             case TicketStatus.Pending: return "Pendente";
             case TicketStatus.InProgress: return "Em atendimento";
             case TicketStatus.Completed: return "Concluído";
-            case TicketStatus.Expired: return "Tempo esgotado - chamado perdido";
+            case TicketStatus.Expired: return "Encerrado";
             default: return status.ToString();
         }
     }

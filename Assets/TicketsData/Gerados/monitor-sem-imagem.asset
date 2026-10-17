@@ -22,11 +22,13 @@ MonoBehaviour:
   tutorialOnly: 0
   steps:
   - id: inspecionar-video
-    description: Verificar cabos e entradas de video
+    description: Investigar o problema
     weight: 1
   - id: conectar-video
-    description: Conectar corretamente o cabo de video
+    description: Corrigir a causa do problema
     weight: 2
   - id: validar-imagem
-    description: Confirmar imagem no monitor
+    description: Confirmar que voltou a funcionar
     weight: 1
+  complexity: 1
+  slaSecondsOverride: 0

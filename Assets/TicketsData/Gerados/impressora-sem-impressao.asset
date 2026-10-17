@@ -22,11 +22,13 @@ MonoBehaviour:
   tutorialOnly: 0
   steps:
   - id: inspecionar-impressora
-    description: Verificar o estado da impressora
+    description: Investigar o problema
     weight: 1
   - id: corrigir-impressora
-    description: Corrigir o problema de impressao
+    description: Corrigir a causa do problema
     weight: 2
   - id: teste-impressao
-    description: Realizar um teste de impressao
+    description: Confirmar que voltou a funcionar
     weight: 1
+  complexity: 1
+  slaSecondsOverride: 0

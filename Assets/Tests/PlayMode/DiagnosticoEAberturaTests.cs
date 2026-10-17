@@ -306,7 +306,7 @@ public class DiagnosticoEAberturaTests
     }
 
     [UnityTest]
-    public IEnumerator GabineteAberto_NaoPodeSerPego_MasPecasETelaContinuam()
+    public IEnumerator GabineteAberto_PodeSerPego_EPecasETelaContinuam()
     {
         GameObject g = SpawnLooseCase(new Vector3(5f, 0f, 0f));     // fora de qualquer estação
         var pcCase = g.GetComponent<ComputerCase>();
@@ -318,10 +318,9 @@ public class DiagnosticoEAberturaTests
 
         for (int i = 0; i < pcCase.TotalCount; i++) pcCase.TryRemoveScrew(i, ToolType.Screwdriver);
         pcCase.TryOpen();
-        Assert.IsTrue((bool)Get(pickup, "IsPickupBlocked"));
-        Assert.IsFalse((bool)Call(pickup, "CanInteract", detector), "aberto: sem 'Pegar'");
-        Call(pickup, "Interact", detector);
-        Assert.IsFalse((bool)Get(holder, "IsHolding"), "nem forçando o clique");
+        Assert.IsFalse((bool)Get(pickup, "IsPickupBlocked"), "aberto: continua transportável");
+        Assert.IsTrue(pcCase.IsIncomplete, "aberto: computador incompleto");
+        Assert.IsTrue((bool)Call(pickup, "CanInteract", detector), "aberto: 'Pegar' disponível");
         Assert.IsTrue(g.GetComponent<Collider>().enabled, "o collider continua (mira e tela)");
         Assert.IsTrue((bool)Call(screenOpener, "CanInteractSecondary", detector), "a tela de manutenção continua abrindo");
 
@@ -383,7 +382,7 @@ public class DiagnosticoEAberturaTests
         next.onClick.Invoke(); yield return null;
         Assert.AreEqual("Interior", Get(ctrl, "CurrentView").ToString());
         Assert.AreEqual(CaseState.Open, pcCase.State);
-        Assert.IsTrue((bool)Get(pickup, "IsPickupBlocked"));
+        Assert.IsFalse((bool)Get(pickup, "IsPickupBlocked"), "aberto: transportável");
 
         back.onClick.Invoke(); yield return null;                                   // Traseira, tampa aberta
         Assert.IsFalse((bool)Get(ctrl, "NextLocked"), "aberto: o interior continua acessível");
@@ -408,7 +407,7 @@ public class DiagnosticoEAberturaTests
         AssertNoFeedbackText(screen);
         Assert.IsTrue((bool)Get(ctrl, "NextLocked"), "fechado e parafusado: Avançar bloqueado de novo");
         Assert.Less(group.alpha, 0.6f);
-        Assert.IsFalse((bool)Get(pickup, "IsPickupBlocked"), "fechado: pode ser carregado de novo");
+        Assert.IsFalse(pcCase.IsIncomplete, "fechado e parafusado: completo de novo");
         Assert.IsTrue(Removed(0), "o opcional retirado não precisa voltar para fechar");
 
         next.onClick.Invoke(); yield return null;

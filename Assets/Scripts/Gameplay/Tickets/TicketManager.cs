@@ -27,16 +27,26 @@ public class TicketManager : MonoBehaviour
     [Tooltip("Na fase 1 o proximo chamado e imediato quando o anterior acaba.")]
     [SerializeField] private bool instantNextTicketOnFirstStage = true;
 
-    [Header("Tempo de cada chamado")]
-    [Tooltip("Tempo (s) que o jogador tem para resolver CADA chamado, contado desde a chegada dele. " +
-             "A barra de cada chamado na lista do celular mostra esse tempo descendo.")]
-    [Min(5f)] [SerializeField] private float ticketTimeSeconds = TicketInstance.DefaultSecondsToResolve;
-    [Tooltip("Desligado (padrao): o tempo corre desde a CHEGADA. Ligado: so comeca quando o atendimento e iniciado.")]
-    [SerializeField] private bool clockStartsWhenAttendanceBegins;
+    [Header("Prazo de referência (SLA) por complexidade")]
+    [Tooltip("Prazo (s) de cada chamado, contado da CHEGADA até a CONCLUSÃO. É uma referência de desempenho: passar do " +
+             "prazo não fecha nem bloqueia o chamado (a barra escurece e o ScoreKeeper aplica a penalidade de atraso). " +
+             "Um chamado pode ter prazo próprio (TicketDefinition.slaSecondsOverride).")]
+    [Min(10f)] [SerializeField] private float simpleSlaSeconds = 150f;
+    [Min(10f)] [SerializeField] private float mediumSlaSeconds = 240f;
+    [Min(10f)] [SerializeField] private float complexSlaSeconds = 360f;
+
+    [Header("Encerramento")]
+    [Tooltip("Ligado: com todas as etapas feitas o chamado continua EM ATENDIMENTO (\"pronto para finalizar\") ate o " +
+             "jogador finalizar (FinishTicket, botao do tablet). Desligado: conclui sozinho na ultima etapa (como antes).")]
+    [SerializeField] private bool requirePlayerToFinish;
 
     public event Action<TicketInstance> TicketCreated;
     public event Action<TicketInstance> TicketChanged;
     public event Action<TicketInstance> TicketFinished;
+    /// <summary>Um chamado aberto acabou de passar do prazo (uma vez por chamado). Ele continua aberto.</summary>
+    public event Action<TicketInstance> TicketOverdue;
+    /// <summary>O jogador tentou finalizar um chamado com etapas pendentes (uma vez por tentativa). Nada foi concluído.</summary>
+    public event Action<TicketInstance> FinishRejected;
 
     private readonly List<TicketInstance> tickets = new List<TicketInstance>();
     private int nextTicketNumber = 1;
@@ -48,6 +58,13 @@ public class TicketManager : MonoBehaviour
     private bool arrivalClockStarted;
 
     public IReadOnlyList<TicketInstance> Tickets => tickets;
+    public bool RequirePlayerToFinish { get => requirePlayerToFinish; set => requirePlayerToFinish = value; }
+
+    /// <summary>
+    /// Opcional (ex.: rodizio de tipos na cena de teste, <see cref="TicketCategoryRotation"/>): escolhe entre os chamados
+    /// JA FILTRADOS pela fase (sem tutorial, minimumStage, com etapas). Null ou retorno null = sorteio padrao.
+    /// </summary>
+    public Func<List<TicketDefinition>, TicketDefinition, TicketDefinition> SelectionOverride { get; set; }
     public int StageNumber => stageNumber;
     public bool Running => running;
     public int OpenCount => tickets.FindAll(t => !t.IsClosed).Count;
@@ -91,8 +108,9 @@ public class TicketManager : MonoBehaviour
     }
 
     /// <summary>
-    /// O relogio de CADA chamado (nao e o da fase): desce sozinho e, quando acaba, o chamado e perdido
-    /// (<see cref="TicketStatus.Expired"/>) e a vaga abre para o proximo.
+    /// O relogio de CADA chamado (nao e o da fase), desde a chegada: desce ate o prazo e continua contando o atraso
+    /// (SecondsLeft negativo). Passar do prazo so avisa (<see cref="TicketOverdue"/>); o chamado segue aberto e pode
+    /// ser iniciado e concluido normalmente.
     /// </summary>
     private void TickTickets()
     {
@@ -102,19 +120,31 @@ public class TicketManager : MonoBehaviour
         {
             TicketInstance ticket = tickets[i];
             if (ticket.IsClosed) continue;
-            if (clockStartsWhenAttendanceBegins && ticket.Status != TicketStatus.InProgress) continue;
 
-            ticket.SecondsLeft = Mathf.Max(0f, ticket.SecondsLeft - dt);
-            if (ticket.SecondsLeft > 0f) continue;
+            ticket.SecondsLeft -= dt;
+            if (ticket.SecondsLeft >= 0f || ticket.OverdueNotified) continue;
 
-            ticket.Status = TicketStatus.Expired;
+            ticket.OverdueNotified = true;
+            Debug.Log($"Chamado #{ticket.Number} passou do prazo de {ticket.SecondsToResolve:0}s (continua aberto).", this);
+            TicketOverdue?.Invoke(ticket);
             TicketChanged?.Invoke(ticket);
-            Debug.Log($"Chamado #{ticket.Number} perdido: o tempo de {ticket.SecondsToResolve:0}s acabou.", this);
-            OnTicketClosed();
         }
     }
 
-    /// <summary>Um chamado saiu da fila (resolvido ou perdido): trata a chegada do proximo.</summary>
+    /// <summary>Prazo de referência (s) de um chamado: o próprio dele, ou o da complexidade.</summary>
+    public float SlaSecondsFor(TicketDefinition d)
+    {
+        if (d == null) return TicketInstance.DefaultSecondsToResolve;
+        if (d.slaSecondsOverride > 0f) return d.slaSecondsOverride;
+        switch (d.EffectiveComplexity)
+        {
+            case TicketComplexity.Simple: return simpleSlaSeconds;
+            case TicketComplexity.Complex: return complexSlaSeconds;
+            default: return mediumSlaSeconds;
+        }
+    }
+
+    /// <summary>Um chamado saiu da fila (concluido): trata a chegada do proximo.</summary>
     private void OnTicketClosed()
     {
         if (!CanGenerate()) return;
@@ -151,11 +181,11 @@ public class TicketManager : MonoBehaviour
             Debug.LogWarning("TicketManager: cadastre pelo menos um Ticket Definition valido no Catalog (ou Tutorial Ticket).", this);
             return false;
         }
-        var ticket = new TicketInstance(nextTicketNumber++, selected, ticketTimeSeconds);
+        var ticket = new TicketInstance(nextTicketNumber++, selected, SlaSecondsFor(selected));
         tickets.Add(ticket);
         previousDefinition = selected;
         TicketCreated?.Invoke(ticket);
-        Debug.Log($"Chamado #{ticket.Number} recebido: {selected.title}", this);
+        Debug.Log($"Chamado #{ticket.Number} recebido: {selected.title} (prazo {ticket.SecondsToResolve:0}s)", this);
         return true;
     }
 
@@ -167,6 +197,11 @@ public class TicketManager : MonoBehaviour
             if (d != null && !d.tutorialOnly && d.minimumStage <= stageNumber && d.steps != null && d.steps.Count > 0)
                 eligible.Add(d);
         if (eligible.Count == 0) return null;
+        if (SelectionOverride != null)
+        {
+            TicketDefinition chosen = SelectionOverride(eligible, previousDefinition);
+            if (chosen != null) return chosen;
+        }
         if (eligible.Count > 1) eligible.Remove(previousDefinition);
         return eligible[UnityEngine.Random.Range(0, eligible.Count)];
     }
@@ -176,6 +211,7 @@ public class TicketManager : MonoBehaviour
         TicketInstance ticket = Find(number);
         if (!running || ticket == null || ticket.Status != TicketStatus.Pending) return false;
         ticket.Status = TicketStatus.InProgress;
+        ticket.StartedAt = Time.time;
         TicketChanged?.Invoke(ticket);
         if (stageNumber >= 2 && !arrivalClockStarted)
             ScheduleNextArrival(Time.time);
@@ -187,14 +223,45 @@ public class TicketManager : MonoBehaviour
         TicketInstance ticket = Find(number);
         if (!running || ticket == null || !ticket.TryCompleteStep(stepId)) return false;
         TicketChanged?.Invoke(ticket);
-        if (ticket.Progress >= 0.9999f)
-        {
-            ticket.Status = TicketStatus.Completed;
-            TicketFinished?.Invoke(ticket);
-            TicketChanged?.Invoke(ticket);
-            OnTicketClosed();
-        }
+        if (ticket.Progress >= 0.9999f && !requirePlayerToFinish) Finish(ticket);
         return true;
+    }
+
+    /// <summary>
+    /// Finalizacao pedida pelo jogador (tablet). So vale para chamado em atendimento com todas as etapas feitas
+    /// (<see cref="TicketInstance.ReadyToFinish"/>).
+    /// </summary>
+    public bool FinishTicket(int number)
+    {
+        TicketInstance ticket = Find(number);
+        if (!running || ticket == null || !ticket.ReadyToFinish) return false;
+        Finish(ticket);
+        return true;
+    }
+
+    /// <summary>
+    /// Tentativa de finalização pelo jogador (botão do tablet). Com todas as etapas feitas, finaliza; com etapas
+    /// pendentes, NÃO finaliza e avisa <see cref="FinishRejected"/> (o ScoreKeeper penaliza a tentativa).
+    /// </summary>
+    public bool TryFinishTicket(int number)
+    {
+        TicketInstance ticket = Find(number);
+        if (!running || ticket == null || ticket.Status != TicketStatus.InProgress) return false;
+        if (ticket.ReadyToFinish) { Finish(ticket); return true; }
+        ticket.RejectedFinishAttempts++;
+        Debug.Log($"Chamado #{ticket.Number}: tentativa de finalizar com etapas pendentes ({ticket.Progress:P0}).", this);
+        FinishRejected?.Invoke(ticket);
+        TicketChanged?.Invoke(ticket);
+        return false;
+    }
+
+    private void Finish(TicketInstance ticket)
+    {
+        ticket.Status = TicketStatus.Completed;
+        ticket.CompletedAt = Time.time;
+        TicketFinished?.Invoke(ticket);
+        TicketChanged?.Invoke(ticket);
+        OnTicketClosed();   // vaga aberta: chegada do proximo (resolvido ou perdido)
     }
 
     private void CreateSequentialTicket()

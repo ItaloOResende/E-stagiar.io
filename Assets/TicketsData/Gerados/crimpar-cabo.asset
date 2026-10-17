@@ -13,20 +13,21 @@ MonoBehaviour:
   m_Name: crimpar-cabo
   m_EditorClassIdentifier: Assembly-CSharp::TicketDefinition
   ticketId: crimpar-cabo
-  title: Cabo de rede danificado
-  description: O cabo da estacao esta danificado e nao conecta direito. Podem preparar
-    outro cabo?
+  title: Cabo de rede com problema
+  description: A internet da minha mesa cai toda hora. Podem dar uma olhada no cabeamento?
   requester: Francisco
   department: TI
   minimumStage: 2
   tutorialOnly: 0
   steps:
   - id: preparar-cabo
-    description: Separar os fios na ordem correta
+    description: Preparar o material
     weight: 1
   - id: crimpar-cabo
-    description: Crimpar o conector RJ45
+    description: Confeccionar um cabo novo
     weight: 2
   - id: testar-cabo
-    description: Testar a conexao do cabo
+    description: Confirmar que voltou a funcionar
     weight: 1
+  complexity: 2
+  slaSecondsOverride: 0

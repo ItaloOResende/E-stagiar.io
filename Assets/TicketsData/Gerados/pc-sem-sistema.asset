@@ -13,20 +13,21 @@ MonoBehaviour:
   m_Name: pc-sem-sistema
   m_EditorClassIdentifier: Assembly-CSharp::TicketDefinition
   ticketId: pc-sem-sistema
-  title: Sistema operacional nao inicia
-  description: Ao ligar o computador aparece uma mensagem de que nao existe sistema
-    para iniciar.
+  title: Computador nao inicia
+  description: O computador liga, mas para numa tela azul e nao entra no sistema.
   requester: Luiz
   department: Financeiro
   minimumStage: 2
   tutorialOnly: 0
   steps:
   - id: verificar-armazenamento
-    description: Verificar o armazenamento e o boot
+    description: Investigar o problema
     weight: 1
   - id: instalar-sistema
-    description: Instalar o sistema operacional pelo pendrive
+    description: Corrigir a causa do problema
     weight: 3
   - id: validar-sistema
-    description: Confirmar que o sistema iniciou
+    description: Confirmar que voltou a funcionar
     weight: 1
+  complexity: 3
+  slaSecondsOverride: 0

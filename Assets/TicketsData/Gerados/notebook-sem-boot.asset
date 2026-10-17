@@ -14,19 +14,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TicketDefinition
   ticketId: notebook-sem-boot
   title: Notebook nao inicia
-  description: Meu notebook parou de iniciar normalmente. Aparece uma mensagem de
-    erro na tela.
+  description: Meu notebook parou de iniciar normalmente.
   requester: Laura
   department: Atendimento
   minimumStage: 2
   tutorialOnly: 0
   steps:
   - id: diagnosticar-notebook
-    description: Verificar a falha de inicializacao
+    description: Investigar o problema
     weight: 1
   - id: reparar-notebook
-    description: Corrigir o componente ou configuracao necessaria
+    description: Corrigir a causa do problema
     weight: 2
   - id: validar-notebook
-    description: Confirmar inicializacao do notebook
+    description: Confirmar que voltou a funcionar
     weight: 1
+  complexity: 2
+  slaSecondsOverride: 0

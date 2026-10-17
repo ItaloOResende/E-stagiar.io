@@ -1,0 +1,246 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+/// <summary>
+/// Liga UM equipamento do mundo (PC de uma estação, notebook, impressora, caixa do cabo de rede) aos chamados do
+/// <see cref="TicketManager"/> da Fernanda, sem criar outro sistema de tickets:
+///  1. <b>Chegada:</b> o chamado aparece no tablet e NENHUM equipamento muda.
+///  2. <b>Iniciar atendimento</b> (tablet → <see cref="TicketManager.StartTicket"/>): o chamado reserva UM equipamento
+///     livre que aceita o seu <i>Ticket Id</i> (<see cref="acceptedTicketIds"/>). Com vários livres, vai para o que
+///     atendeu menos chamados (empate: sorteio), para não concentrar tudo no mesmo PC. A reserva escreve o local e o
+///     NPC da estação no chamado (<see cref="TicketInstance.Location"/>/<see cref="TicketInstance.AssignedNpc"/>) e, só
+///     então, cria o defeito NESTE equipamento (<see cref="PrepareProblem"/>). Os outros equipamentos não mudam.
+///  3. <b>Etapas:</b> concluídas pelo estado real do equipamento (<see cref="Condition"/>), na ordem da ficha.
+///     "Inspecionar/diagnosticar" = abrir a tela 2D deste equipamento (<see cref="UIScreenManager.AnyScreenOpened"/>).
+///  4. <b>Encerramento:</b> com <see cref="TicketManager.RequirePlayerToFinish"/> ligado, as etapas feitas só deixam o
+///     chamado "pronto para finalizar"; o jogador finaliza no tablet. Só então o equipamento é liberado.
+/// Etapa sem condição conhecida fica parada (aviso no Console); só o botão de teste do tablet a conclui.
+/// </summary>
+public abstract class TicketDeviceBridge : MonoBehaviour
+{
+    private static readonly List<TicketDeviceBridge> active = new List<TicketDeviceBridge>();
+    private static readonly Dictionary<TicketInstance, TicketDeviceBridge> owners = new Dictionary<TicketInstance, TicketDeviceBridge>();
+
+    [SerializeField] protected TicketManager ticketManager;
+    [Tooltip("Nome mostrado no tablet (ex.: \"PC da Estação 2\").")]
+    [SerializeField] private string deviceLabel = "Equipamento";
+    [Tooltip("NPC da estação (quem pediu o atendimento ali). Opcional.")]
+    [SerializeField] private Transform stationNpc;
+    [Tooltip("Ticket Ids (TicketDefinition) que este equipamento atende.")]
+    [SerializeField] private List<string> acceptedTicketIds = new List<string>();
+    [Tooltip("Ao reservar o equipamento para um chamado, cria nele o defeito que o chamado descreve.")]
+    [SerializeField] private bool prepareProblemOnClaim = true;
+    [Tooltip("Raiz do equipamento: tela 2D aberta a partir dela (ou de um filho) conta como inspeção. Vazio = este objeto.")]
+    [SerializeField] private Transform deviceRoot;
+    [Tooltip("Intervalo (s) entre verificações do estado do equipamento.")]
+    [Min(0.05f)] [SerializeField] private float checkInterval = 0.25f;
+
+    private readonly HashSet<string> warned = new HashSet<string>();
+    private float nextCheck;
+    private bool prepared;   // o defeito do chamado atual já foi aplicado (antes disso nenhuma etapa conta)
+
+    /// <summary>Chamado reservado agora (null = livre).</summary>
+    public TicketInstance Current { get; private set; }
+    /// <summary>Quantos chamados este equipamento já atendeu nesta sessão (usado na distribuição).</summary>
+    public int ClaimCount { get; private set; }
+    /// <summary>O jogador abriu a tela deste equipamento desde que o chamado foi reservado.</summary>
+    protected bool Inspected { get; private set; }
+    public string DeviceLabel => deviceLabel;
+    public Transform StationNpc => stationNpc;
+    public IReadOnlyList<string> AcceptedTicketIds => acceptedTicketIds;
+
+    private bool Accepts(TicketInstance t) => t != null && t.Definition != null && acceptedTicketIds.Contains(t.Definition.ticketId);
+    private bool Free => Current == null || ticketManager == null || !Contains(ticketManager.Tickets, Current);
+
+    /// <summary>
+    /// O chamado pode ser iniciado agora: há um equipamento livre que o aceita, ou nenhum equipamento da cena o aceita
+    /// (chamado sem integração: segue o fluxo antigo, só pelo tablet).
+    /// </summary>
+    public static bool CanStart(TicketInstance t)
+    {
+        bool anyAccepts = false;
+        foreach (TicketDeviceBridge b in active)
+        {
+            if (b == null || !b.Accepts(t)) continue;
+            anyAccepts = true;
+            if (b.Free) return true;
+        }
+        return !anyAccepts;
+    }
+
+    protected virtual void Awake()
+    {
+        if (deviceRoot == null) deviceRoot = transform;
+        if (ticketManager == null) ticketManager = FindAnyObjectByType<TicketManager>();
+    }
+
+    protected virtual void OnEnable()
+    {
+        if (!active.Contains(this)) active.Add(this);
+        if (ticketManager != null)
+        {
+            ticketManager.TicketChanged += OnTicketChanged;
+            ticketManager.TicketFinished += OnTicketFinished;
+        }
+        UIScreenManager.AnyScreenOpened += OnScreenOpened;
+    }
+
+    protected virtual void OnDisable()
+    {
+        active.Remove(this);
+        if (ticketManager != null)
+        {
+            ticketManager.TicketChanged -= OnTicketChanged;
+            ticketManager.TicketFinished -= OnTicketFinished;
+        }
+        UIScreenManager.AnyScreenOpened -= OnScreenOpened;
+        Release();
+    }
+
+    // Um chamado entrou em atendimento: reserva um equipamento para ele (uma única vez).
+    private void OnTicketChanged(TicketInstance t)
+    {
+        // chamado perdido por tempo (TicketStatus.Expired): o equipamento fica livre para outro (o defeito continua nele)
+        if (t == Current && t.Status == TicketStatus.Expired)
+        {
+            Release();
+            AssignAll(ticketManager);
+            return;
+        }
+        if (t.Status == TicketStatus.InProgress && !owners.ContainsKey(t)) AssignAll(ticketManager);
+    }
+
+    private void OnTicketFinished(TicketInstance ticket)
+    {
+        if (ticket != Current) return;
+        OnTicketCompleted(ticket);
+        Release();
+        AssignAll(ticketManager);   // chamados iniciados que estavam sem equipamento livre
+    }
+
+    /// <summary>Reserva equipamento para todo chamado EM ATENDIMENTO que ainda não tem um.</summary>
+    private static void AssignAll(TicketManager manager)
+    {
+        if (manager == null) return;
+        foreach (TicketInstance t in manager.Tickets)
+        {
+            if (t.Status != TicketStatus.InProgress || owners.ContainsKey(t)) continue;
+            TicketDeviceBridge best = null;
+            int ties = 0;
+            foreach (TicketDeviceBridge b in active)
+            {
+                if (b == null || !b.isActiveAndEnabled || b.ticketManager != manager || !b.Accepts(t) || !b.Free) continue;
+                // a estação do PRÓPRIO solicitante da ficha vem primeiro; depois, a que atendeu menos
+                bool dono = b.IsRequesterStation(t), bestDono = best != null && best.IsRequesterStation(t);
+                if (best != null && bestDono && !dono) continue;
+                if (best == null || (dono && !bestDono) || b.ClaimCount < best.ClaimCount) { best = b; ties = 1; }
+                else if (b.ClaimCount == best.ClaimCount && Random.Range(0, ++ties) == 0) best = b;   // sorteio justo no empate
+            }
+            if (best != null) best.Claim(t);
+        }
+    }
+
+    private bool IsRequesterStation(TicketInstance t)
+    {
+        StationEmployee e = StationEmployee.Of(this);
+        return e != null && t.Definition != null && e.employeeName == t.Definition.requester;
+    }
+
+    private void Claim(TicketInstance t)
+    {
+        Release();
+        owners[t] = this;
+        Current = t;
+        ClaimCount++;
+        Inspected = false;
+        prepared = !prepareProblemOnClaim;
+        t.Location = deviceLabel;
+        t.AssignedNpc = stationNpc != null ? stationNpc.name : "";
+        // o chamado é do funcionário da estação (placa da mesa); o local é a estação, nunca o rack ou o testador
+        StationEmployee dono = StationEmployee.Of(this);
+        if (dono != null)
+        {
+            t.Requester = dono.employeeName;
+            if (!string.IsNullOrEmpty(dono.department)) t.Department = dono.department;
+            t.AssignedNpc = "";
+            t.Location = $"Estação de {dono.employeeName} ({deviceLabel})";
+        }
+        StationLocator.Show(this, dono != null ? dono.transform : deviceRoot);
+        if (prepareProblemOnClaim) StartCoroutine(PrepareLater(t));
+        OnClaimed(t);
+        Debug.Log($"Chamado #{t.Number} ({t.Definition.ticketId}) reservado: {deviceLabel}" +
+                  (stationNpc != null ? $" (NPC {stationNpc.name})" : "") + ".", this);
+    }
+
+    // Um frame depois do clique: o estado inicial do equipamento (ex.: PcEstadoInicial, no Start) já foi aplicado.
+    private IEnumerator PrepareLater(TicketInstance t)
+    {
+        yield return null;
+        if (Current != t) yield break;
+        PrepareProblem(t.Definition.ticketId);
+        prepared = true;
+    }
+
+    private static bool Contains(IReadOnlyList<TicketInstance> list, TicketInstance t)
+    {
+        foreach (TicketInstance x in list) if (x == t) return true;
+        return false;
+    }
+
+    private void Release()
+    {
+        if (Current != null && owners.TryGetValue(Current, out TicketDeviceBridge o) && o == this) owners.Remove(Current);
+        Current = null;
+        StationLocator.Hide(this);
+    }
+
+    private void OnScreenOpened(UIScreen screen, GameObject source)
+    {
+        if (Current == null || source == null) return;
+        if (source.transform == deviceRoot || source.transform.IsChildOf(deviceRoot) || deviceRoot.IsChildOf(source.transform))
+        {
+            Inspected = true;
+            Evaluate();
+        }
+    }
+
+    protected virtual void Update()
+    {
+        if (Current == null || Current.Status != TicketStatus.InProgress || Time.time < nextCheck) return;
+        nextCheck = Time.time + checkInterval;
+        Evaluate();
+    }
+
+    /// <summary>
+    /// Conclui, na ordem da ficha, as etapas cujas condições valem agora (para na primeira que não vale). Não finaliza
+    /// o chamado: com todas as etapas feitas ele fica "pronto para finalizar" (se o TicketManager exigir finalização).
+    /// </summary>
+    public void Evaluate()
+    {
+        TicketInstance t = Current;
+        if (t == null || !prepared || t.Status != TicketStatus.InProgress || t.ReadyToFinish || t.Definition == null || t.Definition.steps == null) return;
+        foreach (TicketStepDefinition step in t.Definition.steps)
+        {
+            if (step == null || string.IsNullOrWhiteSpace(step.id) || t.HasCompleted(step.id)) continue;
+            if (!Knows(step.id))
+            {
+                if (warned.Add(step.id))
+                    Debug.LogWarning($"{GetType().Name} ({deviceLabel}): a etapa '{step.id}' não tem condição no equipamento; conclua pelo tablet.", this);
+                return;
+            }
+            if (!Condition(step.id)) return;
+            ticketManager.CompleteStep(t.Number, step.id);
+            if (Current != t) return;   // concluiu o chamado (TicketManager sem finalização explícita)
+        }
+    }
+
+    /// <summary>Este equipamento sabe avaliar a etapa?</summary>
+    protected abstract bool Knows(string stepId);
+    /// <summary>A etapa está cumprida no estado atual do equipamento?</summary>
+    protected abstract bool Condition(string stepId);
+    /// <summary>Cria o defeito do chamado no equipamento (padrão: nada).</summary>
+    protected virtual void PrepareProblem(string ticketId) { }
+    protected virtual void OnClaimed(TicketInstance ticket) { }
+    protected virtual void OnTicketCompleted(TicketInstance ticket) { }
+}

@@ -60,3 +60,5 @@ MonoBehaviour:
   - id: validar-funcionamento
     description: Validar que o computador inicia e esta pronto
     weight: 2
+  complexity: 3
+  slaSecondsOverride: 0

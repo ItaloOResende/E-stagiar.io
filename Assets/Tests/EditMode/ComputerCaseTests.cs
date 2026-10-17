@@ -149,7 +149,7 @@ public class ComputerCaseTests
         var installed = new List<int>();
         pcCase.StateChanged += states.Add;
         pcCase.ScrewInstalled += installed.Add;
-        Assert.IsTrue(pcCase.BlocksPickup);
+        Assert.IsTrue(pcCase.IsIncomplete);
 
         Assert.AreEqual(ScrewInstallResult.WrongTool, pcCase.TryInstallScrew(3, ToolType.None), "sem a chave não volta");
         Assert.IsTrue(pcCase.Screws[3].removed);
@@ -166,7 +166,7 @@ public class ComputerCaseTests
         CollectionAssert.AreEqual(new[] { 3, 5, 0, 7 }, installed);
         Assert.IsTrue(pcCase.RequiredScrewsInstalled);
         Assert.IsTrue(pcCase.Screws[1].removed);
-        Assert.IsFalse(pcCase.BlocksPickup, "fechado: pode ser carregado de novo");
+        Assert.IsFalse(pcCase.IsIncomplete, "obrigatórios de volta: completo");
         Assert.AreEqual(PartSlotResult.CaseClosed, pcCase.UsePartSlot(PcComponent.Hdd, null, false, out _), "fechado: interior inacessível");
 
         // fechado de novo, o ciclo recomeça: tirar os obrigatórios e abrir

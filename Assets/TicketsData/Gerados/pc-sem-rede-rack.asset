@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85f0ba56fa892af4293ac2e2dbc4e937, type: 3}
+  m_Name: pc-sem-rede-rack
+  m_EditorClassIdentifier: Assembly-CSharp::TicketDefinition
+  ticketId: pc-sem-rede-rack
+  title: Estacao sem rede
+  description: Minha estacao ficou sem rede de uma hora para outra.
+  requester: Carmen
+  department: Atendimento
+  minimumStage: 2
+  tutorialOnly: 0
+  steps:
+  - id: verificar-rede
+    description: Investigar o problema
+    weight: 1
+  - id: religar-rack
+    description: Restabelecer a conexao
+    weight: 2
+  - id: validar-rede
+    description: Confirmar que voltou a funcionar
+    weight: 1
+  complexity: 2
+  slaSecondsOverride: 0

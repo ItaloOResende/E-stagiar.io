@@ -684,13 +684,14 @@ public class ComputerPowerTests
     }
 
     [Test]
-    public void OpenCase_CannotBeCarried_ClosedCaseCan()
+    public void CaseWithoutScrewsOrOpen_IsIncomplete_AndNotABlocker()
     {
-        Assert.IsFalse(pcCase.BlocksPickup, "fechado: transporte normal");
+        Assert.IsNull(pcCase as IPickupBlocker, "aberto ou sem parafusos, o gabinete continua transportável");
+        Assert.IsFalse(pcCase.IsIncomplete, "fechado e parafusado: completo");
         for (int i = 0; i < pcCase.TotalCount; i++) pcCase.TryRemoveScrew(i, ToolType.Screwdriver);
-        Assert.IsFalse(pcCase.BlocksPickup, "parafusos fora, mas a tampa ainda não foi aberta");
+        Assert.IsTrue(pcCase.IsIncomplete, "parafusos obrigatórios fora, tampa ainda fechada");
         pcCase.TryOpen();
-        Assert.IsTrue(pcCase.BlocksPickup, "aberto: não pode ser pego");
+        Assert.IsTrue(pcCase.IsIncomplete, "aberto");
         Assert.AreEqual(PartSlotResult.Installed, pcCase.UsePartSlot(PcComponent.Hdd, hdd, true, out _), "peças continuam funcionando");
     }
 

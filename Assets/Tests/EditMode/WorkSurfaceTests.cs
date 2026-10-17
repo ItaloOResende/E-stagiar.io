@@ -75,7 +75,7 @@ public class WorkSurfaceTests
         Assert.AreEqual(CaseOpenResult.NotOnWorkSurface, pcCase.TryOpen());
         Assert.AreEqual(ScrewInstallResult.NotOnWorkSurface, pcCase.TryInstallScrew(3, ToolType.Screwdriver));
         Assert.AreEqual(CaseState.Closed, pcCase.State);
-        Assert.IsFalse(pcCase.BlocksPickup, "fechado: pode ser carregado até uma mesa");
+        Assert.IsTrue(pcCase.IsIncomplete, "sem os obrigatórios: incompleto, mas pode ser carregado até uma mesa");
     }
 
     [Test]
@@ -124,13 +124,13 @@ public class WorkSurfaceTests
         PlaceCaseAt(0.75f);
         RemoveRequiredScrews();
         Assert.AreEqual(CaseOpenResult.Opened, pcCase.TryOpen());
-        Assert.IsTrue(pcCase.BlocksPickup, "aberto: não pode ser carregado");
+        Assert.IsTrue(pcCase.IsIncomplete, "aberto: incompleto");
 
         foreach (int i in new[] { 3, 5 }) Assert.AreEqual(ScrewInstallResult.Installed, pcCase.TryInstallScrew(i, ToolType.Screwdriver));
         Assert.AreEqual(CaseState.Open, pcCase.State, "falta um obrigatório: continua aberto");
         Assert.AreEqual(ScrewInstallResult.Installed, pcCase.TryInstallScrew(7, ToolType.Screwdriver));
         Assert.AreEqual(CaseState.Closed, pcCase.State, "recolocar os obrigatórios fecha (os opcionais não contam)");
-        Assert.IsFalse(pcCase.BlocksPickup, "fechado: pode ser carregado");
+        Assert.IsFalse(pcCase.IsIncomplete, "fechado com os obrigatórios: completo");
     }
 
     // ---- alcance do jogador ------------------------------------------------------------------------------------------
@@ -158,8 +158,13 @@ public class WorkSurfaceTests
             Assert.IsFalse(power.CanReachPort(p), p.ToString());
         Assert.IsTrue(power.CanReachPort(PcPort.CasePower), "portas do próprio gabinete não dependem do ponto");
         Assert.AreEqual(PortResult.OutOfReach, power.UsePort(PcPort.Outlet, null, false, out _), "nem soltar da tomada longe");
+        Assert.AreEqual(PortResult.OutOfReach, power.UsePort(PcPort.CasePower, null, false, out _),
+            "a outra ponta está na tomada distante: o cabo não é puxado de longe (2026-10-15)");
+        Assert.IsFalse(power.PowerConnected);
+
+        pcCase.transform.position = Vector3.zero;                   // de volta perto do ponto
         Assert.AreEqual(PortResult.PluggedOtherEnd, power.UsePort(PcPort.CasePower, null, false, out _));
-        Assert.IsTrue(power.PowerConnected, "o cabo ligado continua ligado");
+        Assert.IsTrue(power.PowerConnected, "perto, liga normalmente");
 
         power.DetachWallPoint(ponto);
         Assert.IsTrue(power.IsWallPointInRange, "sem ponto registrado: sem limite (Gabinete.prefab sozinho)");

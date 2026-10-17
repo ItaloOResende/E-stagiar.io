@@ -13,29 +13,30 @@ MonoBehaviour:
   m_Name: pc-pecas-ausentes
   m_EditorClassIdentifier: Assembly-CSharp::TicketDefinition
   ticketId: pc-pecas-ausentes
-  title: Computador com pecas ausentes
-  description: Recebemos um gabinete incompleto. Precisamos identificar as pecas
-    faltantes e coloca-lo para funcionar.
+  title: Computador nao funciona
+  description: Recebemos um computador de outro setor e ele nao funciona. Precisamos dele pronto para uso.
   requester: Rodolfo
   department: Administrativo
   minimumStage: 3
   tutorialOnly: 0
   steps:
   - id: inspecionar-pc
-    description: Identificar os componentes ausentes
+    description: Investigar o problema
     weight: 1
   - id: abrir-gabinete
-    description: Abrir o gabinete
+    description: Investigar o equipamento
     weight: 1
   - id: instalar-ram
-    description: Instalar a memoria RAM
+    description: Corrigir a causa do problema
     weight: 1
   - id: instalar-hd
-    description: Instalar o armazenamento
+    description: Completar o reparo
     weight: 1
   - id: ligar-pc
     description: Ligar o computador
     weight: 2
   - id: validar-funcionamento
-    description: Confirmar funcionamento
+    description: Confirmar que voltou a funcionar
     weight: 1
+  complexity: 3
+  slaSecondsOverride: 0

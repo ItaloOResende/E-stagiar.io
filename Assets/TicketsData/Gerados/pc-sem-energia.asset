@@ -22,11 +22,13 @@ MonoBehaviour:
   tutorialOnly: 0
   steps:
   - id: inspecionar-pc
-    description: Verificar a alimentacao do computador
+    description: Investigar o problema
     weight: 1
   - id: conectar-energia
-    description: Corrigir a conexao de energia
+    description: Corrigir a causa do problema
     weight: 2
   - id: ligar-pc
-    description: Ligar o computador e confirmar o funcionamento
+    description: Confirmar que voltou a funcionar
     weight: 1
+  complexity: 1
+  slaSecondsOverride: 0
