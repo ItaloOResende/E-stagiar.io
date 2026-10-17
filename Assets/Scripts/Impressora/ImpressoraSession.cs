@@ -15,13 +15,19 @@ public enum ImpressoraEncaixeResultado
     PecaQuebrada
 }
 
+/// <summary>Campo do painel de rede que recebe a digitação.</summary>
+public enum ImpressoraCampoRede { Ip, Mascara }
+
 /// <summary>
-/// Estado lógico da impressora: se tem toner, se a bandeja tem papel, e o IP configurado no painel.
+/// Estado lógico da impressora: se tem toner, se a bandeja tem papel, e o IP e a máscara configurados no painel.
 /// Fica no objeto da impressora na cena, então fechar e reabrir o painel não perde nada.
 ///
 /// Regras:
-///  - A impressora só fica PRONTA com toner instalado, papel na bandeja e um IP válido confirmado.
-///  - O IP é digitado no painel (teclado numérico) e só vale depois de confirmar: 4 grupos de 0 a 255.
+///  - A impressora só fica PRONTA com toner instalado, papel na bandeja e a rede configurada (<see cref="RedeConfigurada"/>):
+///    IP válido E máscara de sub-rede válida confirmados, e o IP é um endereço de HOST naquela máscara (não é o endereço
+///    da rede nem o de broadcast).
+///  - IP e máscara são digitados no painel (teclado numérico; o campo ativo recebe as teclas) e só valem depois de
+///    confirmar: 4 grupos de 0 a 255; a máscara com os bits 1 contíguos (ex.: 255.255.255.0), de /8 a /30.
 /// Sem dependência de UI, modelo, tag ou nome.
 /// </summary>
 public class ImpressoraSession
@@ -38,10 +44,24 @@ public class ImpressoraSession
     /// <summary>IP já confirmado (vazio enquanto não configurar).</summary>
     public string IpSalvo { get; private set; } = "";
 
+    /// <summary>Máscara de sub-rede sendo digitada (ainda não confirmada).</summary>
+    public string MascaraDigitada { get; private set; } = "";
+    /// <summary>Máscara confirmada (vazia enquanto não configurar).</summary>
+    public string MascaraSalva { get; private set; } = "";
+    /// <summary>Campo que recebe as teclas do painel.</summary>
+    public ImpressoraCampoRede CampoAtivo { get; private set; } = ImpressoraCampoRede.Ip;
+
+    /// <summary>Máscara usada quando um cenário define só o IP (estado funcional antigo).</summary>
+    public const string MascaraPadrao = "255.255.255.0";
+
     /// <summary>Há um IP confirmado.</summary>
     public bool TemIp => IpSalvo.Length > 0;
+    /// <summary>Há uma máscara confirmada.</summary>
+    public bool TemMascara => MascaraSalva.Length > 0;
+    /// <summary>IP e máscara confirmados e coerentes (o IP é um host válido naquela sub-rede).</summary>
+    public bool RedeConfigurada => TemIp && TemMascara && IpCompativel(IpSalvo, MascaraSalva);
     /// <summary>A impressora está configurada e pronta para imprimir.</summary>
-    public bool Pronta => TemToner && TemPapel && TemIp;
+    public bool Pronta => TemToner && TemPapel && RedeConfigurada;
 
     /// <summary>Clique num encaixe (toner ou bandeja): vazio + peça certa na mão instala; ocupado + mão livre retira.</summary>
     public ImpressoraEncaixeResultado UsarEncaixe(ImpressoraParte encaixe, bool temItemNaMao, ImpressoraParte pecaNaMao)
@@ -66,29 +86,54 @@ public class ImpressoraSession
         return ImpressoraEncaixeResultado.Instalado;
     }
 
-    /// <summary>Cenário/defeito: define toner, papel e o IP salvo ("" = sem IP). Limpa a digitação.</summary>
+    /// <summary>
+    /// Cenário/defeito: define toner, papel e o IP salvo ("" = sem IP). A máscara acompanha: sem IP fica sem máscara;
+    /// com IP, mantém a máscara salva (ou usa a <see cref="MascaraPadrao"/>). Limpa a digitação.
+    /// </summary>
     public void DefinirEstado(bool toner, bool papel, string ip)
+    {
+        string mascara = string.IsNullOrEmpty(ip) ? "" : (MascaraSalva.Length > 0 ? MascaraSalva : MascaraPadrao);
+        DefinirEstado(toner, papel, ip, mascara);
+    }
+
+    /// <summary>Cenário/defeito: define toner, papel, IP e máscara salvos ("" = não configurado). Limpa a digitação.</summary>
+    public void DefinirEstado(bool toner, bool papel, string ip, string mascara)
     {
         TemToner = toner;
         TemPapel = papel;
         IpSalvo = ip ?? "";
+        MascaraSalva = mascara ?? "";
         IpDigitado = "";
+        MascaraDigitada = "";
+        CampoAtivo = ImpressoraCampoRede.Ip;
     }
 
-    // ---- painel: digitação do IP
+    // ---- painel: digitação (no campo ativo)
+    /// <summary>Troca o campo que recebe as teclas (clique no campo ou Tab).</summary>
+    public void SelecionarCampo(ImpressoraCampoRede campo) => CampoAtivo = campo;
+
+    /// <summary>Texto em digitação do campo ativo.</summary>
+    public string Digitado => CampoAtivo == ImpressoraCampoRede.Ip ? IpDigitado : MascaraDigitada;
+
+    private void SetDigitado(string v)
+    {
+        if (CampoAtivo == ImpressoraCampoRede.Ip) IpDigitado = v;
+        else MascaraDigitada = v;
+    }
+
     public void Digitar(string texto)
     {
         if (string.IsNullOrEmpty(texto)) return;
-        if (IpDigitado.Length + texto.Length > MaxDigitos) return;
-        IpDigitado += texto;
+        if (Digitado.Length + texto.Length > MaxDigitos) return;
+        SetDigitado(Digitado + texto);
     }
 
     public void Apagar()
     {
-        if (IpDigitado.Length > 0) IpDigitado = IpDigitado.Substring(0, IpDigitado.Length - 1);
+        if (Digitado.Length > 0) SetDigitado(Digitado.Substring(0, Digitado.Length - 1));
     }
 
-    public void Limpar() => IpDigitado = "";
+    public void Limpar() => SetDigitado("");
 
     /// <summary>Recomeça a digitação a partir do IP já salvo (para editar).</summary>
     public void EditarIpSalvo() => IpDigitado = IpSalvo;
@@ -98,7 +143,58 @@ public class ImpressoraSession
     {
         if (!IpEhValido(IpDigitado)) return false;
         IpSalvo = IpDigitado;
+        IpDigitado = "";
         return true;
+    }
+
+    /// <summary>Confirma a máscara digitada. Devolve false (e nada muda) se não for uma máscara válida.</summary>
+    public bool ConfirmarMascara()
+    {
+        if (!MascaraEhValida(MascaraDigitada)) return false;
+        MascaraSalva = MascaraDigitada;
+        MascaraDigitada = "";
+        return true;
+    }
+
+    /// <summary>
+    /// Máscara de sub-rede válida: IPv4 válido com os bits 1 contíguos à esquerda (ex.: 255.255.255.0 = /24), de /8 a /30
+    /// (0.0.0.0, 255.255.255.255 e /31 não deixam hosts para a impressora).
+    /// </summary>
+    public static bool MascaraEhValida(string mascara)
+    {
+        if (!IpEhValido(mascara)) return false;
+        uint m = ParaNumero(mascara);
+        uint invertida = ~m;
+        if ((invertida & (invertida + 1)) != 0) return false;   // zeros só à direita (bits 1 contíguos)
+        int prefixo = Prefixo(m);
+        return prefixo >= 8 && prefixo <= 30;
+    }
+
+    /// <summary>O IP é um endereço de HOST na sub-rede da máscara (nem o endereço da rede, nem o de broadcast).</summary>
+    public static bool IpCompativel(string ip, string mascara)
+    {
+        if (!IpEhValido(ip) || !MascaraEhValida(mascara)) return false;
+        uint a = ParaNumero(ip), m = ParaNumero(mascara);
+        uint host = a & ~m;
+        return host != 0 && host != (~m);
+    }
+
+    /// <summary>Tamanho do prefixo (/N) de uma máscara válida (0 se inválida).</summary>
+    public static int PrefixoDe(string mascara) => MascaraEhValida(mascara) ? Prefixo(ParaNumero(mascara)) : 0;
+
+    private static int Prefixo(uint m)
+    {
+        int n = 0;
+        for (int i = 31; i >= 0 && ((m >> i) & 1u) == 1u; i--) n++;
+        return n;
+    }
+
+    private static uint ParaNumero(string ip)
+    {
+        string[] g = ip.Split('.');
+        uint v = 0;
+        for (int i = 0; i < 4; i++) v = (v << 8) | uint.Parse(g[i]);
+        return v;
     }
 
     /// <summary>IPv4 válido: 4 grupos numéricos de 0 a 255, separados por ponto.</summary>

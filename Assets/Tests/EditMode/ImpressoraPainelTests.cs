@@ -17,23 +17,46 @@ public class ImpressoraPainelTests
     private static object Parte(string n) => Enum.Parse(T("ImpressoraParte"), n);
 
     [Test]
-    public void Visor_MostraOQueFalta_EOIpConfirmado()
+    public void Visor_AvisoNeutro_ProntaSoComIpEMascara()
     {
         object s = Activator.CreateInstance(T("ImpressoraSession"));
-        Assert.AreEqual("SEM TONER", Status(s));
+        Assert.AreEqual("ERRO - VERIFICAR", Status(s), "o visor não diz o que falta");
         Assert.AreEqual("IP ---.---.---.---", Ip(s));
 
         Call(s, "UsarEncaixe", Parte("Toner"), true, Parte("Toner"));
-        Assert.AreEqual("SEM PAPEL", Status(s));
         Call(s, "UsarEncaixe", Parte("Papel"), true, Parte("Papel"));
-        Assert.AreEqual("CONFIGURE O IP", Status(s));
+        Assert.AreEqual("ERRO - VERIFICAR", Status(s), "sem rede configurada");
 
         Call(s, "Digitar", "192.168.0.50");
-        Assert.AreEqual("CONFIGURE O IP", Status(s), "digitado mas não confirmado ainda não vale");
+        Assert.AreEqual("ERRO - VERIFICAR", Status(s), "digitado mas não confirmado ainda não vale");
         Assert.IsTrue((bool)Call(s, "ConfirmarIp"));
+        Assert.IsFalse((bool)Get(s, "Pronta"), "só o IP não basta: falta a máscara");
+
+        Call(s, "SelecionarCampo", Enum.Parse(T("ImpressoraCampoRede"), "Mascara"));
+        Call(s, "Digitar", "255.255.0.255");
+        Assert.IsFalse((bool)Call(s, "ConfirmarMascara"), "máscara com bits 1 não contíguos é inválida");
+        Call(s, "Limpar");
+        Call(s, "Digitar", "255.255.255.0");
+        Assert.IsTrue((bool)Call(s, "ConfirmarMascara"));
         Assert.AreEqual("PRONTA", Status(s));
-        Assert.AreEqual("IP 192.168.0.50", Ip(s));
+        Assert.AreEqual("IP 192.168.0.50 /24", Ip(s));
         Assert.IsTrue((bool)Get(s, "Pronta"));
+    }
+
+    [Test]
+    public void Mascara_IpPrecisaSerHostDaSubRede()
+    {
+        Func<string, string, bool> ok = (ip, m) => (bool)T("ImpressoraSession").GetMethod("IpCompativel").Invoke(null, new object[] { ip, m });
+        Func<string, bool> mascara = m => (bool)T("ImpressoraSession").GetMethod("MascaraEhValida").Invoke(null, new object[] { m });
+        Assert.IsTrue(mascara("255.255.255.0"));
+        Assert.IsTrue(mascara("255.255.0.0"));
+        Assert.IsFalse(mascara("255.0.255.0"));
+        Assert.IsFalse(mascara("0.0.0.0"));
+        Assert.IsFalse(mascara("255.255.255.255"));
+        Assert.IsTrue(ok("192.168.0.20", "255.255.255.0"));
+        Assert.IsFalse(ok("192.168.0.0", "255.255.255.0"), "endereço da rede");
+        Assert.IsFalse(ok("192.168.0.255", "255.255.255.0"), "broadcast");
+        Assert.IsTrue(ok("192.168.0.255", "255.255.0.0"), "na /16 o .0.255 é host");
     }
 
     [Test]

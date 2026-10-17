@@ -45,7 +45,8 @@ public class TesteImpressaoTests
         Clicar((Component)tela, "BotaoImprimir");
         yield return new WaitForSeconds(2.8f);
         Assert.AreEqual(1, (int)est.GetType().GetProperty("TestesOk").GetValue(est), "página de teste saiu");
-        Assert.IsTrue(Achar((Component)tela, "Sucesso").gameObject.activeSelf, "sinal de sucesso");
+        Assert.IsNull(Achar((Component)tela, "Sucesso"), "sem selo de ✓ (pedido de 2026-10-17)");
+        Assert.IsTrue(Achar((Component)tela, "Folha").gameObject.activeSelf, "a folha impressa é o resultado");
         Capturar((Component)tela, "impressora_teste_ok");
 
         // tira o papel (como o defeito do chamado) e tenta de novo

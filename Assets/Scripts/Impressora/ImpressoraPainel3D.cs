@@ -46,7 +46,8 @@ public class ImpressoraPainel3D : MonoBehaviour
     }
 
     /// <summary>Linha do IP para uma sessão (público para testes).</summary>
-    public static string LinhaIp(ImpressoraSession s) => s != null && s.TemIp ? "IP " + s.IpSalvo : "IP ---.---.---.---";
+    public static string LinhaIp(ImpressoraSession s) =>
+        s != null && s.TemIp ? "IP " + s.IpSalvo + (s.TemMascara ? " /" + ImpressoraSession.PrefixoDe(s.MascaraSalva) : "") : "IP ---.---.---.---";
 
     private void Atualizar(bool forcar)
     {

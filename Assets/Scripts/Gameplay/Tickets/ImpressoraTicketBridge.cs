@@ -6,7 +6,8 @@ using UnityEngine;
 /// chamado é aplicado ao iniciar o atendimento, só nesta impressora. Peça retirada pelo defeito some (consumida).
 /// Defeitos (pelo Ticket Id): sem papel · sem toner · sem IP · sem impressão (sem os três: o cenário antigo).
 /// Etapas: inspecionar-impressora = abrir a tela desta impressora (ou do painel) · corrigir-impressora = toner e papel ·
-/// repor-papel / trocar-toner / configurar-ip = o item corrigido · teste-impressao = pronta (toner, papel e IP).
+/// repor-papel / trocar-toner = o item corrigido · configurar-ip = IP + máscara de sub-rede válidos e coerentes ·
+/// teste-impressao = pronta (toner, papel e rede) e uma página de teste impressa.
 /// Sem <see cref="comecarFuncional"/> (cenas antigas) começa sem toner, papel e IP, como antes.
 /// </summary>
 [RequireComponent(typeof(ImpressoraEstacao))]
@@ -62,7 +63,7 @@ public class ImpressoraTicketBridge : TicketDeviceBridge
         {
             case SemPapel: estacao.DefinirEstado(toner, null, ip); break;
             case SemToner: estacao.DefinirEstado(null, papel, ip); break;
-            case SemIp: estacao.DefinirEstado(toner, papel, ""); break;
+            case SemIp: estacao.DefinirEstado(toner, papel, ""); break;          // sem IP e sem máscara
             case SemImpressao: estacao.DefinirEstado(null, null, ""); break;
             default: return;
         }
@@ -82,7 +83,8 @@ public class ImpressoraTicketBridge : TicketDeviceBridge
             case "corrigir-impressora": return s.TemToner && s.TemPapel;
             case "repor-papel": return s.TemPapel;
             case "trocar-toner": return s.TemToner;
-            case "configurar-ip": return s.TemIp;
+            // IP e máscara confirmados e coerentes (IP de host na sub-rede): só o IP não basta
+            case "configurar-ip": return s.RedeConfigurada;
             // teste-impressao: pronta E uma página de teste saiu DEPOIS de assumir o chamado (tela "Teste de impressão")
             default: return s.Pronta && estacao.TestesOk > testesNoInicio;
         }

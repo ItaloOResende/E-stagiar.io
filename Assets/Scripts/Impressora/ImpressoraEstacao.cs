@@ -25,12 +25,12 @@ public class ImpressoraEstacao : MonoBehaviour
     public int TestesOk { get; private set; }
 
     /// <summary>
-    /// Impressão de teste pedida na tela: por enquanto a única condição verificada é o PAPEL na bandeja (toner/IP
-    /// ainda não têm diagnóstico próprio). Devolve se a folha saiu.
+    /// Impressão de teste pedida na tela: só sai com a impressora PRONTA (toner, papel e IP válido confirmado).
+    /// Qualquer falta = falha de verdade (nenhuma folha, nada contado). Devolve se a folha saiu.
     /// </summary>
     public bool ImprimirTeste()
     {
-        bool ok = Sessao.TemPapel;
+        bool ok = Sessao.Pronta;
         if (ok) TestesOk++;
         return ok;
     }
