@@ -679,11 +679,13 @@ public class RedeCrimpScreen : MonoBehaviour
 
         if (resultado == RedeCrimpResultado.OrdemErrada)
         {
-            // Errou a ordem: o cabo é descartado e volta a descascar (o estado já voltou para Descascar). O aviso é
-            // curto e no rodapé: quantos fios estavam fora não interessa ao jogador.
-            TocarSe(somErro);
+            // Errou a ordem: como na vida real, o conector é crimpado do mesmo jeito e o cabo sai DEFEITUOSO, sem
+            // aviso. Só o testador de cabos (ou a rede que não funciona) revela o erro. A sessão já voltou a descascar.
+            InteractionSounds.Raise(InteractionSound.CablePlugged);
+            EntregarCaboNaMao(sessao.PosicoesErradasNaUltimaCrimpagem);
             EmbaralharFios();
-            Aviso("Ordem errada");
+            Fechar();
+            return;
         }
 
         Atualizar();
@@ -693,7 +695,7 @@ public class RedeCrimpScreen : MonoBehaviour
     /// Cria o cabo de rede crimpado e o põe na mão do jogador. Se as mãos estiverem ocupadas, solta o cabo
     /// no chão à frente dele (não some).
     /// </summary>
-    private void EntregarCaboNaMao()
+    private void EntregarCaboNaMao(System.Collections.Generic.List<int> posicoesErradas = null)
     {
         if (caboPrefab == null)
         {
@@ -712,6 +714,8 @@ public class RedeCrimpScreen : MonoBehaviour
 
         GameObject novo = Instantiate(caboPrefab);
         novo.name = "Cabo_Rede_Crimpado";
+        novo.AddComponent<CaboCrimpado>();   // diferencia dos cabos prontos (chamado de cabeamento)
+        if (posicoesErradas != null && posicoesErradas.Count > 0) CaboRedeEstado.Marcar(novo, posicoesErradas, 0);
         PickupInteractable item = novo.GetComponentInChildren<PickupInteractable>(true);
         if (item == null) { Destroy(novo); return; }
 

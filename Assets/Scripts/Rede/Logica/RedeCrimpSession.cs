@@ -47,6 +47,9 @@ namespace EstagiarIo.Rede
         /// <summary>Quantos fios estavam fora de lugar na última tentativa de crimpar (para a mensagem de erro).</summary>
         public int FiosErradosNaUltimaCrimpagem { get; private set; }
 
+        /// <summary>Posições (0..7) com fio errado na última crimpagem que falhou (vazio = a última deu certo).</summary>
+        public List<int> PosicoesErradasNaUltimaCrimpagem { get; private set; } = new List<int>();
+
         /// <summary>Fio em cada posição (0..7) da fileira. null = posição vazia.</summary>
         public readonly RedeFio?[] Fila = new RedeFio?[RedeCores.OrdemT568B.Length];
 
@@ -136,12 +139,14 @@ namespace EstagiarIo.Rede
 
             if (!OrdemCorreta())
             {
-                FiosErradosNaUltimaCrimpagem = PosicoesErradas().Count;
+                PosicoesErradasNaUltimaCrimpagem = PosicoesErradas();
+                FiosErradosNaUltimaCrimpagem = PosicoesErradasNaUltimaCrimpagem.Count;
                 VoltarParaDescascar();
                 return RedeCrimpResultado.OrdemErrada;
             }
 
             FiosErradosNaUltimaCrimpagem = 0;
+            PosicoesErradasNaUltimaCrimpagem = new List<int>();
             Etapa = RedeCrimpEtapa.Concluido;
             return RedeCrimpResultado.Ok;
         }

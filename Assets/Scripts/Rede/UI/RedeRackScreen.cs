@@ -380,7 +380,9 @@ public class RedeRackScreen : MonoBehaviour
         {
             InteractionSounds.Raise(InteractionSound.CablePlugged);   // par ligado: a outra ponta encaixou
             RedeGame jogo = RedeGame.Garantir();
-            jogo.RegistrarParLigado(porta);
+            // cabo crimpado bom conta para o chamado de cabeamento; cabo defeituoso liga, mas não dá rede
+            bool crimpado = pontaItem != null && pontaItem.GetComponentInParent<CaboCrimpado>(true) != null;
+            jogo.RegistrarParLigado(porta, crimpado, pontaItem != null ? pontaItem.gameObject : null);
             // O cabo NÃO é gasto: fica guardado com a porta (o jogador pode tirá-lo depois e ligar de novo).
             jogo.GuardarCaboLigado(porta, pontaItem);
             pontaItem = null;
