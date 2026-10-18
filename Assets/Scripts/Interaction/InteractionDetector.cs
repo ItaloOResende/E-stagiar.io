@@ -117,6 +117,7 @@ public class InteractionDetector : MonoBehaviour
                 if (h.distance <= 0f || h.distance >= best) continue; // distância 0 = começou dentro do collider
                 if (IsSelf(h.collider)) continue;
                 if (h.collider.GetComponentInParent<Interactable>() == null) continue;
+                if (!Visible(ray.origin, h.point, h.collider)) continue;   // a esfera não "passa" por trás de painéis finos
                 best = h.distance;
                 primary = secondary = null;
                 Collect(h.collider, holding);
@@ -131,8 +132,11 @@ public class InteractionDetector : MonoBehaviour
             return;
         }
 
-        // Tolerância: o alvo anterior continua por um instante se a mira ainda passa rente a ele.
-        if (Time.time - lastSeenTime <= targetGraceTime && (StillAimed(lastPrimary, ray) || StillAimed(lastSecondary, ray)))
+        // Tolerância: o alvo anterior continua por um instante se a mira ainda passa rente a ele — e só se nada
+        // (parede, divisória, móvel) estiver na frente dele: a tolerância nunca atravessa obstáculos.
+        float blockedAt = hitSomething ? hit.distance : float.PositiveInfinity;
+        bool obstaculo = hitSomething && hit.collider.GetComponentInParent<Interactable>() == null;   // parede, divisória, móvel
+        if (!obstaculo && Time.time - lastSeenTime <= targetGraceTime && (StillAimed(lastPrimary, ray, blockedAt) || StillAimed(lastSecondary, ray, blockedAt)))
         {
             if (!holding && lastPrimary != null && lastPrimary.CanInteract(this)) primary = lastPrimary;
             if (lastSecondary != null && lastSecondary.CanInteractSecondary(this)) secondary = lastSecondary;
@@ -159,6 +163,21 @@ public class InteractionDetector : MonoBehaviour
         return best < float.PositiveInfinity;
     }
 
+    // Nada (fora o próprio jogador e o próprio alvo) entre o olho e o ponto do alvo.
+    private bool Visible(Vector3 from, Vector3 to, Collider target)
+    {
+        Vector3 d = to - from;
+        int n = Physics.RaycastNonAlloc(from, d.normalized, rayHits, Mathf.Max(0f, d.magnitude - 0.005f), interactionMask, QueryTriggerInteraction.Ignore);
+        Transform alvo = target.attachedRigidbody != null ? target.attachedRigidbody.transform : target.transform;
+        for (int i = 0; i < n; i++)
+        {
+            Collider c = rayHits[i].collider;
+            if (IsSelf(c) || c == target || c.transform.IsChildOf(alvo)) continue;
+            return false;
+        }
+        return true;
+    }
+
     private void Collect(Collider collider, bool holding)
     {
         foreach (Interactable candidate in collider.GetComponentsInParent<Interactable>())
@@ -170,7 +189,7 @@ public class InteractionDetector : MonoBehaviour
         }
     }
 
-    private bool StillAimed(Interactable target, Ray ray)
+    private bool StillAimed(Interactable target, Ray ray, float blockedAt)
     {
         if (target == null || !target.isActiveAndEnabled) return false;
         foreach (Collider c in target.GetComponentsInChildren<Collider>())
@@ -178,7 +197,7 @@ public class InteractionDetector : MonoBehaviour
             if (!c.enabled || c.isTrigger) continue;
             Bounds b = c.bounds;
             b.Expand(graceMargin * 2f);
-            if (b.IntersectRay(ray, out float d) && d <= interactionDistance) return true;
+            if (b.IntersectRay(ray, out float d) && d <= interactionDistance && d + graceMargin <= blockedAt + 0.005f) return true;
         }
         return false;
     }
