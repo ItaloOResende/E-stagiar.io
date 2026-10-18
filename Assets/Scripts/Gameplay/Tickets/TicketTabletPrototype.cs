@@ -167,6 +167,7 @@ public class TicketTabletPrototype : MonoBehaviour
 
         if (Keyboard.current != null && Keyboard.current[toggleKey].wasPressedThisFrame && !MainMenuScreen.Showing) SetAberto(!aberto);
         AtualizarCursorLiberado();
+        DevolverControlesSePreciso();
         AtualizarBloqueio();
         VerificarChamadoNovo();
         AtualizarSelo();
@@ -203,9 +204,26 @@ public class TicketTabletPrototype : MonoBehaviour
         else { Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false; }
     }
 
+    /// <summary>
+    /// Recuperação automática: os controles que o CELULAR desligou voltam assim que nada mais os quer desligados
+    /// (celular fechado, sem Alt, no 3D, sem relatório/menu/pausa). Fechar o celular com uma tela 2D aberta deixava a
+    /// mira desligada depois que a tela fechava (a tela só religa os componentes DELA), e só reabrir o celular (C)
+    /// devolvia a interação.
+    /// </summary>
+    private void DevolverControlesSePreciso()
+    {
+        if (!controlesDesligados || aberto || CursorLiberado || !NoMundo3D() || StageReportScreen.Showing
+            || MainMenuScreen.Showing || PauseMenuScreen.Showing) return;
+        SetControles(true);
+        if (UIScreenManager.Active != null) UIScreenManager.Active.ApplyCursorForCurrentState();
+    }
+
+    private bool controlesDesligados;   // os controles do jogador estão desligados POR este celular
+
     /// <summary>Liga/desliga câmera, movimento e mira do jogador (os mesmos componentes do celular aberto).</summary>
     private void SetControles(bool ligar)
     {
+        controlesDesligados = !ligar;
         if (interactionDetector != null) interactionDetector.enabled = ligar;
         if (disableWhileTabletOpen != null)
             foreach (Behaviour comportamento in disableWhileTabletOpen)
@@ -690,10 +708,14 @@ public class TicketTabletPrototype : MonoBehaviour
         if (chamado.Status == TicketStatus.Pending)
         {
             // só inicia se houver um equipamento livre que atenda esse chamado (TicketDeviceBridge reserva ao iniciar)
-            bool livre = TicketDeviceBridge.CanStart(chamado);
+            // ocupados = todos os equipamentos desse tipo estão com outro chamado: libera quando um for finalizado
+            TicketDeviceBridge.StartBlock bloqueio = TicketDeviceBridge.Availability(chamado, out int totalEquip, out _);
+            bool livre = bloqueio != TicketDeviceBridge.StartBlock.AllBusy;
             bool habilitado = GUI.enabled;
             GUI.enabled = habilitado && livre;
-            if (GUILayout.Button(livre ? "Iniciar atendimento" : "Aguardando equipamento livre", sBotao, GUILayout.Height(32f * e)))
+            string rotulo = livre ? "Iniciar atendimento"
+                : $"Aguardando equipamento livre ({totalEquip} em atendimento)";
+            if (GUILayout.Button(rotulo, sBotao, GUILayout.Height(32f * e)))
                 iniciarChamadoPendente = chamado.Number;
             GUI.enabled = habilitado;
         }
