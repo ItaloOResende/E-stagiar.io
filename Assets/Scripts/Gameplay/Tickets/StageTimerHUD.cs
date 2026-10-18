@@ -1,8 +1,10 @@
 using UnityEngine;
 
 /// <summary>
-/// HUD provisoria da fase, no ALTO DA DIREITA. Usa o tempo real do StageController.
-/// Mostra SO o nome da fase e o cronometro decrescendo — a barra de progresso da fase NAO existe mais.
+/// HUD do tempo da fase. Usa o tempo real do StageController:
+///  - uma FAIXA horizontal no topo, da largura toda da tela, que encolhe com o tempo restante (verde → amarelo →
+///    vermelho, em degradê contínuo), fixa durante a partida e proporcional à resolução;
+///  - o cronômetro (mm:ss) num selo no alto da DIREITA, logo abaixo da faixa (fora dela). Sem o nome da fase.
 /// Nao cria um segundo temporizador nem modifica os minigames.
 /// O tempo de CADA chamado é outro: veja <see cref="TicketManager"/> e a barra da lista do celular.
 /// <para>
@@ -27,6 +29,8 @@ public class StageTimerHUD : MonoBehaviour
     [SerializeField, Min(0f)] private float topMargin = 16f;
     [Tooltip("Distancia da borda DIREITA da tela. O padrao (100) deixa o selo FORA do botao de fechar das telas.")]
     [SerializeField, Min(0f)] private float rightMargin = 100f;
+    [Tooltip("Altura da faixa de tempo no topo da tela (pixels da referência 1080p).")]
+    [SerializeField, Min(2f)] private float barHeight = 10f;
 
     /// <summary>Resolução de referência das telas 2D do jogo (o selo acompanha a mesma escala).</summary>
     private const float RefLargura = 1920f;
@@ -127,13 +131,18 @@ public class StageTimerHUD : MonoBehaviour
         float duration = Mathf.Max(1f, stageController.DurationSeconds);
         float remaining = Mathf.Clamp(stageController.SecondsRemaining, 0f, duration);
         int seconds = Mathf.CeilToInt(remaining);
-        string text = stageController.IsSpeedRun
-            ? $"SPEED RUN   |   {seconds / 60:00}:{seconds % 60:00}"
-            : $"FASE {stage}   |   {seconds / 60:00}:{seconds % 60:00}";
+        string text = $"{seconds / 60:00}:{seconds % 60:00}";   // só o tempo (sem o nome da fase)
 
         // A escala acompanha o CanvasScaler das telas do jogo (referência 1920x1080), então o selo fica do
         // MESMO tamanho relativo em qualquer resolução — como o celular do jogador.
         float e = Escala;
+
+        // faixa do topo: largura toda, encolhe da direita para a esquerda conforme o tempo acaba
+        float fracao = remaining / duration;
+        float hb = Mathf.Max(2f, Mathf.Round(barHeight * e));
+        DrawRect(new Rect(0f, 0f, Screen.width, hb), new Color(0.05f, 0.07f, 0.09f, 0.75f));
+        DrawRect(new Rect(0f, 0f, Screen.width * fracao, hb), CorDaFaixa(fracao));
+
         // último minuto: vermelho; últimos segundos: pulsa (só o tamanho do selo, o texto continua legível)
         bool urgente = remaining <= warningSeconds;
         bool final = remaining <= finalSeconds;
@@ -146,11 +155,19 @@ public class StageTimerHUD : MonoBehaviour
         float w = Mathf.Ceil(medida.x + 2f * paddingX * e);
         float h = Mathf.Ceil(medida.y + 2f * paddingY * e);
         float x = Screen.width - w - rightMargin * e;   // alto da DIREITA, à esquerda do botão de fechar
-        float y = topMargin * e;
+        float y = hb + topMargin * e;   // abaixo da faixa, sem ficar comprimido nela
 
         DrawRect(new Rect(x, y, w, h), urgente ? Urgente : Backdrop);
         GUI.Label(new Rect(x + paddingX * e, y + paddingY * e, w - 2f * paddingX * e, h - 2f * paddingY * e),
             text, labelStyle);
+    }
+
+    /// <summary>Verde no início, amarelo na metade, vermelho no fim (degradê contínuo).</summary>
+    public static Color CorDaFaixa(float fracao)
+    {
+        Color verde = new Color(0.2f, 0.8f, 0.35f), amarelo = new Color(0.98f, 0.82f, 0.18f), vermelho = new Color(0.9f, 0.18f, 0.15f);
+        fracao = Mathf.Clamp01(fracao);
+        return fracao > 0.5f ? Color.Lerp(amarelo, verde, (fracao - 0.5f) * 2f) : Color.Lerp(vermelho, amarelo, fracao * 2f);
     }
 
     /// <summary>A mesma escala que o CanvasScaler das telas do jogo usa (referência 1920 x 1080).</summary>
