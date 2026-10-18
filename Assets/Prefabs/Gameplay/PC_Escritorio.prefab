@@ -306,6 +306,14 @@ MonoBehaviour:
   onlineTexture: {fileID: 2800000, guid: 4481eed078f54a8489401c75f4255a8f, type: 3}
   noSignalTexture: {fileID: 2800000, guid: 9ca8b7cbd319ad342bc02e01947e3af7, type: 3}
   offColor: {r: 0, g: 0, b: 0, a: 1}
+  connectWhenPlaced: 0
+  portAnchors:
+  - port: 3
+    anchor: {fileID: 5334488702943694218}
+  - port: 7
+    anchor: {fileID: 6599184918976098845}
+  - port: 4
+    anchor: {fileID: 5000671052995972856}
 --- !u!1 &7558752063700516459
 GameObject:
   m_ObjectHideFlags: 0
@@ -769,6 +777,8 @@ MonoBehaviour:
   holdPositionOffset: {x: -0.04, y: 0, z: 0.04}
   holdEulerOffset: {x: -35, y: 0, z: 0}
   holdScale: 0.7
+  useGripPoint: 0
+  gripLocalPoint: {x: 0, y: 0, z: 0}
   placedYawOffset: 180
   startsFrozen: 1
 --- !u!1001 &6297715457793954578
@@ -883,6 +893,8 @@ MonoBehaviour:
   holdPositionOffset: {x: 0.03, y: -0.02, z: 0.03}
   holdEulerOffset: {x: -25, y: 0, z: 0}
   holdScale: 0.42
+  useGripPoint: 0
+  gripLocalPoint: {x: 0, y: 0, z: 0}
   placedYawOffset: 180
   startsFrozen: 1
 --- !u!4 &8588471413706341990 stripped
@@ -973,6 +985,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6877183915235683054, guid: bb9c009bc5c9bbf4cbbdadc3e551a949, type: 3}
       insertIndex: -1
       addedObject: {fileID: 8132300661648938458}
+    - targetCorrespondingSourceObject: {fileID: 6877183915235683054, guid: bb9c009bc5c9bbf4cbbdadc3e551a949, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6110711401012643813}
   m_SourcePrefab: {fileID: 100100000, guid: bb9c009bc5c9bbf4cbbdadc3e551a949, type: 3}
 --- !u!1 &4350083386325420251 stripped
 GameObject:
@@ -1023,6 +1038,8 @@ MonoBehaviour:
   holdPositionOffset: {x: -0.02, y: 0.33, z: 0.18}
   holdEulerOffset: {x: 0, y: 0, z: 0}
   holdScale: 1
+  useGripPoint: 0
+  gripLocalPoint: {x: 0, y: 0, z: 0}
   placedYawOffset: 180
   startsFrozen: 1
 --- !u!114 &679932088974665641
@@ -1055,6 +1072,20 @@ MonoBehaviour:
   intactVisual: {fileID: 0}
   brokenVisual: {fileID: 400103352717334742}
   breakSound: {fileID: 0}
+--- !u!114 &6110711401012643813
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4350083386325420251}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 65fdba676c7aa7c4ab1034f7f474122e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MonitorScreenInteractable
+  interactionMessage: "Manuten\xE7\xE3o"
+  promptIcon: {fileID: 21300000, guid: bff5d7302279b7f40ab19b3cb09a4961, type: 3}
 --- !u!4 &5956283147413661187 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3568755713022542902, guid: bb9c009bc5c9bbf4cbbdadc3e551a949, type: 3}
