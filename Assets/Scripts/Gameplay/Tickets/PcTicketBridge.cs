@@ -21,8 +21,53 @@ using UnityEngine;
 [RequireComponent(typeof(ComputerCase), typeof(ComputerPower))]
 public class PcTicketBridge : TicketDeviceBridge
 {
+    /// <summary>Como fica o cabo nos chamados de cabo (energia, vídeo, rede). Valores novos sempre no fim.</summary>
+    public enum CableDefect
+    {
+        /// <summary>Solto na parede (tomada/ponto de rede) ou, no vídeo, na saída do gabinete: pendurado à vista.</summary>
+        LooseAtWall,
+        /// <summary>Ligado na parede/gabinete, mas solto na ponta do equipamento (gabinete; no vídeo, o monitor).</summary>
+        LooseAtDevice,
+        /// <summary>O cabo sumiu da estação: é preciso buscar outro no gaveteiro de cabos da sala de TI.</summary>
+        Missing
+    }
+
     [Tooltip("Penalidade de gabinete incompleto (valor no ScoreKeeper). Vazio = procura na cena.")]
     [SerializeField] private ScoreKeeper scoreKeeper;
+    [Header("Defeitos de cabo (pc-sem-energia, monitor-sem-imagem, pc-sem-rede, pc-sem-video-e-rede)")]
+    [Tooltip("Peso de 'solto na parede' no rodízio. 0 = nunca.")]
+    [Min(0)] [SerializeField] private int pesoSoltoNaParede = 1;
+    [Tooltip("Peso de 'ligado na parede, solto no equipamento' no rodízio. 0 = nunca.")]
+    [Min(0)] [SerializeField] private int pesoSoltoNoEquipamento = 1;
+    [Tooltip("Peso de 'cabo ausente' (o jogador busca outro no gaveteiro de cabos) no rodízio. 0 = nunca.")]
+    [Min(0)] [SerializeField] private int pesoAusente = 1;
+
+    // rodízio único da cena: os chamados de cabo seguidos (em qualquer estação) passam pelas variações em ordem,
+    // na proporção dos pesos — sem sorteio. Zera a cada carga de cena (partida nova).
+    private static int cableDefectTurn;
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetCableTurn() => cableDefectTurn = 0;
+    private void OnDestroy() => cableDefectTurn = 0;
+
+    /// <summary>Variação usada no último defeito de cabo desta estação (para testes e para o Console).</summary>
+    public CableDefect LastCableDefect { get; private set; }
+
+    /// <summary>Próxima variação do rodízio, pelos pesos (ex.: 1/1/1 → parede, equipamento, ausente, parede...).</summary>
+    public CableDefect NextCableDefect()
+    {
+        int[] pesos = { pesoSoltoNaParede, pesoSoltoNoEquipamento, pesoAusente };
+        int total = pesos[0] + pesos[1] + pesos[2];
+        if (total <= 0) return CableDefect.LooseAtWall;
+        int k = cableDefectTurn++ % total;
+        // intercalado (não em blocos): percorre as variações uma a uma enquanto cada uma ainda tem "vez" na volta
+        int volta = 0;
+        while (true)
+        {
+            for (int v = 0; v < 3; v++)
+                if (pesos[v] > volta && k-- == 0) return (CableDefect)v;
+            volta++;
+        }
+    }
 
     private ComputerCase pcCase;
     private ComputerPower power;
@@ -111,10 +156,10 @@ public class PcTicketBridge : TicketDeviceBridge
             case "pc-sem-hd": pcCase.SetComponents(all & ~PcComponent.Hdd, true); break;
             case "pc-pecas-ausentes": pcCase.SetComponents(all & ~(PcComponent.Ram | PcComponent.Hdd), true); break;
             case "pc-sem-sistema": pcCase.SetComponents(all, false); break;
-            case "pc-sem-energia": UnplugWallEnd(PcLink.Power); break;
-            case "pc-sem-rede": UnplugWallEnd(PcLink.Network); break;
-            case "monitor-sem-imagem": UnplugVideo(); break;
-            case "pc-sem-video-e-rede": UnplugVideo(); UnplugWallEnd(PcLink.Network); break;
+            case "pc-sem-energia": CableProblem(PcLink.Power); break;
+            case "pc-sem-rede": CableProblem(PcLink.Network); break;
+            case "monitor-sem-imagem": CableProblem(PcLink.Vga, PcLink.Hdmi); break;
+            case "pc-sem-video-e-rede": CableProblem(PcLink.Vga, PcLink.Hdmi, PcLink.Network); break;
             case TestadorCabo.ChamadoCrimpagem:
             case TestadorCabo.ChamadoCaboEstacao:
                 caboDefeituoso = power.CableItemOf(PcLink.Network);
@@ -276,6 +321,37 @@ public class PcTicketBridge : TicketDeviceBridge
         return true;
     }
 
+    // Defeito de cabo nos cabos ligados destas ligações, numa variação do rodízio (a mesma para todos). Ponta A = parede
+    // (no vídeo, a saída do gabinete); ponta B = equipamento (gabinete; no vídeo, o monitor). "Ausente" tira o cabo da
+    // estação de vez (destruído): a solução é outro cabo do gaveteiro. Todas se resolvem só com a ligação certa nas
+    // duas pontas (etapas conectar-energia / conectar-video / conectar-rede, pelo estado real).
+    private void CableProblem(params PcLink[] links)
+    {
+        CableDefect d = NextCableDefect();
+        LastCableDefect = d;
+        int n = 0;
+        foreach (PcLink link in links)
+        {
+            if (power.CableItemOf(link) == null) continue;
+            power.PortsOf(link, out PcPort a, out PcPort b);
+            switch (d)
+            {
+                case CableDefect.LooseAtWall:
+                    if (power.IsEndPlugged(link, true)) power.UsePort(a, null, false, out _);
+                    break;
+                case CableDefect.LooseAtDevice:
+                    if (power.IsEndPlugged(link, false)) power.UsePort(b, null, false, out _);
+                    break;
+                case CableDefect.Missing:
+                    var removidos = new System.Collections.Generic.List<PickupInteractable>();
+                    if (RemoveCable(link, n++, removidos))
+                        foreach (PickupInteractable c in removidos) if (c != null) Destroy(c.gameObject);
+                    break;
+            }
+        }
+        Debug.Log($"[Chamado] {DeviceLabel}: cabo(s) {string.Join("/", links)} → {d}.", this);
+    }
+
     // Solta o vídeo na saída do gabinete: o cabo fica pendurado no monitor.
     private void UnplugVideo()
     {
@@ -297,6 +373,9 @@ public class PcTicketBridge : TicketDeviceBridge
             return "o gabinete e o monitor precisam estar na mesa da estação";
         return null;
     }
+
+    // abrir-gabinete é passagem: a entrega exige o gabinete fechado (DeliveryBlocker), então ele não pode "deixar de valer"
+    protected override bool MustHoldOnDelivery(string id) => id != "abrir-gabinete";
 
     protected override void OnTicketCompleted(TicketInstance ticket)
     {

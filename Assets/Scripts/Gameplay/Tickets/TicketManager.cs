@@ -107,8 +107,36 @@ public class TicketManager : MonoBehaviour
 
     public void EndStage()
     {
+        if (running) LogQueue("fim da fase");
         running = false;
         CancelInvoke();
+    }
+
+    /// <summary>
+    /// Resumo da fila no Console: chamados gerados, concluídos, em atendimento (com/sem equipamento), aguardando início
+    /// (com equipamento livre ou com todos ocupados), atrasados, e se a geração parou por limite de abertos ou pelo fim.
+    /// </summary>
+    [ContextMenu("Diagnóstico da fila de chamados")]
+    public void LogQueue() => LogQueue("agora");
+
+    private void LogQueue(string quando)
+    {
+        int concluidos = 0, atendendo = 0, aguardando = 0, ocupados = 0, atrasados = 0;
+        foreach (TicketInstance t in tickets)
+        {
+            if (t.Status == TicketStatus.Completed) { concluidos++; continue; }
+            if (t.IsClosed) continue;
+            if (t.SecondsLeft < 0f) atrasados++;
+            if (t.Status == TicketStatus.InProgress) atendendo++;
+            else if (TicketDeviceBridge.Availability(t, out _, out _) == TicketDeviceBridge.StartBlock.AllBusy) ocupados++;
+            else aguardando++;
+        }
+        Debug.Log($"[Fila] {quando}: fase {stageNumber}, {tickets.Count} gerados, {concluidos} concluídos, {atendendo} em atendimento, " +
+                  $"{aguardando} aguardando início, {ocupados} sem equipamento livre, {atrasados} atrasados (abertos). " +
+                  $"Limite de abertos {maximumOpenTickets}; " +
+                  (CanGenerate() ? (arrivalClockStarted ? $"próximo em {Mathf.Max(0f, nextArrivalAt - Time.time):0}s" +
+                                   (OpenCount >= maximumOpenTickets ? " (espera vaga)" : "") : "relógio de chegada parado até iniciar um chamado")
+                                 : "geração encerrada"), this);
     }
 
     private bool CanGenerate() => running && (EndlessMode || remainingStageTime > stopGeneratingBeforeEndSeconds);
