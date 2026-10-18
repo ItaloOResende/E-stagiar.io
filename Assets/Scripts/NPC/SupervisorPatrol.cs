@@ -124,6 +124,7 @@ public class SupervisorPatrol : MonoBehaviour
             var p = FindAnyObjectByType<PlayerMovement>();
             if (p != null) player = p.transform;
         }
+        NavMeshSpawn.Garantir(agent);   // nasceu fora do NavMesh: vai ao ponto válido mais próximo
         GoToNext();
     }
 
