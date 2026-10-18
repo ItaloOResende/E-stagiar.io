@@ -17,7 +17,7 @@ public class ImpressoraPainelTests
     private static object Parte(string n) => Enum.Parse(T("ImpressoraParte"), n);
 
     [Test]
-    public void Visor_AvisoNeutro_ProntaSoComIpEMascara()
+    public void Visor_AvisoNeutro_ProntaComIp()
     {
         object s = Activator.CreateInstance(T("ImpressoraSession"));
         Assert.AreEqual("ERRO - VERIFICAR", Status(s), "o visor não diz o que falta");
@@ -27,36 +27,50 @@ public class ImpressoraPainelTests
         Call(s, "UsarEncaixe", Parte("Papel"), true, Parte("Papel"));
         Assert.AreEqual("ERRO - VERIFICAR", Status(s), "sem rede configurada");
 
-        Call(s, "Digitar", "192.168.0.50");
+        Call(s, "Digitar", "192168000050");
         Assert.AreEqual("ERRO - VERIFICAR", Status(s), "digitado mas não confirmado ainda não vale");
         Assert.IsTrue((bool)Call(s, "ConfirmarIp"));
-        Assert.IsFalse((bool)Get(s, "Pronta"), "só o IP não basta: falta a máscara");
-
-        Call(s, "SelecionarCampo", Enum.Parse(T("ImpressoraCampoRede"), "Mascara"));
-        Call(s, "Digitar", "255.255.0.255");
-        Assert.IsFalse((bool)Call(s, "ConfirmarMascara"), "máscara com bits 1 não contíguos é inválida");
-        Call(s, "Limpar");
-        Call(s, "Digitar", "255.255.255.0");
-        Assert.IsTrue((bool)Call(s, "ConfirmarMascara"));
-        Assert.AreEqual("PRONTA", Status(s));
-        Assert.AreEqual("IP 192.168.0.50 /24", Ip(s));
+        Assert.AreEqual("PRONTA", Status(s), "só o IP: não existe máscara de sub-rede");
+        Assert.AreEqual("IP 192.168.0.50", Ip(s));
         Assert.IsTrue((bool)Get(s, "Pronta"));
     }
 
     [Test]
-    public void Mascara_IpPrecisaSerHostDaSubRede()
+    public void MascaraDeEntrada_PontosAutomaticosEOctetosValidos()
     {
-        Func<string, string, bool> ok = (ip, m) => (bool)T("ImpressoraSession").GetMethod("IpCompativel").Invoke(null, new object[] { ip, m });
-        Func<string, bool> mascara = m => (bool)T("ImpressoraSession").GetMethod("MascaraEhValida").Invoke(null, new object[] { m });
-        Assert.IsTrue(mascara("255.255.255.0"));
-        Assert.IsTrue(mascara("255.255.0.0"));
-        Assert.IsFalse(mascara("255.0.255.0"));
-        Assert.IsFalse(mascara("0.0.0.0"));
-        Assert.IsFalse(mascara("255.255.255.255"));
-        Assert.IsTrue(ok("192.168.0.20", "255.255.255.0"));
-        Assert.IsFalse(ok("192.168.0.0", "255.255.255.0"), "endereço da rede");
-        Assert.IsFalse(ok("192.168.0.255", "255.255.255.0"), "broadcast");
-        Assert.IsTrue(ok("192.168.0.255", "255.255.0.0"), "na /16 o .0.255 é host");
+        object s = Activator.CreateInstance(T("ImpressoraSession"));
+        Func<string> dig = () => (string)Get(s, "IpDigitado");
+        Func<string, string> visor = d => (string)T("ImpressoraSession").GetMethod("FormatarVisor").Invoke(null, new object[] { d });
+
+        Call(s, "Digitar", "192");
+        Assert.AreEqual("192.", dig(), "3 dígitos: o ponto entra sozinho");
+        Call(s, "Digitar", "168.1.");
+        Assert.AreEqual("192.168.1.", dig(), "ponto fecha o grupo antes dos 3 dígitos");
+        Assert.AreEqual("192.168.001.___", visor(dig()));
+        Call(s, "Digitar", "10");
+        Assert.AreEqual("192.168.001.10_", visor(dig()));
+        Call(s, "Digitar", "99");
+        Assert.AreEqual("192.168.1.109", dig(), "último grupo: nada além de 3 dígitos");
+
+        Call(s, "Limpar");
+        Call(s, "Digitar", "300");
+        Assert.AreEqual("30.0", dig(), "o dígito que passaria de 255 começa o próximo grupo");
+        Call(s, "Digitar", "..");
+        Assert.AreEqual("30.0.", dig(), "ponto repetido não cria grupo vazio");
+
+        // corrigir números anteriores: Apagar volta pelos grupos
+        Call(s, "Limpar");
+        Call(s, "Digitar", "10.0.0.5");
+        Call(s, "Apagar"); Call(s, "Apagar"); Call(s, "Apagar");
+        Assert.AreEqual("10.", dig(), "apagar um grupo vazio leva junto o ponto e o último dígito anterior");
+        Call(s, "Digitar", "1.2.3");
+        Assert.AreEqual("10.1.2.3", dig());
+        Assert.IsTrue((bool)Call(s, "ConfirmarIp"));
+        Assert.AreEqual("10.1.2.3", (string)Get(s, "IpSalvo"), "IP salvo normalizado");
+
+        Call(s, "Digitar", "1.2.3");
+        Assert.IsFalse((bool)Call(s, "ConfirmarIp"), "3 grupos: incompleto");
+        Assert.AreEqual("10.1.2.3", (string)Get(s, "IpSalvo"), "IP anterior mantido");
     }
 
     [Test]

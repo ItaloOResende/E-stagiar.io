@@ -17,7 +17,7 @@ public class StationNamePlate : MonoBehaviour
     public void Refresh()
     {
         StationEmployee e = StationEmployee.Of(this);
-        foreach (TextMesh t in nameTexts) if (t != null) t.text = e != null ? e.employeeName : fallback;
-        foreach (TextMesh t in departmentTexts) if (t != null) t.text = e != null ? e.department.ToUpperInvariant() : "";
+        foreach (TextMesh t in nameTexts) if (t != null) t.text = e != null ? e.DisplayName : fallback;
+        foreach (TextMesh t in departmentTexts) if (t != null) t.text = e != null && e.Occupied ? e.department.ToUpperInvariant() : "";
     }
 }

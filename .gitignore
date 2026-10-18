@@ -128,3 +128,8 @@ InitTestScene*.unity*
 
 # Preferências locais do Unity AI Assistant, caso alguém instale
 /ProjectSettings/Packages/com.unity.ai.assistant/
+
+# Backups locais das rodadas (cópias antes de alterar) e cache do Python das ferramentas
+/[Aa]ssets/Art/_Backup/
+/[Aa]ssets/Art/_Backup.meta
+__pycache__/

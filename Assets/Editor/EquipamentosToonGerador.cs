@@ -445,6 +445,8 @@ public static class EquipamentosToonGerador
                                   Tex("PH_ui_tela_notebook_instalando_2"), Tex("PH_ui_tela_notebook_instalando_3"),
                                   Tex("PH_ui_tela_notebook_instalando_4") });
 
+        SemSombraNosDetalhes(root);
+
         EnsureFolder("Assets/Prefabs", "Props");
         GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, NotebookPrefabPath);
         Object.DestroyImmediate(root);
@@ -502,6 +504,52 @@ public static class EquipamentosToonGerador
     }
 
     // ================================================================== peças, malhas e materiais
+
+    /// <summary>Maior medida (m) de uma peça que deixa de projetar sombra: fendas, grades, parafusos, portas, chips...</summary>
+    public const float DetalheSemSombraMaximo = 0.035f;
+    /// <summary>Espessura (m) abaixo da qual uma peça plana (etiqueta, marcas, cabo flat, células) não projeta sombra.</summary>
+    public const float DetalheSemSombraEspessura = 0.0005f;
+
+    /// <summary>
+    /// Desempenho: as ~220 peças do notebook projetavam sombra (passe ShadowCaster em até 4 cascatas, cada uma). Peças
+    /// pequenas (maior medida até <see cref="DetalheSemSombraMaximo"/>) ou planas (espessura abaixo de
+    /// <see cref="DetalheSemSombraEspessura"/>) não mudam a sombra do notebook: ficam com Cast Shadows Off. Carcaça,
+    /// tampa, tela, deck, teclado, touchpad, paredes, pés e as peças grandes do interior continuam projetando. Só a
+    /// projeção muda: recepção de sombra, materiais e malhas ficam iguais. Medidas pelos bounds no mundo, com o
+    /// notebook na origem sem escala (como o gerador e o prefab o deixam). Devolve quantos renderers mudaram.
+    /// </summary>
+    public static int SemSombraNosDetalhes(GameObject notebook)
+    {
+        int n = 0;
+        foreach (Renderer r in notebook.GetComponentsInChildren<Renderer>(true))
+        {
+            Vector3 s = r.bounds.size;
+            float maior = Mathf.Max(s.x, Mathf.Max(s.y, s.z)), menor = Mathf.Min(s.x, Mathf.Min(s.y, s.z));
+            if (maior > DetalheSemSombraMaximo && menor >= DetalheSemSombraEspessura) continue;
+            if (r.shadowCastingMode == UnityEngine.Rendering.ShadowCastingMode.Off) continue;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            n++;
+        }
+        return n;
+    }
+
+    /// <summary>
+    /// Aplica <see cref="SemSombraNosDetalhes"/> no prefab do notebook JÁ gerado, sem regerar modelo, malhas ou
+    /// materiais (o menu "Gerar modelos toon" refaz tudo). Mexe só no Notebook_Toon.prefab; as instâncias seguem o prefab.
+    /// </summary>
+    [MenuItem("Tools/E-stagiar.io/Notebook: tirar sombra das peças pequenas")]
+    public static void AplicarSemSombraNoPrefab()
+    {
+        GameObject root = PrefabUtility.LoadPrefabContents(NotebookPrefabPath);
+        try
+        {
+            int n = SemSombraNosDetalhes(root);
+            int total = root.GetComponentsInChildren<Renderer>(true).Length;
+            PrefabUtility.SaveAsPrefabAsset(root, NotebookPrefabPath);
+            Debug.Log($"Notebook_Toon: {n} de {total} renderers sem projetar sombra.");
+        }
+        finally { PrefabUtility.UnloadPrefabContents(root); }
+    }
 
     private static MeshRenderer Peca(Transform parent, string name, Mesh mesh, Material mat, Vector3 localPos)
     {

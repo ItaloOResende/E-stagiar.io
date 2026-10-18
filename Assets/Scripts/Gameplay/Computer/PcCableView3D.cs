@@ -70,17 +70,20 @@ public class PcCableView3D : MonoBehaviour
 
     private void LateUpdate()
     {
-        foreach (PortAnchor a in anchors)
-        {
-            if (a.anchor == null) continue;
-            Vector3 p = a.anchor.position;
-            if (!lastPositions.TryGetValue(a.anchor, out Vector3 old) || (old - p).sqrMagnitude > 1e-6f)
-            {
-                lastPositions[a.anchor] = p;
-                dirty = true;
-            }
-        }
+        foreach (PortAnchor a in anchors) Track(a.anchor);
+        if (power.Monitor != null) Track(power.Monitor);   // monitor trocado: as âncoras dele andam com ele
         if (dirty) Rebuild();
+    }
+
+    private void Track(Transform t)
+    {
+        if (t == null) return;
+        Vector3 p = t.position;
+        if (!lastPositions.TryGetValue(t, out Vector3 old) || (old - p).sqrMagnitude > 1e-6f)
+        {
+            lastPositions[t] = p;
+            dirty = true;
+        }
     }
 
     /// <summary>Refaz todos os cabos (chamado sozinho quando algo muda).</summary>
@@ -116,6 +119,13 @@ public class PcCableView3D : MonoBehaviour
         if (wall != null && wall.Source != power)
         {
             Transform t = wall.AnchorFor(port);
+            if (t != null) return t;
+        }
+        // porta do monitor: as âncoras do monitor ATUAL deste PC (ele pode ter sido trocado por um do estoque)
+        if (ComputerPower.IsMonitorPort(port) && power.Monitor != null)
+        {
+            MonitorDisplay md = power.Monitor.GetComponent<MonitorDisplay>();
+            Transform t = md != null ? md.AnchorFor(port) : null;
             if (t != null) return t;
         }
         return LocalAnchor(port);

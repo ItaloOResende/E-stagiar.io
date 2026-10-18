@@ -15,6 +15,11 @@ using UnityEngine.Events;
 ///    dos itens desta gaveta (<see cref="ItemKind"/>) acomoda-o dentro dela, no espaço livre (<see cref="TryStore"/>).
 ///  - Entregas diretas consomem o estoque (1 por abertura, se a mão estiver livre).
 ///  - Gaveta sem nada restante abre/fecha normalmente (vazia) e dispara <see cref="onEmptied"/> uma vez.
+/// Armário de reserva (porta que gira): <see cref="contentsRoot"/> = o interior FIXO (os itens não acompanham a porta)
+/// e <see cref="refillOnClose"/> = ao terminar de fechar, cada LUGAR configurado (entrada e unidade) cujo item o jogador
+/// tirou recebe uma unidade nova do prefab (estado inicial do prefab, independente das outras), só se o espaço do lugar
+/// estiver livre. Nunca passa da quantidade configurada, não mexe nos itens retirados (na mão, nas estações, quebrados
+/// ou perdidos) e abrir/fechar sem retirar nada não cria nada.
 /// </summary>
 [RequireComponent(typeof(OpenableInteractable))]
 public class DrawerContents : MonoBehaviour
@@ -41,12 +46,26 @@ public class DrawerContents : MonoBehaviour
     [Tooltip("Gatilho (BoxCollider 'Is Trigger', filho da parte móvel) com o espaço interno onde itens são guardados. " +
              "Vazio = esta gaveta não aceita guardar.")]
     [SerializeField] private BoxCollider storageArea;
+    [Tooltip("Onde os itens físicos ficam (posições das entradas são locais a ele). Vazio = a parte móvel (gaveta). " +
+             "Armário com porta: o interior fixo do móvel.")]
+    [SerializeField] private Transform contentsRoot;
+    [Tooltip("Ao terminar de fechar, repõe as unidades retiradas até a quantidade configurada, nos mesmos lugares " +
+             "(armário de reserva). Desligado = estoque finito (gavetas).")]
+    [SerializeField] private bool refillOnClose;
     public UnityEvent onEmptied;
 
     private OpenableInteractable openable;
     private readonly List<PickupInteractable> inside = new List<PickupInteractable>();
     private int[] directRemaining;
     private bool emptiedRaised;
+    // lugar (entrada, unidade) -> item criado ali (sai ao ser pego) e o tamanho dele (para conferir o espaço livre)
+    private readonly Dictionary<(int, int), PickupInteractable> slots = new Dictionary<(int, int), PickupInteractable>();
+    private readonly Dictionary<(int, int), Vector3> slotSizes = new Dictionary<(int, int), Vector3>();
+
+    private Transform ContentsParent => contentsRoot != null ? contentsRoot : openable.MovingPart;
+
+    /// <summary>Unidades repostas ao fechar (soma desde o início), para conferência.</summary>
+    public int Refilled { get; private set; }
 
     public int RemainingCount
     {
@@ -81,19 +100,69 @@ public class DrawerContents : MonoBehaviour
                 continue;
             }
 
-            Transform parent = openable.MovingPart;
-            for (int i = 0; i < entry.quantity; i++)
-            {
-                Vector3 pos = parent.TransformPoint(entry.localPosition + entry.step * i);
-                Quaternion rot = parent.rotation * Quaternion.Euler(entry.localEuler);
-                PickupInteractable item = Instantiate(entry.prefab, pos, rot, parent);
-                item.PickedUp += OnItemTaken;
-                item.MarkStored(this);
-                inside.Add(item);
-            }
+            for (int i = 0; i < entry.quantity; i++) CreateAt(e, i);
         }
 
         SetContentsVisible(openable.IsOpen || !hideContentsWhenClosed);
+    }
+
+    // Uma unidade da entrada 'e' no lugar 'i' (posição local + passo), dentro do conteúdo.
+    private PickupInteractable CreateAt(int e, int i)
+    {
+        Entry entry = entries[e];
+        Transform parent = ContentsParent;
+        Vector3 pos = parent.TransformPoint(entry.localPosition + entry.step * i);
+        Quaternion rot = parent.rotation * Quaternion.Euler(entry.localEuler);
+        PickupInteractable item = Instantiate(entry.prefab, pos, rot, parent);
+        item.name = entry.prefab.name;
+        item.PickedUp += OnItemTaken;
+        item.MarkStored(this);
+        inside.Add(item);
+        slots[(e, i)] = item;
+        // tamanho nos eixos do conteúdo (o móvel pode estar girado na cena)
+        if (!slotSizes.ContainsKey((e, i)))
+        {
+            Vector3 w = item.WorldBounds.size, l = Quaternion.Inverse(parent.rotation) * w;
+            slotSizes[(e, i)] = new Vector3(Mathf.Abs(l.x), Mathf.Abs(l.y), Mathf.Abs(l.z));
+        }
+        return item;
+    }
+
+    // Repõe os lugares vazios (item retirado) cujo espaço está livre. Devolve quantas unidades criou.
+    private int RefillEmptySlots()
+    {
+        int n = 0;
+        bool visible = openable.IsOpen || !hideContentsWhenClosed;
+        Physics.SyncTransforms();
+        for (int e = 0; e < entries.Count; e++)
+        {
+            Entry entry = entries[e];
+            if (entry.prefab == null || entry.delivery != Delivery.PhysicalInDrawer) continue;
+            for (int i = 0; i < entry.quantity; i++)
+            {
+                if (slots.TryGetValue((e, i), out PickupInteractable atual) && atual != null && inside.Contains(atual)) continue;
+                if (SlotBlocked(e, i)) continue;
+                PickupInteractable item = CreateAt(e, i);
+                if (!visible) item.gameObject.SetActive(false);
+                n++;
+            }
+        }
+        Refilled += n;
+        if (n > 0) emptiedRaised = false;
+        return n;
+    }
+
+    // Algo físico (ex.: um equipamento devolvido à prateleira) ocupa o lugar: não repõe por cima.
+    private bool SlotBlocked(int e, int i)
+    {
+        if (!slotSizes.TryGetValue((e, i), out Vector3 size)) return false;
+        Entry entry = entries[e];
+        Transform parent = ContentsParent;
+        Vector3 pos = parent.TransformPoint(entry.localPosition + entry.step * i);
+        Vector3 center = pos + Vector3.up * (size.y * 0.5f + 0.01f);
+        foreach (Collider c in Physics.OverlapBox(center, size * 0.45f, parent.rotation, ~0, QueryTriggerInteraction.Ignore))
+            if (c.GetComponentInParent<PickupInteractable>() != null) return true;
+        return false;
     }
 
     private void OnEnable()
@@ -115,6 +184,7 @@ public class DrawerContents : MonoBehaviour
 
     private void OnFinishedClosing()
     {
+        if (refillOnClose) RefillEmptySlots();
         if (hideContentsWhenClosed) SetContentsVisible(false);
     }
 
@@ -159,7 +229,7 @@ public class DrawerContents : MonoBehaviour
     {
         if (item == null || !IsOpenForStorage || !Accepts(item)) return false;
         Transform area = storageArea.transform;
-        Transform parent = openable.MovingPart;
+        Transform parent = ContentsParent;
         Quaternion rot = parent.rotation * Quaternion.Euler(EulerFor(item));
 
         // tamanho do item já virado como fica guardado, no espaço da área (alinhada com a gaveta)
@@ -267,16 +337,10 @@ public class DrawerContents : MonoBehaviour
         }
         else
         {
-            Transform parent = openable.MovingPart;
             bool visible = openable.IsOpen || !hideContentsWhenClosed;
             for (int i = 0; i < entry.quantity; i++)
             {
-                Vector3 pos = parent.TransformPoint(entry.localPosition + entry.step * i);
-                Quaternion rot = parent.rotation * Quaternion.Euler(entry.localEuler);
-                PickupInteractable item = Instantiate(entry.prefab, pos, rot, parent);
-                item.PickedUp += OnItemTaken;
-                item.MarkStored(this);
-                inside.Add(item);
+                PickupInteractable item = CreateAt(index, i);
                 if (!visible) item.gameObject.SetActive(false);
             }
         }

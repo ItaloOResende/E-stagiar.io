@@ -79,20 +79,42 @@ public static class UICursor
             return;
         }
 
-        int height = Mathf.Clamp(deCima ? alturaDeCima : alturaDaTela, 16, 512);
+        int height = Mathf.Clamp(deCima ? alturaDeCima : alturaDaTela, 16, AlturaMaxima);
         Vector2 hotspotPixels = deCima ? pontaDeCima : pontaDaTela;
 
         float k = height / (float)textura.height;
         int width = Mathf.Max(1, Mathf.RoundToInt(textura.width * k));
         Texture2D scaled = Scaled(textura, width, height);
         Vector2 hotspot = new Vector2(Mathf.Clamp(hotspotPixels.x * k, 0, width - 1), Mathf.Clamp(hotspotPixels.y * k, 0, height - 1));
-        Cursor.SetCursor(scaled, hotspot, CursorMode.ForceSoftware);
+        Cursor.SetCursor(scaled, hotspot, Modo);
         Current = textura;
     }
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+    // Web: o navegador desenha o cursor (CSS). Cursor por software não aparece, e acima de 128 px ele é ignorado.
+    private const CursorMode Modo = CursorMode.Auto;
+    private const int AlturaMaxima = 128;
+#else
+    private const CursorMode Modo = CursorMode.ForceSoftware;
+    private const int AlturaMaxima = 512;
+#endif
 
     private static Texture2D Scaled(Texture2D source, int width, int height)
     {
         if (cache.TryGetValue((source, height), out Texture2D t) && t != null) return t;
+        if (source.isReadable)
+        {
+            // textura legível: redimensiona na CPU (sem depender de leitura da GPU, que varia por plataforma)
+            t = new Texture2D(width, height, TextureFormat.RGBA32, false) { name = source.name + "_" + height };
+            var px = new Color[width * height];
+            for (int y = 0; y < height; y++)
+                for (int x = 0; x < width; x++)
+                    px[y * width + x] = source.GetPixelBilinear((x + 0.5f) / width, (y + 0.5f) / height);
+            t.SetPixels(px);
+            t.Apply();
+            cache[(source, height)] = t;
+            return t;
+        }
         RenderTexture rt = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32);
         RenderTexture previous = RenderTexture.active;
         Graphics.Blit(source, rt);

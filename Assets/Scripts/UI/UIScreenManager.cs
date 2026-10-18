@@ -125,7 +125,7 @@ public class UIScreenManager : MonoBehaviour
         // Rede de segurança: no 3D (sem tela, sem celular, sem relatório) e com a janela em foco, o cursor fica
         // travado. Algo que solte o cursor e não o devolva (ex.: fechar uma tela por outro caminho) não deixa o
         // jogador com o mouse saindo da janela.
-        if (!IsOpen && !TicketTabletPrototype.CelularAberto && !TicketTabletPrototype.CursorLiberado && !StageReportScreen.Showing && !MainMenuScreen.Showing && Application.isFocused
+        if (!IsOpen && !TicketTabletPrototype.CelularAberto && !TicketTabletPrototype.CursorLiberado && !StageReportScreen.Showing && !MainMenuScreen.Showing && !PauseMenuScreen.Showing && Application.isFocused
             && Time.frameCount > closedFrame + 1 && Cursor.lockState != CursorLockMode.Locked)
         {
             Cursor.lockState = CursorLockMode.Locked;

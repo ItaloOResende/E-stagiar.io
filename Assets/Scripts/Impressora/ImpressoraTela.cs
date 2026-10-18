@@ -18,9 +18,10 @@ public enum ImpressoraVista { Toner, Papel, Painel, Teste }
 ///    sai, o LED pisca vermelho e aparece o X (aviso discreto, sem dizer o motivo). Os chamados validam pelo teste (<see cref="ImpressoraEstacao.TestesOk"/>).
 ///  - <b>Toner</b>: a frente aberta, com o compartimento do cartucho.
 ///  - <b>Papel</b>: a bandeja de papel puxada para fora.
-///  - <b>Painel</b>: configuração de rede (campos do IP e da máscara de sub-rede + teclado numérico; o campo ativo,
-///    com a borda azul, recebe as teclas). Também aceita o TECLADO FÍSICO: números, ponto, Tab (troca o campo),
-///    Backspace (apaga), Delete (limpa) e Enter (confirma o campo ativo).
+///  - <b>Painel</b>: configuração de rede (só o campo do endereço IP + teclado numérico), com máscara de ENTRADA IPv4:
+///    os pontos entram sozinhos e o visor mostra o formato 192.168.001.010 (<see cref="ImpressoraSession.FormatarVisor"/>).
+///    Também aceita o TECLADO FÍSICO: números, ponto (fecha o grupo antes dos 3 dígitos), Backspace (apaga, voltando
+///    pelos grupos), Delete (limpa) e Enter (confirma).
 /// Os textos são neutros: a tela não diz o que está faltando.
 ///
 /// O estado NÃO fica aqui: fica no <see cref="ImpressoraEstacao"/> do objeto do mundo (<c>UIScreen.Source</c>).
@@ -84,8 +85,7 @@ public class ImpressoraTela : MonoBehaviour
     private RectTransform papelVazio;
 
     // Vista "Painel".
-    private Text lcdStatus, lcdIp, lcdMascara, ipSalvoTxt;
-    private Image bordaIp, bordaMascara;
+    private Text lcdStatus, lcdIp, ipSalvoTxt;
     private Image lcdLed;
     private static Sprite arredondado;
     private bool modelosProntos;
@@ -144,11 +144,6 @@ public class ImpressoraTela : MonoBehaviour
         if (k.backspaceKey.wasPressedThisFrame) ClicarTecla("Apagar");
         if (k.deleteKey.wasPressedThisFrame) Limpar();
         if (k.enterKey.wasPressedThisFrame || k.numpadEnterKey.wasPressedThisFrame) ClicarConfirmar();
-        if (k.tabKey.wasPressedThisFrame)
-        {
-            ImpressoraEstacao est = Estacao();
-            if (est != null) SelecionarCampo(est.Sessao.CampoAtivo == ImpressoraCampoRede.Ip ? ImpressoraCampoRede.Mascara : ImpressoraCampoRede.Ip);
-        }
     }
 
     private ImpressoraEstacao Estacao()
@@ -427,9 +422,8 @@ public class ImpressoraTela : MonoBehaviour
         st.anchorMin = Vector2.zero; st.anchorMax = Vector2.one; st.offsetMin = new Vector2(64f, 0f); st.offsetMax = new Vector2(-20f, 0f);
         lcdStatus.fontStyle = FontStyle.Bold;
 
-        // dois campos lado a lado: o campo ATIVO (borda azul) recebe as teclas; clique no campo ou Tab para trocar
-        lcdIp = CampoRede(cartao, "Ip", "Endereço IP", -198f, ImpressoraCampoRede.Ip, out bordaIp);
-        lcdMascara = CampoRede(cartao, "Mascara", "Máscara de sub-rede", 198f, ImpressoraCampoRede.Mascara, out bordaMascara);
+        // um único campo: o endereço IP (recebe as teclas; os pontos entram sozinhos)
+        lcdIp = CampoRede(cartao, "Ip", "Endereço IP");
         ipSalvoTxt = RedeUi.Texto(cartao, "IpSalvo", "", 22, TextAnchor.MiddleCenter, TextoFraco);
         RedeUi.Ancorar((RectTransform)ipSalvoTxt.transform, new Vector2(0.5f, 0.5f), new Vector2(784f, 30f), new Vector2(0.5f, 0.5f));
         ((RectTransform)ipSalvoTxt.transform).anchoredPosition = new Vector2(0f, 138f);
@@ -457,7 +451,7 @@ public class ImpressoraTela : MonoBehaviour
         Text rc = confirmar.GetComponentInChildren<Text>();
         if (rc != null) { rc.color = new Color(0.05f, 0.1f, 0.06f); rc.fontStyle = FontStyle.Bold; }
 
-        Text dica = RedeUi.Texto(vista, "Dica", "Digite pelos botões ou pelo teclado  ·  Tab troca o campo  ·  Enter confirma  ·  Backspace apaga", 20,
+        Text dica = RedeUi.Texto(vista, "Dica", "Digite pelos botões ou pelo teclado  ·  os pontos entram sozinhos  ·  Enter confirma  ·  Backspace apaga", 20,
                                  TextAnchor.MiddleCenter, TextoFraco);
         RedeUi.Ancorar((RectTransform)dica.transform, new Vector2(0.5f, 0.5f), new Vector2(1100f, 30f), new Vector2(0.5f, 0.5f));
         ((RectTransform)dica.transform).anchoredPosition = new Vector2(0f, -462f);
@@ -465,31 +459,20 @@ public class ImpressoraTela : MonoBehaviour
 
     private static readonly Color LedApagado = new Color(0.3f, 0.34f, 0.4f);
     private static readonly Color BordaAtiva = new Color(0.36f, 0.6f, 0.95f, 0.95f);
-    private static readonly Color BordaInativa = new Color(0.36f, 0.4f, 0.48f, 0.6f);
 
-    // Campo do painel de rede (rótulo + visor + borda), clicável para ficar ativo.
-    private Text CampoRede(RectTransform cartao, string nome, string rotuloTxt, float x, ImpressoraCampoRede qual, out Image borda)
+    // Campo do painel de rede (rótulo + visor + borda), na largura do cartão.
+    private Text CampoRede(RectTransform cartao, string nome, string rotuloTxt)
     {
         Text rotulo = RedeUi.Texto(cartao, "Rotulo" + nome, rotuloTxt, 22, TextAnchor.MiddleLeft, TextoFraco);
-        RedeUi.Ancorar((RectTransform)rotulo.transform, new Vector2(0.5f, 0.5f), new Vector2(384f, 30f), new Vector2(0.5f, 0.5f));
-        ((RectTransform)rotulo.transform).anchoredPosition = new Vector2(x, 262f);
-        RectTransform campo = Caixa(cartao, "Campo" + nome, CorCampo, new Vector2(x, 200f), new Vector2(384f, 84f));
-        borda = Caixa(campo, "Borda", BordaInativa, new Vector2(0f, -40f), new Vector2(384f, 4f)).GetComponent<Image>();
-        Text visor = RedeUi.Texto(campo, nome, "", 32, TextAnchor.MiddleCenter, TextoClaro);
+        RedeUi.Ancorar((RectTransform)rotulo.transform, new Vector2(0.5f, 0.5f), new Vector2(784f, 30f), new Vector2(0.5f, 0.5f));
+        ((RectTransform)rotulo.transform).anchoredPosition = new Vector2(0f, 262f);
+        RectTransform campo = Caixa(cartao, "Campo" + nome, CorCampo, new Vector2(0f, 200f), new Vector2(784f, 84f));
+        Caixa(campo, "Borda", BordaAtiva, new Vector2(0f, -40f), new Vector2(784f, 6f));
+        Text visor = RedeUi.Texto(campo, nome, "", 36, TextAnchor.MiddleCenter, TextoClaro);
         RedeUi.Esticar((RectTransform)visor.transform);
         visor.fontStyle = FontStyle.Bold;
         visor.raycastTarget = false;
-        TornarClicavel(campo, () => SelecionarCampo(qual));
         return visor;
-    }
-
-    private void SelecionarCampo(ImpressoraCampoRede campo)
-    {
-        ImpressoraEstacao est = Estacao();
-        if (est == null) return;
-        est.Sessao.SelecionarCampo(campo);
-        InteractionSounds.Raise(InteractionSound.PowerButton);
-        Atualizar();
     }
 
     private static void Arredondar(RectTransform botao)
@@ -505,7 +488,7 @@ public class ImpressoraTela : MonoBehaviour
         if (e == null) return;
         e.Sessao.Limpar();
         InteractionSounds.Raise(InteractionSound.PowerButton);
-        Mensagem(e.Sessao.CampoAtivo == ImpressoraCampoRede.Ip ? "Campo do IP limpo." : "Campo da máscara limpo.", TextoFraco);
+        Mensagem("Campo do IP limpo.", TextoFraco);
         Atualizar();
     }
 
@@ -673,28 +656,16 @@ public class ImpressoraTela : MonoBehaviour
         if (est == null) return;
 
         ImpressoraSession s = est.Sessao;
-        bool ip = s.CampoAtivo == ImpressoraCampoRede.Ip;
-        if (s.Digitado.Length == 0)
-        {
-            // nada digitado no campo ativo: Enter só passa para o outro campo
-            SelecionarCampo(ip ? ImpressoraCampoRede.Mascara : ImpressoraCampoRede.Ip);
-            return;
-        }
-        bool ok = ip ? s.ConfirmarIp() : s.ConfirmarMascara();
-        if (!ok)
+        if (s.Digitado.Length == 0) return;   // nada digitado: o IP salvo continua como está
+        if (!s.ConfirmarIp())
         {
             InteractionSounds.Raise(InteractionSound.Error);
-            Mensagem(ip ? "IP inválido. Use 4 números de 0 a 255 (ex.: 192.168.0.10)."
-                        : "Máscara inválida. Use uma máscara de sub-rede (ex.: 255.255.255.0).", Vermelho);
+            Mensagem("IP incompleto. Preencha os 4 grupos (ex.: 192.168.001.010).", Vermelho);
         }
         else
         {
             InteractionSounds.Raise(InteractionSound.PowerButton);
-            if (s.RedeConfigurada) Mensagem($"Rede configurada: {s.IpSalvo} / {s.MascaraSalva}.", Verde);
-            else if (s.TemIp && s.TemMascara)
-                Mensagem($"O IP {s.IpSalvo} não é um endereço de host válido na máscara {s.MascaraSalva}.", Vermelho);
-            else if (ip) { Mensagem("IP salvo. Agora a máscara de sub-rede.", TextoFraco); s.SelecionarCampo(ImpressoraCampoRede.Mascara); }
-            else { Mensagem("Máscara salva. Agora o endereço IP.", TextoFraco); s.SelecionarCampo(ImpressoraCampoRede.Ip); }
+            Mensagem($"IP configurado: {s.IpSalvo}.", Verde);
         }
         Atualizar();
     }
@@ -736,24 +707,28 @@ public class ImpressoraTela : MonoBehaviour
         lcdLed.color = s.Pronta ? Verde : Amarelo;
 
         bool cursor = Mathf.Repeat(Time.unscaledTime, 1f) < 0.55f;
-        Visor(lcdIp, bordaIp, s.IpDigitado, s.IpSalvo, s.CampoAtivo == ImpressoraCampoRede.Ip, cursor,
-              ImpressoraSession.IpEhValido(s.IpDigitado), s.RedeConfigurada || (s.TemIp && !s.TemMascara));
-        Visor(lcdMascara, bordaMascara, s.MascaraDigitada, s.MascaraSalva, s.CampoAtivo == ImpressoraCampoRede.Mascara, cursor,
-              ImpressoraSession.MascaraEhValida(s.MascaraDigitada), s.RedeConfigurada || (s.TemMascara && !s.TemIp));
-        ipSalvoTxt.text = s.TemIp || s.TemMascara
-            ? "Configurado: " + (s.TemIp ? s.IpSalvo : "sem IP") + "  /  " + (s.TemMascara ? s.MascaraSalva : "sem máscara")
-            : "Nenhum endereço configurado";
+        Visor(lcdIp, s.IpDigitado, s.IpSalvo, cursor);
+        ipSalvoTxt.text = s.TemIp ? "Configurado: " + s.IpSalvo : "Nenhum endereço configurado";
     }
 
-    // Um visor do painel: o texto em digitação (com cursor piscando no campo ativo) ou o valor salvo.
-    private void Visor(Text visor, Image borda, string digitado, string salvo, bool ativo, bool cursor, bool digitadoValido, bool salvoOk)
+    // O visor do IP: em digitação, o formato da máscara de entrada (192.168.001.___) com o cursor piscando; parado,
+    // o IP salvo no mesmo formato (verde) ou o molde vazio.
+    private void Visor(Text visor, string digitado, string salvo, bool cursor)
     {
-        string txt = digitado.Length > 0 ? digitado : salvo.Length > 0 ? salvo : "___.___.___.___";
-        visor.text = digitado.Length > 0 && ativo ? txt + (cursor ? "|" : " ") : (ativo && digitado.Length == 0 && cursor ? txt + "|" : txt);
-        visor.color = digitado.Length > 0 ? (digitadoValido ? Verde : TextoClaro)
-                    : salvo.Length > 0 ? (salvoOk ? Verde : Amarelo) : TextoFraco;
-        borda.color = ativo ? BordaAtiva : BordaInativa;
-        borda.rectTransform.sizeDelta = new Vector2(borda.rectTransform.sizeDelta.x, ativo ? 6f : 3f);
+        bool digitando = digitado.Length > 0;
+        string txt = digitando ? ImpressoraSession.FormatarVisor(digitado)
+                   : salvo.Length > 0 ? Completo(salvo) : "___.___.___.___";
+        visor.text = txt + (cursor ? "|" : " ");
+        visor.color = digitando ? (ImpressoraSession.IpEhValido(digitado) ? Verde : TextoClaro)
+                    : salvo.Length > 0 ? Verde : TextoFraco;
+    }
+
+    // 192.168.1.10 -> 192.168.001.010 (o formato do visor)
+    private static string Completo(string ip)
+    {
+        string[] g = ip.Split('.');
+        for (int i = 0; i < g.Length; i++) g[i] = g[i].PadLeft(3, '0');
+        return string.Join(".", g);
     }
 
     private void Mensagem(string texto, Color cor)

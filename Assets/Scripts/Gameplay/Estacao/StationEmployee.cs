@@ -17,6 +17,14 @@ public class StationEmployee : MonoBehaviour
     public string employeeName = "Funcionário";
     [Tooltip("Setor (mostrado no celular junto do nome).")]
     public string department = "Escritório";
+    [Tooltip("Identificação da estação (ex.: \"Estação 03\"). Estação SEM funcionário (nome vazio, sem NPC) usa isto " +
+             "na plaquinha e no local do chamado.")]
+    public string stationLabel = "";
+
+    /// <summary>Estação ocupada por um funcionário (NPC). Vazia = só a identificação da estação.</summary>
+    public bool Occupied => !string.IsNullOrEmpty(employeeName);
+    /// <summary>O que a plaquinha mostra: o nome do funcionário ou, sem funcionário, a identificação da estação.</summary>
+    public string DisplayName => Occupied ? employeeName : stationLabel;
 
     public static IReadOnlyList<StationEmployee> All => all;
 

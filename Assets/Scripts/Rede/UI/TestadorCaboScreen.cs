@@ -88,10 +88,11 @@ public class TestadorCaboScreen : MonoBehaviour
         RectTransform painel = RedeUi.Cheio(transform, "Painel", CorFundo);
         RedeUi.BotaoFechar(painel, () => Tela.RequestClose());
 
-        Text titulo = RedeUi.Texto(painel, "Titulo", "TESTADOR DE CABO DE REDE", 30, TextAnchor.MiddleLeft, TextoFraco);
+        // centralizado no alto: fica entre o selo de pontos (alto à esquerda) e o relógio (alto à direita), sem encostar
+        Text titulo = RedeUi.Texto(painel, "Titulo", "TESTADOR DE CABO DE REDE", 30, TextAnchor.MiddleCenter, TextoFraco);
         titulo.fontStyle = FontStyle.Bold;
-        RedeUi.Ancorar((RectTransform)titulo.transform, new Vector2(0f, 1f), new Vector2(900f, 60f), new Vector2(0f, 1f));
-        ((RectTransform)titulo.transform).anchoredPosition = new Vector2(40f, -26f);
+        RedeUi.Ancorar((RectTransform)titulo.transform, new Vector2(0.5f, 1f), new Vector2(700f, 56f), new Vector2(0.5f, 1f));
+        ((RectTransform)titulo.transform).anchoredPosition = new Vector2(0f, -28f);
 
         // palco: o modelo 3D (ou o desenho) com as entradas clicáveis, o cabo e os plugues por cima
         palco = RedeUi.Imagem(painel, "Palco", Color.clear);
@@ -261,6 +262,9 @@ public class TestadorCaboScreen : MonoBehaviour
         posA = Cobrir(alvoPrincipal, entradaPrincipal, new Vector2(-300f, -60f));
         posB = Cobrir(alvoRemota, entradaRemota, new Vector2(300f, -60f));
         Cobrir(botaoTestar, botaoModelo, new Vector2(-300f, 120f));
+        // pronto para testar: o anel TESTAR pulsa de leve (é a orientação do próximo passo, sem frase na tela)
+        float pulso = botaoTestar.gameObject.activeSelf ? 1f + 0.08f * Mathf.Sin(Time.unscaledTime * 5f) : 1f;
+        botaoTestar.localScale = new Vector3(pulso, pulso, 1f);
 
         // plugues deslizam até a entrada (encaixado) ou até o cabo na mão; o cabo é desenhado entre eles
         float k = 1f - Mathf.Exp(-16f * Time.unscaledDeltaTime);
@@ -407,7 +411,7 @@ public class TestadorCaboScreen : MonoBehaviour
         if (testando || faixaResultado.gameObject.activeSelf) return;
         if (!temCabo && !pontaA && !pontaB) Status("Segure um cabo de rede e encaixe as pontas nas entradas.", TextoFraco);
         else if (!pontaA || !pontaB) Status("Encaixe " + (pontaA || pontaB ? "a outra ponta" : "as duas pontas") + " do cabo nas entradas.", TextoClaro);
-        else Status("Pontas encaixadas. Aperte o botão TEST do testador.", TextoClaro);
+        else Status("", TextoClaro);   // pontas encaixadas: o anel TESTAR pulsando no botão do testador já orienta
     }
 
     private void Apagar()

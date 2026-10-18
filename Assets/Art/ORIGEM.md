@@ -254,3 +254,21 @@ Scripts, prefabs com scripts quebrados (`Gabinete`, `gaveteiro*`), cenas legadas
 - Correção (2026-10-14): a impressora usa o **material original** dele. O "Material.001" do FBX aponta para a textura `officepapers.png` (dele), que o importador não achava; o FBX agora é remapeado para o `M_Objetos_Parede` (material dele com essa textura). O `M_Escritorio_Claro` saiu da impressora.
 - `Models/componentes.fbx` (2026-10-14): entraram `Item_MemoriaSodimm` (SO-DIMM do notebook, a mesma construção da RAM do PC em 6,8 × 3,0 cm) e as versões quebradas `Item_MemoriaSodimm_Quebrada` e `Item_Ssd_Quebrado`, pelo mesmo `Tools/blender/componentes_build.py` (autoria própria). Os demais itens continuam idênticos.
 - `UI/PH_ui_tela_notebook_*.png` (8 telas, 2026-10-14): as telas do monitor (BIOS, sem sistema, instalando 0..4, sistema) com a terminologia do notebook (SSD, SO-DIMM, tela integrada, ícone de Wi-Fi), geradas pelo mesmo `Tools/screens/gerar_telas_monitor.py` (perfil `notebook`; autoria própria, fonte DejaVu Sans Mono livre). As telas do PC continuam idênticas (conferido pixel a pixel).
+
+## 2026-10-17 — mobiliário da sala de TI e das impressoras (autoria própria)
+
+- `Models/bancada_manutencao.fbx`, `Models/armario_ti.fbx`, `Models/estante_estoque.fbx` e `Models/bancada_impressoras.fbx`: modelados **por código** em `Tools/blender/mobiliario_escritorio_build.py` (Blender 5.2, só primitivas com chanfro; autoria própria, sem asset de terceiros). Arquivos de trabalho em `Art/Source/Blender/mobiliario/*.blend`. Não há material nem textura novos: os 4 slots (`Claro`, `Escuro`, `Metal`, `Tapete`) são trocados nos prefabs pelos materiais do Matheus `M_Escritorio_Claro`, `M_Escritorio_Escuro`, `M_PC_Chapa` e pelo `M_Impressora_Escuro` do projeto.
+- `Prefabs/Gameplay/Estacao_Notebook.prefab`: variante do `Estacao_Trabalho` (sem o `PC_Escritorio`, com `Notebook_Estacao` + `Notebook_Toon`). Nenhum modelo novo.
+- Na `Office_Placeholder`, as caixas do estoque usam o `caixa.fbx` do Matheus redimensionado, e as divisas novas são cópias do `divisa.fbx` dele (mesma escala e material).
+
+## 2026-10-17 — ajustes da sala de TI (autoria própria)
+
+- `Models/bancada_armarios.fbx`, `quadro_retrato.fbx`, `quadro_paisagem.fbx`, `calendario.fbx`, `placa.fbx`: modelados por código em `Tools/blender/sala_ti_complementos_build.py` (reaproveita o `mobiliario_escritorio_build.py`); `.blend` em `Art/Source/Blender/mobiliario/`.
+- `Models/puff.fbx` (puff estofado amarelo) e `Models/carrinho_rack.fbx` (carrinho técnico preto do rack, com gaveta, prateleira, compartimento inferior e rodízios): modelados por código em `Tools/blender/puff_build.py` e `Tools/blender/carrinho_rack_build.py` (autoria própria, 2026-10-17); `.blend` em `Art/Source/Blender/mobiliario/`. Materiais `Materials/Mobiliario/M_Mobiliario_{Amarelo,AmareloEscuro,Preto}` (URP/Lit).
+- `Models/armario_reserva.fbx` (armário de TI com portas e prateleiras) e `Models/rack_interno.fbx` (switch, patch panel, organizador, trilhos, modem, nobreak, LEDs e patch cords): autoria própria, `Tools/blender/armario_reserva_build.py` (2026-10-17). Materiais novos `Materials/Mobiliario/M_Rack_{Contatos,Etiqueta,Led,CaboPatch}` (URP/Lit).
+- `Textures/Quadros/*.png` (cartaz de segurança, diagrama da rede, calendário de out/2026, placa "SALA DE TI", aviso da bancada): gerados por `Tools/textures/gerar_quadros_ti.py`, com a fonte Inter (SIL Open Font License, a que vem com o Blender 5.2).
+- `Materials/Mobiliario/M_Mobiliario_Claro|Escuro|Metal` (URP/Lit, mesmas cores de `M_Escritorio_Claro`, `M_Escritorio_Escuro` e `M_PC_Chapa`, sem reflexo do ambiente) e `Materials/Quadros/M_Quadro_*` (URP/Lit com as texturas acima). Os materiais do Matheus não foram alterados.
+
+## Decoração das estações (2026-10-18) — original do projeto
+
+- `Art/Meshes/Decoracao/DEC_*.asset`, `Art/Textures/Decoracao/T_Decoracao_Atlas.png`, `Art/Materials/Decoracao/M_Decoracao.mat`, `Prefabs/Props/Decoracao/DEC_*.prefab`: gerados por código em `Assets/Editor/DecoracaoEscritorioSetup.cs` (malhas low-poly, paleta e texto dos post-its desenhados com fonte de pixels própria). Sem asset de terceiros; o material é cópia do `M_Character_Tex1_1` (Toon/Toon) do Matheus com a textura do atlas.

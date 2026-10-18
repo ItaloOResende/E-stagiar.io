@@ -20,6 +20,8 @@ public class OpenableInteractable : Interactable
     [SerializeField] private float duration = 0.6f;
     [SerializeField] private AnimationCurve ease = AnimationCurve.EaseInOut(0, 0, 1, 1);
     [SerializeField] private bool startsOpen = false;
+    [Tooltip("Outras partes que abrem/fecham junto com esta (ex.: a outra porta de um armário de duas portas).")]
+    [SerializeField] private OpenableInteractable[] linked = new OpenableInteractable[0];
 
     public UnityEvent onOpened;
     public UnityEvent onClosed;
@@ -98,6 +100,7 @@ public class OpenableInteractable : Interactable
         InteractionSounds.Raise(open ? InteractionSound.DrawerOpened : InteractionSound.DrawerClosed, MovingPart.position);
         (open ? onOpened : onClosed).Invoke();
         if (open) Opened?.Invoke();
+        foreach (OpenableInteractable l in linked) if (l != null && l != this) l.SetOpen(open);
     }
 
     private System.Collections.IEnumerator Tranco()

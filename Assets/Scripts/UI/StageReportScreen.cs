@@ -18,8 +18,7 @@ using UnityEngine.UI;
 /// Não precisa estar na cena: o próprio ScoreKeeper o cria no mesmo objeto (<see cref="ScoreKeeper"/>, campo Show Stage Report).
 /// Enquanto aberto, desliga os controles do jogador e libera o cursor.
 /// Botões: "Jogar novamente" (recarrega a cena no MESMO modo) e "Ir para o menu inicial" (recarrega a cena do zero e
-/// abre o <see cref="MainMenuScreen"/>: nenhum dado da partida sobra). No <see cref="GameMode.SpeedRun"/> o topo mostra o
-/// resultado do Speed Run (concluídos, tempo médio, ritmo e recorde) no lugar das estrelas.
+/// abre o <see cref="MainMenuScreen"/>: nenhum dado da partida sobra).
 /// </summary>
 public class StageReportScreen : MonoBehaviour
 {
@@ -75,22 +74,9 @@ public class StageReportScreen : MonoBehaviour
 
     private void OnStageScored(int score, int stars)
     {
-        StageController sc = GetComponent<StageController>();
-        speedRun = sc != null && sc.IsSpeedRun;
-        if (speedRun)
-        {
-            int done = 0;
-            foreach (TicketInstance t in keeper.OfferedTickets) if (t.Status == TicketStatus.Completed) done++;
-            newRecord = GameSession.SubmitSpeedRun(done);
-        }
         if (showOnStageEnd) Show();
     }
 
-    private bool speedRun, newRecord;
-    /// <summary>O último relatório foi de um Speed Run (testes).</summary>
-    public bool IsSpeedRunReport => speedRun;
-    /// <summary>Texto do resultado do Speed Run da última abertura (testes).</summary>
-    public string LastSpeedRun { get; private set; } = "";
 
     // ================================================================== abrir / fechar
 
@@ -522,13 +508,11 @@ public class StageReportScreen : MonoBehaviour
         // faixa do título
         Image ribbon = Box(panel, "Faixa", Blue, rounded);
         Place(ribbon.rectTransform, new Vector2(0.5f, 1f), new Vector2(760f, 96f), new Vector2(0f, 0f));
-        Text title = Label(ribbon.rectTransform, speedRun ? "FIM DO SPEED RUN" : "FIM DO EXPEDIENTE", 50, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+        Text title = Label(ribbon.rectTransform, "FIM DO EXPEDIENTE", 50, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
         Outline(title, Ink, 3f);
 
-        if (speedRun) BuildSpeedRunHeader(d);
         // estrelas
         RectTransform starRow = New("Estrelas", panel);
-        starRow.gameObject.SetActive(!speedRun);   // no Speed Run o critério é o número de concluídos
         Place(starRow, new Vector2(0.5f, 1f), new Vector2(600f, 170f), new Vector2(0f, -140f));
         int max = Mathf.Max(1, d.maxStars);
         for (int i = 0; i < max; i++)
@@ -553,7 +537,6 @@ public class StageReportScreen : MonoBehaviour
         Text gradeText = Label(Area(panel, new Vector2(0.5f, 1f), new Vector2(900f, 46f), new Vector2(0f, -262f)),
             grade, 36, FontStyle.Bold, Ink, TextAnchor.MiddleCenter);
         gradeText.name = "Conceito";
-        if (speedRun) gradeText.transform.parent.gameObject.SetActive(false);
 
         // coluna esquerda: números principais
         RectTransform left = New("Resumo", panel);
@@ -575,41 +558,21 @@ public class StageReportScreen : MonoBehaviour
         // cartão-botão: resumo curto; o clique abre a explicação completa (DetalheEstrelas)
         Image why = Box(panel, "PorQue", new Color(1f, 0.91f, 0.68f), roundedThin);
         Place(why.rectTransform, new Vector2(0.5f, 0f), new Vector2(1400f, 120f), new Vector2(0f, 172f));
-        Clicavel(why, () => OpenDetail(d, !speedRun));
+        Clicavel(why, () => OpenDetail(d, true));
         Text whyTitle = Label(Area(why.rectTransform, new Vector2(0f, 1f), new Vector2(520f, 34f), new Vector2(286f, -24f)),
-            speedRun ? "COMO O SPEED RUN É AVALIADO" : $"POR QUE {d.stars} ESTRELA{(d.stars == 1 ? "" : "S")}?", 24, FontStyle.Bold, Ink, TextAnchor.MiddleLeft);
+            $"POR QUE {d.stars} ESTRELA{(d.stars == 1 ? "" : "S")}?", 24, FontStyle.Bold, Ink, TextAnchor.MiddleLeft);
         Image ver = Box(why.rectTransform, "VerDetalhes", Blue, rounded);
         Place(ver.rectTransform, new Vector2(1f, 0.5f), new Vector2(250f, 56f), new Vector2(-150f, 0f));
         Outline(Label(ver.rectTransform, "Ver detalhes \u25B8", 22, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter), Ink, 1.5f);
         whyTitle.name = "PorQueTitulo";
         Text whyText = Label(Area(why.rectTransform, new Vector2(0f, 0.5f), new Vector2(1080f, 56f), new Vector2(570f, -18f)),
-            speedRun ? "Vence quem CONCLUIR MAIS chamados antes do relógio zerar; o tempo médio por chamado desempata. " +
-                       "Pontos e penalidades seguem as regras do expediente (extrato ao lado)." : ShortSummary(d),
+            ShortSummary(d),
             22, FontStyle.Normal, Ink, TextAnchor.MiddleLeft);
         whyText.resizeTextForBestFit = true; whyText.resizeTextMinSize = 14; whyText.resizeTextMaxSize = 21;
 
         // botões
         Button(panel, "Jogar novamente", new Vector2(-190f, 50f), Blue, Restart);
         Button(panel, "Ir para o menu inicial", new Vector2(190f, 50f), Muted, GoToMainMenu);
-    }
-
-    // Topo do relatório no Speed Run: concluídos (critério), tempo médio por atendimento, ritmo e recorde.
-    private void BuildSpeedRunHeader(Data d)
-    {
-        float soma = 0f; int n = 0;
-        foreach (TicketInstance t in keeper.OfferedTickets)
-            if (t.Status == TicketStatus.Completed && t.ServiceSeconds >= 0f) { soma += t.ServiceSeconds; n++; }
-        string media = n > 0 ? FormatTime(soma / n) : "--:--";
-        float ritmo = d.seconds > 1f ? d.completed / (d.seconds / 60f) : 0f;
-        int rec = GameSession.SpeedRunRecord;
-        LastSpeedRun = $"{d.completed}|{media}|{ritmo:0.0}|{rec}";
-        Text big = Label(Area(panel, new Vector2(0.5f, 1f), new Vector2(1200f, 110f), new Vector2(0f, -150f)),
-            $"{d.completed} CHAMADO{(d.completed == 1 ? "" : "S")} CONCLUÍDO{(d.completed == 1 ? "" : "S")}", 72, FontStyle.Bold, Blue, TextAnchor.MiddleCenter);
-        big.name = "SpeedRunConcluidos";
-        Outline(big, Ink, 3f);
-        Label(Area(panel, new Vector2(0.5f, 1f), new Vector2(1300f, 46f), new Vector2(0f, -232f)),
-            $"tempo médio por chamado {media}  •  ritmo {ritmo:0.0} por minuto  •  " +
-            (newRecord ? "NOVO RECORDE!" : $"recorde: {rec}"), 30, FontStyle.Bold, newRecord ? Warn : Ink, TextAnchor.MiddleCenter);
     }
 
     private void BuildLedger(RectTransform parent, Data d)

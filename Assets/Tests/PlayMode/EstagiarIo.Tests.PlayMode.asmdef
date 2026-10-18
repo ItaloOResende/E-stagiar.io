@@ -5,7 +5,9 @@
         "UnityEngine.TestRunner",
         "UnityEngine.UI",
         "EstagiarIo.Computer",
-        "Unity.AI.Navigation"
+        "Unity.AI.Navigation",
+        "Unity.InputSystem",
+        "EstagiarIo.Rede"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
