@@ -5,13 +5,7 @@ using UnityEngine.SceneManagement;
 public enum GameMode
 {
     /// <summary>Expediente: relógio da fase, chamados param de chegar perto do fim, encerra cedo sem nada pendente.</summary>
-    Normal,
-    /// <summary>
-    /// Speed Run (chamados sem fim): os chamados NUNCA param de chegar e sempre há pelo menos um aberto. A partida termina
-    /// quando o relógio do Speed Run zera (<see cref="StageController"/>, <i>Speed Run Minutes</i>). Resultado: chamados
-    /// concluídos (critério principal) e tempo médio por chamado (desempate), com o recorde guardado no computador.
-    /// </summary>
-    SpeedRun
+    Normal
 }
 
 /// <summary>
@@ -20,8 +14,6 @@ public enum GameMode
 /// </summary>
 public static class GameSession
 {
-    private const string RecordKey = "EstagiarIo.SpeedRun.Recorde";
-
     /// <summary>Modo da partida atual (definido no menu inicial; padrão: Normal).</summary>
     public static GameMode Mode { get; set; } = GameMode.Normal;
 
@@ -58,21 +50,5 @@ public static class GameSession
 #else
         SceneManager.LoadScene(cena.name);
 #endif
-    }
-
-    /// <summary>Melhor resultado de Speed Run guardado (concluídos; 0 = nenhum).</summary>
-    public static int SpeedRunRecord => PlayerPrefs.GetInt(RecordKey, 0);
-
-    /// <summary>Desligado = recordes não são gravados (testes automáticos).</summary>
-    public static bool SaveRecords { get; set; } = true;
-
-    /// <summary>Registra um resultado de Speed Run; devolve true se é recorde novo.</summary>
-    public static bool SubmitSpeedRun(int completed)
-    {
-        if (completed <= SpeedRunRecord) return false;
-        if (!SaveRecords) return true;
-        PlayerPrefs.SetInt(RecordKey, completed);
-        PlayerPrefs.Save();
-        return true;
     }
 }

@@ -12,20 +12,13 @@ public class StageController : MonoBehaviour
              "relatório final sempre abre o menu, com este campo ligado ou não.")]
     [SerializeField] private bool showStartMenu;
 
-    [Header("Speed Run (chamados sem fim)")]
-    [Tooltip("Duração do Speed Run (min): os chamados não param de chegar; ao zerar, a partida termina e o relatório " +
-             "mostra quantos foram concluídos e o tempo médio.")]
-    [Min(1f)] [SerializeField] private float speedRunMinutes = 8f;
-
     public event Action<float> TimeChanged;
     /// <summary>A fase começou (<see cref="StartStage"/>): a pontuação zera aqui.</summary>
     public event Action StageStarted;
     public event Action StageEnded;
 
     public float SecondsRemaining { get; private set; }
-    public float DurationSeconds => (IsSpeedRun ? speedRunMinutes : durationMinutes) * 60f;
-    /// <summary>A partida atual é um Speed Run (<see cref="GameSession.Mode"/>).</summary>
-    public bool IsSpeedRun => GameSession.Mode == GameMode.SpeedRun && stageNumber > 0;
+    public float DurationSeconds => durationMinutes * 60f;
     public bool IsRunning { get; private set; }
 
     private void Awake()
@@ -84,7 +77,6 @@ public class StageController : MonoBehaviour
         }
         SecondsRemaining = DurationSeconds;
         IsRunning = true;
-        ticketManager.EndlessMode = IsSpeedRun;
         StageStarted?.Invoke();
         ticketManager.BeginStage(stageNumber, SecondsRemaining);
         TimeChanged?.Invoke(SecondsRemaining);

@@ -96,6 +96,16 @@ public class RedeGame : MonoBehaviour
     }
 
     /// <summary>
+    /// Desfaz uma retirada: a ligação volta exatamente como era (mesmas portas, cabo, defeito, se era do estado inicial),
+    /// sem contar como ligação nova do jogador nos totais. Usado quando o cabo puxado não tem para onde ir.
+    /// </summary>
+    public void Religar(LigacaoRack antes, PickupInteractable cabo)
+    {
+        if (antes == null) return;
+        if (Topologia.Ligar(antes.A, antes.B, antes.Crimpado, antes.Defeituoso, cabo, antes.LigadaEm, antes.PreLigada) != null) Avisar();
+    }
+
+    /// <summary>
     /// Tira o cabo de uma porta (o jogador no rack, ou um defeito de chamado). Devolve o cabo físico, se houver
     /// (a ligação do estado inicial não tem: o cabo dela é descartado).
     /// </summary>

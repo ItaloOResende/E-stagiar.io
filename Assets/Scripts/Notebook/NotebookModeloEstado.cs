@@ -41,6 +41,13 @@ public class NotebookModeloEstado : MonoBehaviour
     private bool tinhaRam, tinhaSsd;
     private Vector3 restoRam, restoSsd;
     private float encaixeRam = -1f, encaixeSsd = -1f;   // Time.unscaledTime em que a peça começou a encaixar
+    // Desempenho: as peças de "Interior" ficam presas na cavidade de baixo (Base em cima, paredes nos lados, tampa
+    // embaixo) e não aparecem com a tampa no lugar. No notebook do MUNDO, com o estado Fechado, elas não são desenhadas
+    // (forceRenderingOff: continuam ativas, com transform, nomes e SetActive da RAM/SSD intactos). A cópia da tela 2D
+    // não faz isso: lá a vista "Aberto" mostra o interior.
+    private Renderer[] interior = new Renderer[0];
+    private bool ehMundo;
+    private bool? interiorDesenhado;
 
     /// <summary>
     /// Mostra as cabeças dos parafusos do modelo. A tela 2D de baixo desliga: lá a cabeça e o furo são desenhados pela
@@ -90,6 +97,19 @@ public class NotebookModeloEstado : MonoBehaviour
         if (ram != null) restoRam = ram.transform.localPosition;
         if (ssd != null) restoSsd = ssd.transform.localPosition;
         if (estacao == null) estacao = GetComponentInParent<NotebookEstacao>();
+        // a cópia da tela 2D nasce longe da estação (ModeloNaTela) e recebe o notebook por Vincular
+        ehMundo = estacao != null;
+        Transform t = Achar(transform, "Interior");
+        if (t != null) interior = t.GetComponentsInChildren<Renderer>(true);
+    }
+
+    private void OnDisable() => DesenharInterior(true);
+
+    private void DesenharInterior(bool desenhar)
+    {
+        if (interiorDesenhado == desenhar) return;
+        interiorDesenhado = desenhar;
+        foreach (Renderer r in interior) if (r != null) r.forceRenderingOff = !desenhar;
     }
 
     private void LateUpdate() => Atualizar();
@@ -98,6 +118,7 @@ public class NotebookModeloEstado : MonoBehaviour
     {
         NotebookSession s = estacao != null ? estacao.Sessao : null;
         if (s == null) return;
+        if (ehMundo) DesenharInterior(s.Estado == NotebookEstado.Aberto);
 
         for (int i = 0; i < parafusos.Length; i++) Mostrar(parafusos[i], MostrarParafusos && !s.ParafusoRemovido(i));
         Mostrar(tampaInferior, ManterTampa || s.Estado != NotebookEstado.Aberto);

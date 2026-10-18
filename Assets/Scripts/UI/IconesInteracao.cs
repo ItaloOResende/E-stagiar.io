@@ -5,8 +5,9 @@ using UnityEngine;
 /// <c>Tools/icons/gerar_icones_interacao.py</c>). A mãozinha continua a de pixel art (<c>mao_pixel</c>, cópia do
 /// <c>PH_ui_mao</c>), como o cursor das telas. O ícone depende da AÇÃO e do EQUIPAMENTO mirado, não só do clique:
 ///  - esquerdo: pegar/usar (mãozinha), abrir (gaveta/porta), crimpar (alicate, caixa de cabo com o alicate na mão),
-///    rack, testador;
+///    rack, testador (a impressora não tem clique esquerdo: o componente dele está desligado no prefab);
 ///  - direito: manutenção do gabinete = chave de fenda; notebook = notebook com chave; impressora = impressora;
+///    caixa de cabo = alicate;
 ///    monitor = monitor; testador = testador.
 /// Sem regra para o alvo, vale o <see cref="Interactable.promptIcon"/> dele (o campo continua servindo para objetos
 /// novos). Carregados uma vez, sob demanda.
@@ -46,6 +47,8 @@ public static class IconesInteracao
             case OpenableInteractable _: return Abrir;
             case TestadorCaboInteractable _: return Testador;
             case RedeEstacaoInteractable rede:
+                // impressora (se o clique esquerdo dela for religado no prefab): ícone da impressora, nunca o alicate
+                if (rede.GetComponentInParent<ImpressoraEstacao>() != null) return Impressora;
                 if (rede.screen != null && rede.screen.GetComponentInChildren<RedeRackScreen>(true) != null) return Rack;
                 return Crimpador;   // a caixa de cabo de rede (crimpagem)
             case ImpressoraPainelInteractable _: return Impressora;
@@ -63,6 +66,10 @@ public static class IconesInteracao
         }
         // UIScreenInteractable e outros: pelo equipamento ao qual pertencem
         if (alvo.GetComponentInParent<ComputerCase>() != null) return ChaveDeFenda;
+        // caixa de cabo de rede: o clique direito abre a crimpagem (o esquerdo pega a caixa, ou crimpa com o alicate)
+        RedeEstacaoInteractable caixa = alvo.GetComponent<RedeEstacaoInteractable>();
+        if (caixa != null && alvo.GetComponentInParent<ImpressoraEstacao>() == null
+            && (caixa.screen == null || caixa.screen.GetComponentInChildren<RedeRackScreen>(true) == null)) return Crimpador;
         if (alvo.GetComponentInParent<NotebookEstacao>() != null) return Notebook;
         if (alvo.GetComponentInParent<ImpressoraEstacao>() != null) return Impressora;
         if (alvo.GetComponentInParent<MonitorDisplay>() != null) return Monitor;

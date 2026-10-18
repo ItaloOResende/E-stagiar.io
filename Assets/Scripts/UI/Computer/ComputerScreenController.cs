@@ -130,7 +130,10 @@ public class ComputerScreenController : MonoBehaviour
     private bool InteriorLocked => boundCase != null && boundCase.State == CaseState.Closed && !boundCase.CanOpen;
 
     /// <summary>O monitor deste PC aparece na tela agora (perto do gabinete; a distância do jogador não importa).</summary>
-    public bool MonitorVisible => boundPower == null || boundPower.MonitorAvailable;   // perto e não quebrado
+    // perto e não quebrado. Gabinete SEM monitor associado (ex.: os de reserva da sala de TI) não mostra monitor: antes
+    // a tela 2D desenhava um monitor que não existia (sem monitor, a distância "não vale"), mesmo com outro monitor do
+    // mundo ao lado, que não é o dele. O monitor aparece quando um se liga a ele (MonitorAvulso / Connect When Placed).
+    public bool MonitorVisible => boundPower == null || boundPower.Monitor != null && boundPower.MonitorAvailable;
 
     /// <summary>Vista de frente (pelo lado da tela do monitor): o gabinete está à esquerda do monitor no mundo.</summary>
     public bool CaseLeftOfMonitor
@@ -228,8 +231,10 @@ public class ComputerScreenController : MonoBehaviour
             if (!PointerOverButton(pos))
             {
                 PcLink? picked = LooseEndAt(pos);
+                // a ponta que já segue o mouse fica embaixo do ponteiro: clicar nela também é "soltar" (antes o
+                // clique só valia quando o mouse andava mais rápido que a ponta, e era preciso clicar várias vezes)
                 if (picked.HasValue && picked != carriedLink) { carriedLink = picked; RefreshHardware(); }
-                else if (!picked.HasValue && carriedLink.HasValue) DropCarriedCable();
+                else if (carriedLink.HasValue) DropCarriedCable();
             }
         }
 
@@ -532,15 +537,15 @@ public class ComputerScreenController : MonoBehaviour
 
     private bool pressionandoPower;
 
-    // Gabinete aberto: o que o técnico vê lá dentro (peças que faltam), como a identificação do problema do notebook.
+    // Gabinete aberto: as peças que faltam vão SÓ para o Console (depuração). Na tela o jogador não recebe a resposta:
+    // ele descobre olhando o interior (antes o cartão da manutenção mostrava "Diagnóstico: falta ...").
     private void Diagnostico()
     {
         if (boundCase == null) return;
         var faltam = new List<string>();
         foreach (PcComponent c in new[] { PcComponent.Motherboard, PcComponent.Psu, PcComponent.CpuCooler, PcComponent.Ram, PcComponent.Hdd })
             if (!boundCase.HasComponent(c)) faltam.Add(FeedbackManutencao.Nome(c));
-        if (faltam.Count == 0) FeedbackManutencao.Mostrar(screen, "Diagnóstico: todas as peças no lugar.", TipoFeedback.Diagnostico);
-        else FeedbackManutencao.Mostrar(screen, "Diagnóstico: falta " + string.Join(", ", faltam) + ".", TipoFeedback.Diagnostico);
+        Debug.Log("[Manutenção] gabinete aberto: " + (faltam.Count == 0 ? "todas as peças no lugar." : "falta " + string.Join(", ", faltam) + "."), boundCase);
     }
 
     /// <summary>Cabo cuja ponta solta segue o mouse agora (null = nenhum).</summary>

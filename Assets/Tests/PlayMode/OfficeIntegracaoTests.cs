@@ -51,7 +51,6 @@ public class OfficeIntegracaoTests
     public void TearDown()
     {
         T("GameSession").GetProperty("Mode").SetValue(null, Enum.Parse(T("GameMode"), "Normal"));
-        T("GameSession").GetProperty("SaveRecords").SetValue(null, true);
     }
 
 

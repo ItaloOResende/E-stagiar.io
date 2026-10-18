@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// quando o <see cref="StageController"/> pede (<i>Show Start Menu</i>, ou o botão "Ir para o menu inicial" do relatório,
 /// que recarrega a cena do zero com <see cref="GameSession.GoToMainMenu"/>). Escolhas:
 ///  - <b>Expediente</b> (<see cref="GameMode.Normal"/>): a fase de sempre;
-///  - <b>Speed Run</b> (<see cref="GameMode.SpeedRun"/>): chamados sem fim até o relógio do Speed Run zerar.
+///  - <b>Sair do jogo</b>: fecha o jogo (no Editor só registra no Console; não fecha o Editor nem para o Play Mode).
 /// Enquanto aberto, o jogador não anda nem olha e o cursor fica livre; a fase (relógio, chamados) ainda não começou.
 /// </summary>
 public class MainMenuScreen : MonoBehaviour
@@ -71,6 +71,17 @@ public class MainMenuScreen : MonoBehaviour
         if (stage != null) stage.StartStageWithMode(mode);
     }
 
+    /// <summary>Botão "Sair do jogo": encerra a aplicação. No Editor não fecha nada (seguro para testes): só avisa.</summary>
+    public void SairDoJogo()
+    {
+        InteractionSounds.Raise(InteractionSound.PowerButton);
+#if UNITY_EDITOR
+        Debug.Log("Menu inicial: \"Sair do jogo\" (no Editor nada é fechado; na build o jogo encerra).", this);
+#else
+        Application.Quit();
+#endif
+    }
+
     private void OnDestroy()
     {
         if (canvas != null) Showing = false;
@@ -100,15 +111,13 @@ public class MainMenuScreen : MonoBehaviour
         Place(card.rectTransform, new Vector2(1180f, 760f), Vector2.zero);
         Text title = Label(card.rectTransform, "E-stagiar.io", 84, FontStyle.Bold, Blue, new Vector2(1100f, 110f), new Vector2(0f, 290f));
         title.gameObject.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.2f);
-        Label(card.rectTransform, "Estagiário de suporte de TI · escolha o modo", 30, FontStyle.Normal, Muted,
+        Label(card.rectTransform, "Estagiário de suporte de TI", 30, FontStyle.Normal, Muted,
               new Vector2(1100f, 50f), new Vector2(0f, 210f));
 
         ModeButton(card.rectTransform, "EXPEDIENTE", "A fase de sempre: atenda os chamados até o fim do expediente.",
                    Blue, new Vector2(0f, 70f), () => Choose(GameMode.Normal));
-        int rec = GameSession.SpeedRunRecord;
-        ModeButton(card.rectTransform, "SPEED RUN", "Chamados sem fim: conclua o máximo possível antes do relógio zerar." +
-                   (rec > 0 ? $"  Recorde: {rec} chamado(s)." : ""),
-                   Orange, new Vector2(0f, -110f), () => Choose(GameMode.SpeedRun));
+        ModeButton(card.rectTransform, "SAIR DO JOGO", "Fecha o jogo.",
+                   Orange, new Vector2(0f, -110f), SairDoJogo);
         Label(card.rectTransform, "Celular: C (ou Alt + clique no aparelho)  ·  Esc fecha as telas", 22, FontStyle.Italic, Muted,
               new Vector2(1100f, 40f), new Vector2(0f, -300f));
     }

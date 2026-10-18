@@ -51,6 +51,20 @@ public class InteractionPrompt : MonoBehaviour
         Interactable secondary = detector != null && detector.isActiveAndEnabled ? detector.CurrentSecondaryTarget : null;
         Apply(primary, primaryRoot, primaryIcon, primaryLabel, defaultPrimaryIcon, primaryFormat, true);
         Apply(secondary, secondaryRoot, secondaryIcon, secondaryLabel, defaultSecondaryIcon, secondaryFormat, false);
+        if (centerIcons) CenterIcons(primary != null, secondary != null);
+    }
+
+    private const float IconSize = 56f;
+    // Prompt criado por Garantir: o ícone do clique esquerdo fica no centro exato da tela; o do direito também, se for
+    // o único, ou logo à direita do primeiro quando há os dois (o centro continua marcado pelo esquerdo).
+    private bool centerIcons;
+
+    private void CenterIcons(bool hasPrimary, bool hasSecondary)
+    {
+        if (primaryRoot != null) ((RectTransform)primaryRoot.transform).anchoredPosition = Vector2.zero;
+        if (secondaryRoot != null)
+            ((RectTransform)secondaryRoot.transform).anchoredPosition =
+                hasPrimary && hasSecondary ? new Vector2(IconSize + 8f, 0f) : Vector2.zero;
     }
 
     private Color? normalColor;
@@ -66,7 +80,7 @@ public class InteractionPrompt : MonoBehaviour
     private static void AoCarregarCena(Scene cena, LoadSceneMode modo) => Garantir();
 
     /// <summary>
-    /// Cria um prompt só de ícones (Canvas próprio, centro da tela, logo abaixo da mira) se a cena tem jogador e
+    /// Cria um prompt só de ícones (Canvas próprio, ícone NO centro da tela: ele é a mira) se a cena tem jogador e
     /// nenhum <see cref="InteractionPrompt"/>. Retorna o prompt da cena (o existente ou o criado), ou null sem jogador.
     /// </summary>
     public static InteractionPrompt Garantir()
@@ -89,22 +103,26 @@ public class InteractionPrompt : MonoBehaviour
         p.detector = det;
         p.showLabels = false;
         p.defaultPrimaryIcon = IconesInteracao.Usar;
-        p.primaryRoot = Icone(go.transform, "Esquerdo", -42f, out p.primaryIcon);
-        p.secondaryRoot = Icone(go.transform, "Direito", 42f, out p.secondaryIcon);
+        p.primaryRoot = Icone(go.transform, "Esquerdo", out p.primaryIcon);
+        p.secondaryRoot = Icone(go.transform, "Direito", out p.secondaryIcon);
+        p.centerIcons = true;
         p.primaryRoot.SetActive(false);
         p.secondaryRoot.SetActive(false);
         return p;
     }
 
-    // Ícone de 64 px (referência 1080p) abaixo do centro da tela; esquerdo = clique esquerdo, direito = direito.
-    private static GameObject Icone(Transform pai, string nome, float x, out Image img)
+    // Ícone de 56 px (referência 1080p) com o CENTRO no centro da tela, onde sai o raio do InteractionDetector: o
+    // ícone é a própria mira (antes ficava 78 px abaixo e o jogador mirava uma gaveta e abria a de baixo).
+    // Esquerdo = clique esquerdo, direito = direito (posições em CenterIcons).
+    private static GameObject Icone(Transform pai, string nome, out Image img)
     {
         var go = new GameObject(nome, typeof(RectTransform), typeof(Image));
         var rt = (RectTransform)go.transform;
         rt.SetParent(pai, false);
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-        rt.sizeDelta = new Vector2(64f, 64f);
-        rt.anchoredPosition = new Vector2(x, -78f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(IconSize, IconSize);
+        rt.anchoredPosition = Vector2.zero;
         img = go.GetComponent<Image>();
         img.preserveAspect = true;
         img.raycastTarget = false;

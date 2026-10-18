@@ -117,6 +117,9 @@ public class SupervisorPatrol : MonoBehaviour
         if (visual != null) visualRest = visual.localPosition;
     }
 
+    private void OnEnable() => NpcSeparacao.Registrar(agent);
+    private void OnDisable() => NpcSeparacao.Remover(agent);
+
     private void Start()
     {
         if (player == null)
@@ -131,6 +134,7 @@ public class SupervisorPatrol : MonoBehaviour
     private void Update()
     {
         if (agent == null || !agent.isOnNavMesh || PointCount == 0) return;
+        NpcSeparacao.Aplicar(agent);   // não atravessar outros NPCs
 
         if (state != PatrolState.Watching && state != PatrolState.Reacting) CheckPlayer();
 

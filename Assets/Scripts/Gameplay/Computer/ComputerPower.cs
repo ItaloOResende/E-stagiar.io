@@ -847,6 +847,8 @@ public class ComputerPower : MonoBehaviour, IPickupBlocker
     /// </summary>
     public void Tick(float deltaTime)
     {
+        // nada a avançar: não consulta o WatchCheck (raycast + closure por PC a cada quadro; aparecia no Profiler)
+        if (!IsInstallingOperatingSystem && !BootPending) return;
         if (!Watched) return;
         if (IsInstallingOperatingSystem) AdvanceInstall(deltaTime);
         else if (BootPending)

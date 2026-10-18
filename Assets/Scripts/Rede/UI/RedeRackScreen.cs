@@ -15,8 +15,9 @@ using UnityEngine.UI;
 /// livre encaixa a primeira ponta (o cabo SAI da mão); clicar em QUALQUER outra porta livre encaixa a outra ponta.
 /// <b>Nenhuma combinação é proibida nem corrigida</b>: P N ↔ S N (certa), P N ↔ S M, P ↔ P e S ↔ S são ligações
 /// reais na topologia (<see cref="RedeGame.Topologia"/>), e são os PCs e os chamados que dizem se a rede funciona.
-/// Clicar de novo na porta da primeira ponta solta o cabo; clicar numa porta ocupada (com a mão livre) tira o cabo
-/// dela, que VOLTA para a mão. Porta ocupada com outra ponta pendurada = não encaixa (pisca vermelho).
+/// Clicar de novo na porta da primeira ponta solta o cabo (volta para a mão); clicar numa porta ocupada tira SÓ aquela
+/// ponta: a outra continua encaixada e o cabo fica pendurado nela. Porta ocupada com outra ponta pendurada = não
+/// encaixa (pisca vermelho).
 /// </para>
 /// Os LEDs do switch são o retorno do próprio equipamento: verde = porta com cabo bom vindo do patch panel; apagado =
 /// sem link; todos piscando âmbar = laço (S ↔ S), como num switch de verdade. Nada diz "número errado".
@@ -60,6 +61,9 @@ public class RedeRackScreen : MonoBehaviour
     [SerializeField] private float espessuraCabo = 22f;
     [Tooltip("Lado do retângulo do plugue RJ45 (a arte mantém a proporção dentro dele).")]
     [SerializeField] private float ladoMacho = 74f;
+    [Tooltip("Cabo de rede que vai para a mão ao tirar do rack uma ligação SEM objeto físico (a do estado inicial ou a " +
+             "trocada por um chamado). Vazio = a ligação só é desfeita, como antes.")]
+    [SerializeField] private PickupInteractable caboSemObjetoPrefab;
 
     // Geometria (pixels da referência 1920x1080; coordenadas LOCAIS do canvas, centro = 0).
     private const float EspacamentoPorta = 200f;
@@ -94,6 +98,8 @@ public class RedeRackScreen : MonoBehaviour
     private bool temCabo;
     private PortaRack? ponta;              // porta onde a primeira ponta está encaixada (null = cabo ainda na mão)
     private PickupInteractable pontaItem;  // o cabo físico que SAIU da mão para ficar encaixado
+    private LigacaoRack puxada;            // ligação de onde a ponta pendurada foi puxada (null = veio da mão)
+    private bool puxadaMaterializada;      // o cabo dela foi criado ao puxar (a ligação não tinha objeto)
 
     private readonly List<Vector2> pontos = new List<Vector2>();
     private Canvas canvasTela;
@@ -315,7 +321,7 @@ public class RedeRackScreen : MonoBehaviour
     // ================================================================== interação
 
     /// <summary>
-    /// Clique numa porta. Sem ponta encaixada: porta ocupada = tira o cabo dela (mão livre); porta livre com cabo na mão =
+    /// Clique numa porta. Sem ponta encaixada: porta ocupada = tira só essa ponta (a outra fica); porta livre com cabo na mão =
     /// encaixa a primeira ponta. Com uma ponta encaixada: a mesma porta solta o cabo; qualquer outra porta LIVRE fecha a
     /// ligação (qualquer combinação: a topologia guarda o que o jogador fez); porta ocupada não aceita.
     /// </summary>
@@ -326,7 +332,7 @@ public class RedeRackScreen : MonoBehaviour
 
         if (ponta == null)
         {
-            if (ligacao != null) { Desligar(p); return; }
+            if (ligacao != null) { PuxarPonta(p, ligacao); return; }
             if (!temCabo) { Erro(p); return; }   // sem cabo na mão não dá pra encaixar em nada
             ItemHolder mao = Mao();
             pontaItem = mao != null ? mao.Stow(transform.position) : null;
@@ -344,59 +350,79 @@ public class RedeRackScreen : MonoBehaviour
         InteractionSounds.Raise(InteractionSound.CablePlugged);   // a outra ponta encaixou
         pontaItem = null;
         ponta = null;
+        puxada = null;
         temCabo = CaboNaMao() != null;   // a mão ficou vazia: o cabo está no rack
         Atualizar();
     }
 
     /// <summary>
-    /// Tira o cabo de uma porta ocupada: as duas pontas saem e o cabo VOLTA pra mão (que precisa estar livre). Cabo do
-    /// estado inicial (sem objeto físico) só deixa as portas livres.
+    /// Clique numa porta OCUPADA (sem ponta pendurada): só a ponta CLICADA sai. A outra continua encaixada onde estava e
+    /// o cabo fica pendurado nela (o mesmo estado de "primeira ponta encaixada"): clicar noutra porta livre encaixa de
+    /// novo; clicar na ponta que ficou tira o cabo de vez (volta pra mão). Antes as duas pontas saíam juntas.
+    /// Ligação sem objeto físico (estado inicial / trocada por chamado): o cabo dela vira um cabo real
+    /// (<see cref="caboSemObjetoPrefab"/>), guardado como o cabo físico que sai da mão ao encaixar.
     /// </summary>
-    private void Desligar(PortaRack p)
+    private void PuxarPonta(PortaRack p, LigacaoRack l)
     {
         RedeGame jogo = RedeGame.Garantir();
-        LigacaoRack l = jogo.Topologia.LigacaoEm(p);
-        ItemHolder mao = Mao();
-        bool temFisico = l != null && l.Cabo is PickupInteractable;
-        if (temFisico && (mao == null || mao.Current != null)) { Erro(p); return; }   // mão ocupada: o cabo nunca some
-
-        jogo.Desligar(p, out PickupInteractable cabo);
-        if (cabo != null && !mao.Retrieve(cabo.gameObject))
+        PickupInteractable cabo = l.Cabo as PickupInteractable;
+        bool materializa = cabo == null && caboSemObjetoPrefab != null;
+        if (!jogo.Desligar(p, out _)) { Erro(p); return; }
+        if (materializa)
         {
-            jogo.Ligar(l.A, l.B, cabo);   // não deu pra devolver: o cabo continua onde estava
-            Erro(p);
-            return;
+            cabo = Instantiate(caboSemObjetoPrefab, transform.position, Quaternion.identity);
+            cabo.gameObject.SetActive(false);   // como o cabo físico encaixado (Stow): o Retrieve ativa e põe na mão
         }
-        temCabo = CaboNaMao() != null;
-        InteractionSounds.Raise(InteractionSound.CableUnplugged);
-        Atualizar();
-    }
-
-    /// <summary>Tira a ponta da porta: o cabo VOLTA pra mão do jogador.</summary>
-    private void SoltarPonta()
-    {
-        if (pontaItem != null)
-        {
-            ItemHolder mao = Mao();
-            if (mao != null) mao.Retrieve(pontaItem.gameObject);
-            pontaItem = null;
-        }
-        ponta = null;
+        puxada = l;
+        puxadaMaterializada = materializa;
+        ponta = l.Outra(p);
+        pontaItem = cabo;
         temCabo = true;
         InteractionSounds.Raise(InteractionSound.CableUnplugged);
         Atualizar();
     }
 
-    /// <summary>Ao fechar a tela, um cabo com uma ponta só encaixada volta pra mão do jogador (nunca some).</summary>
+    /// <summary>Tira a ponta da porta: o cabo VOLTA pra mão do jogador (mão ocupada = não sai, pisca vermelho).</summary>
+    private void SoltarPonta()
+    {
+        if (pontaItem != null)
+        {
+            ItemHolder mao = Mao();
+            if (mao == null || !mao.Retrieve(pontaItem.gameObject)) { Erro(ponta.Value); return; }
+            pontaItem = null;
+        }
+        ponta = null;
+        puxada = null;
+        temCabo = CaboNaMao() != null;
+        InteractionSounds.Raise(InteractionSound.CableUnplugged);
+        Atualizar();
+    }
+
+    /// <summary>
+    /// Ao fechar a tela, um cabo com uma ponta só encaixada volta pra mão do jogador (nunca some). Se a mão estiver
+    /// ocupada, o cabo puxado de uma ligação volta para as duas portas em que estava.
+    /// </summary>
     private void DevolverCabo(bool atualizar = true)
     {
         if (pontaItem != null)
         {
             ItemHolder mao = Mao();
-            if (mao != null) mao.Retrieve(pontaItem.gameObject);
+            if ((mao == null || !mao.Retrieve(pontaItem.gameObject)) && puxada != null)
+            {
+                LigacaoRack l = puxada;
+                if (puxadaMaterializada) { Destroy(pontaItem.gameObject); pontaItem = null; }
+                RedeGame.Garantir().Religar(l, pontaItem);
+            }
             pontaItem = null;
         }
+        else if (puxada != null && ponta != null)
+        {
+            // ligação sem objeto e sem cabo para materializar: a ponta solta não tem para onde ir, volta para as portas
+            LigacaoRack l = puxada;
+            RedeGame.Garantir().Religar(l, null);
+        }
         ponta = null;
+        puxada = null;
         if (atualizar) Atualizar();
     }
 

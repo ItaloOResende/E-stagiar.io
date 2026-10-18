@@ -49,12 +49,14 @@ public class NpcCaminhada : MonoBehaviour
     private void OnEnable()
     {
         if (!ativos.Contains(this)) ativos.Add(this);
+        NpcSeparacao.Registrar(agent);
         esperarAte = Time.time + Random.Range(0f, pausa.y);   // não saem todos juntos
     }
 
     private void OnDisable()
     {
         ativos.Remove(this);
+        NpcSeparacao.Remover(agent);
         destino = null;
         if (agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh) agent.ResetPath();
     }
@@ -62,6 +64,7 @@ public class NpcCaminhada : MonoBehaviour
     private void Update()
     {
         if (agent == null || !agent.isActiveAndEnabled || !agent.isOnNavMesh) return;
+        NpcSeparacao.Aplicar(agent);   // não atravessar outros NPCs (parados ou andando)
         if (destino == null)
         {
             if (Time.time >= esperarAte) Escolher();

@@ -737,6 +737,8 @@ public class NotebookTela : MonoBehaviour
             foreach (Vista3D v in new[] { v3Baixo, v3Aberto, v3Lado, v3Tela, v3Teclado })
             {
                 Transform copia = v.modelo.Copiar(visual.gameObject, typeof(NotebookModeloEstado));
+                // o notebook do mundo pode estar com o interior sem desenho (fechado): a cópia não herda isso
+                if (copia != null) foreach (Renderer r in copia.GetComponentsInChildren<Renderer>(true)) r.forceRenderingOff = false;
                 v.estado = copia != null ? copia.GetComponent<NotebookModeloEstado>() : null;
                 if (v.estado == null) continue;
                 v.estado.MostrarParafusos = v.parafusos;

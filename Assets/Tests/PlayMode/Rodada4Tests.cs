@@ -43,7 +43,6 @@ public class Rodada4Tests
     public void TearDown()
     {
         T("GameSession").GetProperty("Mode").SetValue(null, Enum.Parse(T("GameMode"), "Normal"));
-        T("GameSession").GetProperty("SaveRecords").SetValue(null, true);
         foreach (Object o in spawned) if (o != null) Object.Destroy(o);
         spawned.Clear();
     }
@@ -229,39 +228,7 @@ public class Rodada4Tests
     }
 
     [UnityTest]
-    public IEnumerator SpeedRun_ChamadosNaoParam_RelatorioMostraConcluidos()
-    {
-        Component tm = NovaFase(out Component stage, out Component score, 2);
-        Set(tm, "requirePlayerToFinish", false);
-        T("GameSession").GetProperty("SaveRecords").SetValue(null, false);   // não grava recorde no computador
-        T("GameSession").GetProperty("Mode").SetValue(null, Enum.Parse(T("GameMode"), "SpeedRun"));
-        Call(stage, "StartStage");
-        Assert.IsTrue((bool)Get(tm, "EndlessMode"));
-        Assert.AreEqual(8f * 60f, (float)Get(stage, "DurationSeconds"), 0.01f, "duração do Speed Run");
-        // a geração não para perto do fim (o expediente normal para 90 s antes)
-        stage.GetType().GetProperty("SecondsRemaining").SetValue(stage, 30f);
-        for (int i = 0; i < 5; i++)
-        {
-            object t = null;
-            foreach (object x in (IList)Get(tm, "Tickets")) if (!(bool)Get(x, "IsClosed")) t = x;
-            Assert.IsNotNull(t, $"sempre há chamado aberto ({i})");
-            int n = (int)t.GetType().GetField("Number").GetValue(t);
-            Call(tm, "StartTicket", n);
-            Call(tm, "CompleteStep", n, "resolver");
-            yield return null;
-        }
-        Assert.IsTrue((bool)Get(stage, "IsRunning"), "sem fim antecipado (AllWorkDone) no Speed Run");
-        Call(stage, "EndStageNow");
-        yield return null;
-        Component report = score.GetComponent(T("StageReportScreen"));
-        Assert.IsTrue((bool)Get(report, "IsOpen"));
-        Assert.IsTrue((bool)Get(report, "IsSpeedRunReport"));
-        StringAssert.StartsWith("5|", (string)Get(report, "LastSpeedRun"), "5 chamados concluídos");
-        Call(report, "Close");
-    }
-
-    [UnityTest]
-    public IEnumerator MenuInicial_AbreAntesDaFase_EEscolhaComecaNoModo()
+    public IEnumerator MenuInicial_AbreAntesDaFase_EExpedienteComeca()
     {
         T("GameSession").GetField("menuRequested", Any).SetValue(null, true);
         Component tm = NovaFase(out Component stage, out _);
@@ -269,10 +236,9 @@ public class Rodada4Tests
         Assert.IsTrue((bool)T("MainMenuScreen").GetProperty("Showing").GetValue(null), "menu inicial na tela");
         Assert.IsFalse((bool)Get(stage, "IsRunning"), "a fase ainda não começou");
         Component menu = stage.GetComponent(T("MainMenuScreen"));
-        Call(menu, "Choose", Enum.Parse(T("GameMode"), "SpeedRun"));
+        Call(menu, "Choose", Enum.Parse(T("GameMode"), "Normal"));
         Assert.IsFalse((bool)T("MainMenuScreen").GetProperty("Showing").GetValue(null));
         Assert.IsTrue((bool)Get(stage, "IsRunning"));
-        Assert.IsTrue((bool)Get(tm, "EndlessMode"), "Speed Run escolhido no menu");
     }
 
     [UnityTest]

@@ -74,3 +74,4 @@ MonoBehaviour:
   veuDoFundo: 0.62
   espessuraCabo: 26
   ladoMacho: 82
+  caboSemObjetoPrefab: {fileID: 8605691384441306363, guid: 54007f1ad99c84249a1be5cb1267f296, type: 3}

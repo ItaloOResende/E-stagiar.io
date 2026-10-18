@@ -268,3 +268,7 @@ Scripts, prefabs com scripts quebrados (`Gabinete`, `gaveteiro*`), cenas legadas
 - `Models/armario_reserva.fbx` (armário de TI com portas e prateleiras) e `Models/rack_interno.fbx` (switch, patch panel, organizador, trilhos, modem, nobreak, LEDs e patch cords): autoria própria, `Tools/blender/armario_reserva_build.py` (2026-10-17). Materiais novos `Materials/Mobiliario/M_Rack_{Contatos,Etiqueta,Led,CaboPatch}` (URP/Lit).
 - `Textures/Quadros/*.png` (cartaz de segurança, diagrama da rede, calendário de out/2026, placa "SALA DE TI", aviso da bancada): gerados por `Tools/textures/gerar_quadros_ti.py`, com a fonte Inter (SIL Open Font License, a que vem com o Blender 5.2).
 - `Materials/Mobiliario/M_Mobiliario_Claro|Escuro|Metal` (URP/Lit, mesmas cores de `M_Escritorio_Claro`, `M_Escritorio_Escuro` e `M_PC_Chapa`, sem reflexo do ambiente) e `Materials/Quadros/M_Quadro_*` (URP/Lit com as texturas acima). Os materiais do Matheus não foram alterados.
+
+## Decoração das estações (2026-10-18) — original do projeto
+
+- `Art/Meshes/Decoracao/DEC_*.asset`, `Art/Textures/Decoracao/T_Decoracao_Atlas.png`, `Art/Materials/Decoracao/M_Decoracao.mat`, `Prefabs/Props/Decoracao/DEC_*.prefab`: gerados por código em `Assets/Editor/DecoracaoEscritorioSetup.cs` (malhas low-poly, paleta e texto dos post-its desenhados com fonte de pixels própria). Sem asset de terceiros; o material é cópia do `M_Character_Tex1_1` (Toon/Toon) do Matheus com a textura do atlas.

@@ -67,12 +67,6 @@ public class TicketManager : MonoBehaviour
     private bool arrivalClockStarted;
 
     public IReadOnlyList<TicketInstance> Tickets => tickets;
-    /// <summary>
-    /// Chamados sem fim (Speed Run, <see cref="GameMode.SpeedRun"/>): a geração não para perto do fim da fase, sempre há
-    /// pelo menos um chamado aberto (ao concluir o último, o próximo chega na hora) e <see cref="AllWorkDone"/> nunca
-    /// dispara — quem encerra é o relógio do <see cref="StageController"/>. Definido antes do <see cref="BeginStage"/>.
-    /// </summary>
-    public bool EndlessMode { get; set; }
     public bool RequirePlayerToFinish { get => requirePlayerToFinish; set => requirePlayerToFinish = value; }
 
     /// <summary>
@@ -100,7 +94,9 @@ public class TicketManager : MonoBehaviour
         arrivalClockStarted = false;
         maximumOpenTickets = stageNumber <= 1 ? 1 : Mathf.Min(4, stageNumber);
         CreateTicket();
-        // O primeiro intervalo so comeca quando o jogador INICIA o primeiro atendimento.
+        // O relogio de chegada corre desde o inicio da fase: nao depende de o jogador iniciar um atendimento
+        // (antes so comecava no primeiro StartTicket, e sem iniciar nenhum nao chegava chamado novo).
+        if (stageNumber >= 2) ScheduleNextArrival(Time.time);
     }
 
     public void UpdateStageTime(float secondsLeft) => remainingStageTime = Mathf.Max(0f, secondsLeft);
@@ -139,13 +135,13 @@ public class TicketManager : MonoBehaviour
                                  : "geração encerrada"), this);
     }
 
-    private bool CanGenerate() => running && (EndlessMode || remainingStageTime > stopGeneratingBeforeEndSeconds);
+    private bool CanGenerate() => running && remainingStageTime > stopGeneratingBeforeEndSeconds;
 
     private void Update()
     {
         TickTickets(); // O relogio de cada chamado corre independente da geracao de novos chamados.
 
-        if (running && !EndlessMode && !allWorkDoneRaised && stageNumber >= 1 && tickets.Count > 0 && !CanGenerate() && OpenCount == 0)
+        if (running && !allWorkDoneRaised && stageNumber >= 1 && tickets.Count > 0 && !CanGenerate() && OpenCount == 0)
         {
             allWorkDoneRaised = true;
             Debug.Log("Sem chamados pendentes e sem novos chamados até o fim: expediente concluído.", this);
@@ -199,12 +195,6 @@ public class TicketManager : MonoBehaviour
     private void OnTicketClosed()
     {
         if (!CanGenerate()) return;
-        if (EndlessMode && OpenCount == 0)
-        {
-            // Speed Run: nunca fica sem chamado (o ritmo é o do jogador)
-            if (CreateTicket() && stageNumber >= 2) ScheduleNextArrival(Time.time);
-            return;
-        }
         if (stageNumber == 1 && OpenCount == 0)
         {
             if (instantNextTicketOnFirstStage) CreateTicket();
