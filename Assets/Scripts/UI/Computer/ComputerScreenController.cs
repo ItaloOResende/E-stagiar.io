@@ -308,6 +308,7 @@ public class ComputerScreenController : MonoBehaviour
                 {
                     if (result == CaseOpenResult.Opened) InteractionSounds.Raise(InteractionSound.CaseOpened);
                     ShowView(ComputerView.Interior);
+                    if (result == CaseOpenResult.Opened) Diagnostico();
                 }
                 break;
         }
@@ -450,7 +451,13 @@ public class ComputerScreenController : MonoBehaviour
         return null;
     }
 
-    private void HandlePowerState(PcPowerState state) => ShowScreen(state);
+    private void HandlePowerState(PcPowerState state)
+    {
+        ShowScreen(state);
+        // o sistema subiu SOZINHO (instalação pelo pendrive / HD novo na BIOS): o resultado aparece para o jogador
+        if (state == PcPowerState.OperatingSystem && !pressionandoPower && screen != null && screen.gameObject.activeInHierarchy)
+            FeedbackManutencao.Mostrar(screen, "Sistema iniciado: PC funcionando.", TipoFeedback.Sucesso);
+    }
 
     // Tela, sinal de vídeo ou distância do monitor mudaram (o monitor pode ter entrado ou saído do alcance).
     private void RefreshScreen() => RefreshHardware();
@@ -508,7 +515,32 @@ public class ComputerScreenController : MonoBehaviour
     {
         if (boundPower == null) return;
         InteractionSounds.Raise(InteractionSound.PowerButton);
-        boundPower.PressPower();
+        pressionandoPower = true;
+        PowerButtonResult r = boundPower.PressPower();
+        pressionandoPower = false;
+        if (r == PowerButtonResult.MissingRequirements)
+            FeedbackManutencao.Mostrar(screen, "O PC não deu sinal de vida.", TipoFeedback.Alerta);
+        else if (r == PowerButtonResult.TurnedOn)
+        {
+            if (boundPower.State == PcPowerState.OperatingSystem)
+                FeedbackManutencao.Mostrar(screen, "PC testado: o sistema iniciou.", TipoFeedback.Sucesso);
+            else if (boundPower.IsInstallingOperatingSystem)
+                FeedbackManutencao.Mostrar(screen, "Iniciando pelo pendrive...", TipoFeedback.Info);
+            else FeedbackManutencao.Mostrar(screen, "Ligou, mas parou na BIOS.", TipoFeedback.Alerta);
+        }
+    }
+
+    private bool pressionandoPower;
+
+    // Gabinete aberto: o que o técnico vê lá dentro (peças que faltam), como a identificação do problema do notebook.
+    private void Diagnostico()
+    {
+        if (boundCase == null) return;
+        var faltam = new List<string>();
+        foreach (PcComponent c in new[] { PcComponent.Motherboard, PcComponent.Psu, PcComponent.CpuCooler, PcComponent.Ram, PcComponent.Hdd })
+            if (!boundCase.HasComponent(c)) faltam.Add(FeedbackManutencao.Nome(c));
+        if (faltam.Count == 0) FeedbackManutencao.Mostrar(screen, "Diagnóstico: todas as peças no lugar.", TipoFeedback.Diagnostico);
+        else FeedbackManutencao.Mostrar(screen, "Diagnóstico: falta " + string.Join(", ", faltam) + ".", TipoFeedback.Diagnostico);
     }
 
     /// <summary>Cabo cuja ponta solta segue o mouse agora (null = nenhum).</summary>
@@ -586,6 +618,8 @@ public class ComputerScreenController : MonoBehaviour
             InteractionSounds.Raise(InteractionSound.Error);   // não é pendrive / clique que não vale
         if (result == PortResult.PluggedFromHand) holder.Stow(boundCase.transform.position);
         else if (result == PortResult.CableReturned && holder != null) holder.Retrieve(back);
+        if (result == PortResult.PluggedFromHand && boundPower.IsInstallingOperatingSystem)
+            FeedbackManutencao.Mostrar(screen, "Pendrive conectado: instalação iniciada.", TipoFeedback.Info);
     }
 
     private void OnSlotClicked(PcComponent slot)
@@ -602,6 +636,10 @@ public class ComputerScreenController : MonoBehaviour
             InteractionSounds.Raise(InteractionSound.Error);   // peça no encaixe errado: som de erro
         if (result == PartSlotResult.Installed) holder.Stow(boundCase.transform.position);
         else if (result == PartSlotResult.Removed && holder != null) holder.Retrieve(back);
+        if (result == PartSlotResult.Installed)
+            FeedbackManutencao.Mostrar(screen, "Instalado: " + FeedbackManutencao.Nome(slot) + ".", TipoFeedback.Sucesso);
+        else if (result == PartSlotResult.Removed)
+            FeedbackManutencao.Mostrar(screen, "Removido: " + FeedbackManutencao.Nome(slot) + ".", TipoFeedback.Info);
     }
 
     private void OnScrewClicked(int index)
@@ -638,13 +676,17 @@ public class ComputerScreenController : MonoBehaviour
         if (index >= 0 && index < views.Count) views[index].SetRemoved(true, true);
         InteractionSounds.Raise(InteractionSound.ScrewRemoved);
         // último parafuso obrigatório retirado (e gabinete na mesa/bancada): libera o Avançar com um pulso, sem texto
-        if (!UpdateNextLock()) return;
+        bool desbloqueou = UpdateNextLock();
+        // pelo estado REAL (não só pela troca do bloqueio): obrigatórios fora e apoio ok = a tampa abre sozinha
+        bool podeAbrir = current == ComputerView.Rear && boundCase != null && boundCase.State == CaseState.Closed
+                         && boundCase.RequiredScrewsRemoved && !InteriorLocked;
+        if (!desbloqueou && !podeAbrir) return;
         if (nextRect != null && isActiveAndEnabled)
         {
             if (nextRoutine != null) StopCoroutine(nextRoutine);
             nextRoutine = StartCoroutine(PulseUnlocked());
-            StartCoroutine(AutoOpenAfterUnlock());
         }
+        if (isActiveAndEnabled) StartCoroutine(AutoOpenAfterUnlock());
     }
 
     // Desbloqueou com sucesso: depois do pulso do Avançar a tampa abre sozinha e o Interior aparece (som de abrir).

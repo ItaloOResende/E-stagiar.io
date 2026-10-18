@@ -203,6 +203,7 @@ public class NotebookSession
     public void ConectarPendrive()
     {
         PendriveConectado = true;
+        Revalidar();   // ligado na BIOS com SSD: a instalação começa sozinha (sem reiniciar)
     }
 
     public void DesconectarPendrive()
@@ -269,5 +270,12 @@ public class NotebookSession
 
         // Instalação interrompida (pendrive ou SSD retirado): volta para a BIOS, sem sistema.
         if (Instalando && (!PendriveConectado || !TemSsd)) instalacaoRestante = -1f;
+        // Na BIOS, chegou o que faltava (pendrive com SSD): começa a instalar sem reiniciar. SSD com sistema
+        // instalado com o notebook na BIOS já vale direto (a tela passa a ser a do sistema).
+        if (!Instalando && !TemSistema && PendriveConectado && TemSsd)
+        {
+            instalacaoRestante = DuracaoInstalacao;
+            if (DuracaoInstalacao <= 0f) ConcluirInstalacao();
+        }
     }
 }

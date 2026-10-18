@@ -36,6 +36,7 @@ public class AvisoRodape : MonoBehaviour
     private Image fundo, icone;
     private Text texto;
     private float mostradoEm = -1000f;
+    private readonly System.Collections.Generic.Dictionary<Color, Sprite> sprites = new System.Collections.Generic.Dictionary<Color, Sprite>();
 
     /// <summary>O cartão está na tela agora?</summary>
     public bool Visivel => cartao != null && cartao.gameObject.activeSelf;
@@ -46,9 +47,14 @@ public class AvisoRodape : MonoBehaviour
     /// <summary>Mostra o aviso por <see cref="duracao"/> segundos. Chamar de novo reinicia o tempo e troca o texto.</summary>
     /// <param name="mensagem">Texto curto, ex.: "Falta ferramenta".</param>
     /// <param name="icone">Desenho opcional à esquerda (ex.: a ferramenta que falta).</param>
-    public void Mostrar(string mensagem, Sprite icone = null)
+    public void Mostrar(string mensagem, Sprite icone = null) => Mostrar(mensagem, icone, corBorda);
+
+    /// <summary>Como <see cref="Mostrar(string, Sprite)"/>, com a cor da borda do cartão (ex.: verde = deu certo).</summary>
+    public void Mostrar(string mensagem, Sprite icone, Color borda)
     {
         Construir();
+        if (!sprites.TryGetValue(borda, out Sprite sp)) sprites[borda] = sp = Arredondado(borda, corFundo);
+        fundo.sprite = sp;
 
         texto.text = mensagem;
         areaIcone.gameObject.SetActive(icone != null);
@@ -137,6 +143,7 @@ public class AvisoRodape : MonoBehaviour
         texto.font = font;
         texto.fontSize = tamanhoDoTexto;
         texto.alignment = TextAnchor.MiddleCenter;
+        texto.fontStyle = FontStyle.Bold;
         texto.horizontalOverflow = HorizontalWrapMode.Overflow;
         texto.verticalOverflow = VerticalWrapMode.Overflow;
         texto.raycastTarget = false;

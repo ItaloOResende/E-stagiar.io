@@ -96,8 +96,11 @@ public enum PowerButtonResult { TurnedOn, TurnedOff, MissingRequirements }
 ///    <see cref="installDuration"/> s), grava o sistema no HD e vai para o sistema. Sem HD: fica na BIOS, sem instalar.
 ///    Tirar o pendrive, o HD ou um requisito durante a instalação a cancela.
 ///  - Sem os requisitos o botão não liga o PC. Se um requisito some com o PC ligado (cabo solto, peça retirada),
-///    o PC desliga: nunca fica num estado incompatível com a configuração. Instalar o HD com o PC na BIOS
-///    só tem efeito depois de reiniciar (desligar e ligar).
+///    o PC desliga: nunca fica num estado incompatível com a configuração.
+///  - Sem reiniciar: com o PC na BIOS, encaixar o pendrive (com HD) ou instalar o HD (com o pendrive) INICIA a
+///    instalação; instalar um HD com sistema deixa o boot pendente (<see cref="BootPending"/>). Mas a tela só avança
+///    com o jogador olhando o monitor deste PC (<see cref="Watched"/>: <see cref="InstallPaused"/> + <see cref="WatchCheck"/>):
+///    a ação começa o processo e a transição acontece diante dele.
 ///  - Rede: opcional para ligar; no sistema operacional, o cabo de rede nas duas pontas deixa o PC "conectado".
 /// Cada cabo é um item real: ao conectar a primeira ponta ele sai da mão e fica guardado aqui (desativado);
 /// ao soltar as duas pontas o MESMO objeto volta para a mão.
@@ -383,6 +386,16 @@ public class ComputerPower : MonoBehaviour, IPickupBlocker
     /// que não a da frente, para a sequência não correr escondida. Volta a andar de onde parou.
     /// </summary>
     public bool InstallPaused { get; set; }
+
+    /// <summary>
+    /// Quem diz se o jogador está vendo o monitor deste PC (no 3D ou pela tela 2D). Registrado pelo jogo
+    /// (<c>MonitorWatchCheck</c>); null = sempre visto (testes e cenas sem jogador).
+    /// </summary>
+    public static Func<ComputerPower, bool> WatchCheck;
+    /// <summary>A transição de tela (instalação, boot pendente) pode andar agora: o jogador está diante do monitor.</summary>
+    public bool Watched => !InstallPaused && (WatchCheck == null || WatchCheck(this));
+    /// <summary>HD com sistema instalado com o PC na BIOS: entra no sistema assim que o jogador olhar o monitor.</summary>
+    public bool BootPending { get; private set; }
 
     /// <summary>
     /// Tela exata do monitor agora. Ligado sem sinal de vídeo = <see cref="PcScreen.NoSignal"/> (o PC continua no
@@ -805,6 +818,7 @@ public class ComputerPower : MonoBehaviour, IPickupBlocker
         if (state != PcPowerState.Off)
         {
             installRemaining = -1f;
+            BootPending = false;
             SetState(PcPowerState.Off);
             return PowerButtonResult.TurnedOff;
         }
@@ -823,8 +837,23 @@ public class ComputerPower : MonoBehaviour, IPickupBlocker
 
     private void Update()
     {
-        if (IsInstallingOperatingSystem && !InstallPaused) AdvanceInstall(Time.deltaTime);
+        Tick(Time.deltaTime);
         if (monitor != null) CheckMonitorRange();
+    }
+
+    /// <summary>
+    /// Avança o que depende do jogador estar vendo a tela (<see cref="Watched"/>): a instalação e o boot pendente.
+    /// Público para testes (o Update chama com o deltaTime).
+    /// </summary>
+    public void Tick(float deltaTime)
+    {
+        if (!Watched) return;
+        if (IsInstallingOperatingSystem) AdvanceInstall(deltaTime);
+        else if (BootPending)
+        {
+            BootPending = false;
+            if (state == PcPowerState.Bios && CanReachOperatingSystem) SetState(PcPowerState.OperatingSystem);
+        }
     }
 
     /// <summary>Avança a instalação em andamento (chamado pelo Update quando não está pausada; público para testes).</summary>
@@ -851,12 +880,19 @@ public class ComputerPower : MonoBehaviour, IPickupBlocker
         if (!CanReachBios || (state == PcPowerState.OperatingSystem && !Case.HddHasOperatingSystem))
         {
             installRemaining = -1f;
+            BootPending = false;
             SetState(PcPowerState.Off);
             return;
         }
         // Instalação interrompida (pendrive ou HD retirado): fica na BIOS, sem sistema.
         if (IsInstallingOperatingSystem && (!PendriveConnected || !Case.HasComponent(PcComponent.Hdd)))
             installRemaining = -1f;
+        // Na BIOS, a peça/pendrive que faltava chegou: o próximo passo começa sozinho (sem reiniciar)
+        if (state == PcPowerState.Bios && !IsInstallingOperatingSystem)
+        {
+            BootPending = Case.HddHasOperatingSystem;
+            if (!BootPending && PendriveConnected && Case.HasComponent(PcComponent.Hdd)) installRemaining = installDuration;
+        }
         DisplayChanged?.Invoke();   // ex.: HD instalado/retirado na BIOS muda a mensagem
     }
 

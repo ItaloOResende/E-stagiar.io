@@ -952,10 +952,9 @@ public class NotebookTela : MonoBehaviour
         NotebookSession s = est.Sessao;
         if (modo3D)
         {
-            bool inst = s.Instalando;
-            ((RectTransform)barra3D.transform.parent).gameObject.SetActive(inst);
-            if (inst) barra3D.fillAmount = s.ProgressoInstalacao;
-            etapa3D.text = inst ? "Etapa " + (s.EtapaInstalacao + 1) + " de " + s.EtapasInstalacao : "";
+            // sem barra nem "Etapa N de 5": a própria tela de instalação (imagens por etapa) mostra o andamento
+            ((RectTransform)barra3D.transform.parent).gameObject.SetActive(false);
+            etapa3D.text = "";
             return;
         }
         bool ligado = s.Ligado;
@@ -997,14 +996,9 @@ public class NotebookTela : MonoBehaviour
         }
         telaTxt.text = texto;
 
-        bool instalando = s.Instalando;
-        ((RectTransform)barraFill.transform.parent).gameObject.SetActive(instalando);
-        if (instalando)
-        {
-            barraFill.fillAmount = s.ProgressoInstalacao;
-            etapaTxt.text = "Etapa " + (s.EtapaInstalacao + 1) + " de " + s.EtapasInstalacao;
-        }
-        else etapaTxt.text = "";
+        // sem barra nem "Etapa N de 5" (redundantes com a tela "INSTALANDO O SISTEMA...")
+        ((RectTransform)barraFill.transform.parent).gameObject.SetActive(false);
+        etapaTxt.text = "";
     }
 
     private Sprite ImagemDaTela(NotebookSession s)
@@ -1020,11 +1014,16 @@ public class NotebookTela : MonoBehaviour
         }
     }
 
+    // Recados relevantes (verde = deu certo, amarelo/vermelho = algo impediu) vão para o cartão da manutenção
+    // (FeedbackManutencao, o mesmo do PC); os neutros (parafuso N removido...) ficam na linha discreta de baixo.
     private void Mensagem(string texto, Color cor)
     {
         if (msgTxt == null) return;
-        msgTxt.text = texto;
+        bool cartao = !string.IsNullOrEmpty(texto) && (cor == Verde || cor == Amarelo || cor == Vermelho);
+        msgTxt.text = cartao ? "" : texto;
         msgTxt.color = cor;
+        if (cartao)
+            FeedbackManutencao.Mostrar(this, texto, cor == Verde ? TipoFeedback.Sucesso : TipoFeedback.Alerta);
     }
 
     private void Fechar()

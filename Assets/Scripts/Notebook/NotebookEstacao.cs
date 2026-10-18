@@ -46,7 +46,8 @@ public class NotebookEstacao : MonoBehaviour
 
     private void Update()
     {
-        if (sessao != null && sessao.Instalando) sessao.Avancar(Time.deltaTime);
+        // a instalação só anda com o jogador olhando o notebook (no 3D ou pela tela dele)
+        if (sessao != null && sessao.Instalando && MonitorWatchCheck.Vendo(transform, gameObject)) sessao.Avancar(Time.deltaTime);
     }
 
     public NotebookParafusoResultado RemoverParafuso(int indice, ToolType ferramenta) =>
