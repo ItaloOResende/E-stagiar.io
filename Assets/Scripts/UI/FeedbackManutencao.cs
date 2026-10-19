@@ -7,7 +7,8 @@ public enum TipoFeedback { Sucesso, Diagnostico, Alerta, Info, Erro }
 /// Recados curtos de TODOS os minigames (PC, notebook, impressora, crimpagem): um só padrão visual — o cartão do
 /// <see cref="AvisoRodape"/> (arredondado, ícone, sobe do rodapé e some sozinho) na raiz da tela 2D. Tipos:
 /// Sucesso (verde), Alerta = requisito não atendido (amarelo), Erro = ação recusada (vermelho), Diagnóstico (azul),
-/// Info (cinza). Regra de texto: diz o QUE falta ou falhou, nunca a solução (qual ferramenta, qual valor, qual ordem).
+/// Info (cinza). Regra de texto: diz o QUE falta ou falhou; na falta de ferramenta o cartão NOMEIA o que é preciso
+/// (<see cref="FaltaFerramenta"/>, com o desenho da ferramenta), nos demais avisos não entrega a solução.
 /// Só para ações relevantes: não é para narrar cada clique.
 /// </summary>
 public static class FeedbackManutencao
@@ -25,9 +26,23 @@ public static class FeedbackManutencao
     public static void Mostrar(Component tela, string mensagem, TipoFeedback tipo)
     {
         if (tela == null || string.IsNullOrEmpty(mensagem)) return;
+        Aviso(tela).Mostrar(mensagem, Icone(tipo), Cor(tipo));
+    }
+
+    /// <summary>
+    /// Falta de ferramenta (ex.: clicar no parafuso com a mão vazia): o MESMO recado da caixa de cabo de rede —
+    /// "Falta ferramenta" com o desenho da ferramenta que falta à esquerda. Sem desenho, cai no ícone de alerta.
+    /// </summary>
+    public static void FaltaFerramenta(Component tela, Sprite desenhoDaFerramenta)
+    {
+        if (tela == null) return;
+        Aviso(tela).Mostrar("Falta ferramenta", desenhoDaFerramenta != null ? desenhoDaFerramenta : Icone(TipoFeedback.Alerta));
+    }
+
+    private static AvisoRodape Aviso(Component tela)
+    {
         AvisoRodape aviso = tela.GetComponent<AvisoRodape>();
-        if (aviso == null) aviso = tela.gameObject.AddComponent<AvisoRodape>();
-        aviso.Mostrar(mensagem, Icone(tipo), Cor(tipo));
+        return aviso != null ? aviso : tela.gameObject.AddComponent<AvisoRodape>();
     }
 
     private static Color Cor(TipoFeedback t) =>

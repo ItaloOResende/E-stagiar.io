@@ -23,7 +23,8 @@ public static class IconesInteracao
     public static Sprite Usar => Pegar;
     public static Sprite Bloqueado => bloqueado != null ? bloqueado : bloqueado = Carregar("icone_bloqueado");
     private static Sprite Abrir => abrir != null ? abrir : abrir = Carregar("icone_abrir");
-    private static Sprite ChaveDeFenda => chave != null ? chave : chave = Carregar("icone_chave_fenda");
+    /// <summary>Desenho da chave de fenda (aviso de ferramenta que falta, como o alicate na caixa de cabo).</summary>
+    public static Sprite ChaveDeFenda => chave != null ? chave : chave = Carregar("icone_chave_fenda");
     private static Sprite Crimpador => crimpador != null ? crimpador : crimpador = Carregar("icone_crimpador");
     private static Sprite Impressora => impressora != null ? impressora : impressora = Carregar("icone_impressora");
     private static Sprite Monitor => monitor != null ? monitor : monitor = Carregar("icone_monitor");
@@ -66,7 +67,8 @@ public static class IconesInteracao
         // UIScreenInteractable e outros: pelo equipamento ao qual pertencem
         if (alvo.GetComponentInParent<ComputerCase>() != null) return ChaveDeFenda;
         // notebook: a manutenção é com a chave de fenda (parafusos da tampa de baixo). Vem ANTES da caixa de cabo: o
-        // prefab do notebook tem um RedeEstacaoInteractable DESLIGADO no mesmo objeto, que fazia aparecer o alicate.
+        // prefab do notebook tem um RedeEstacaoInteractable DESLIGADO no mesmo objeto, que fazia aparecer o alicate
+        // (GetComponent acha componente desligado), e sem checar .Enabled ele roubava o ícone do notebook.
         if (alvo.GetComponentInParent<NotebookEstacao>() != null) return ChaveDeFenda;
         // caixa de cabo de rede: o clique direito abre a crimpagem (o esquerdo pega a caixa, ou crimpa com o alicate)
         RedeEstacaoInteractable caixa = alvo.GetComponent<RedeEstacaoInteractable>();

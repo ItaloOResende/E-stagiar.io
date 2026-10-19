@@ -430,7 +430,7 @@ public class NotebookTela : MonoBehaviour
         {
             vista = NotebookVista.Aberto;
             Atualizar();
-            Mensagem("Tampa aberta: interior acessível.", Verde);
+            Mensagem("", TextoFraco);   // limpa a linha de baixo: abrir o interior não anuncia nada
         }
     }
 
@@ -487,7 +487,9 @@ public class NotebookTela : MonoBehaviour
                     break;
                 case NotebookParafusoResultado.FerramentaErrada:
                     InteractionSounds.Raise(InteractionSound.Error);   // ferramenta errada: som de erro
-                    Mensagem("É necessária uma ferramenta adequada para recolocar os parafusos.", Amarelo);
+                    // mesmo recado da caixa de cabo de rede: "Falta ferramenta" com o desenho da chave de fenda
+                    FeedbackManutencao.FaltaFerramenta(this, IconesInteracao.ChaveDeFenda);
+                    if (msgTxt != null) msgTxt.text = "";   // o cartão toma o lugar da linha discreta
                     Recusar(indice);
                     break;
                 default:
@@ -506,14 +508,16 @@ public class NotebookTela : MonoBehaviour
                 if (est.Sessao.TodosParafusosRemovidos)
                 {
                     InteractionSounds.Raise(InteractionSound.CaseOpened);   // a tampa abriu (como o gabinete do PC)
-                    Mensagem("Tampa aberta: interior acessível.", Verde);
+                    Mensagem("", TextoFraco);                // sem recado nenhum: a vista de dentro já mostra o que abriu
                     StartCoroutine(AbrirInteriorDepois());   // vai sozinho para a vista de dentro
                 }
                 else Mensagem("Parafuso " + (indice + 1) + " removido.", TextoFraco);
                 break;
             case NotebookParafusoResultado.FerramentaErrada:
                 InteractionSounds.Raise(InteractionSound.Error);   // ferramenta errada: som de erro
-                Mensagem("É necessária uma ferramenta adequada para remover os parafusos.", Amarelo);
+                // mesmo recado da caixa de cabo de rede: "Falta ferramenta" com o desenho da chave de fenda
+                FeedbackManutencao.FaltaFerramenta(this, IconesInteracao.ChaveDeFenda);
+                if (msgTxt != null) msgTxt.text = "";   // o cartão toma o lugar da linha discreta
                 Recusar(indice);
                 break;
             case NotebookParafusoResultado.JaRemovido:
