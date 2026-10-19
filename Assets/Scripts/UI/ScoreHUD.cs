@@ -23,9 +23,15 @@ public class ScoreHUD : MonoBehaviour
     [Tooltip("Segundos que o valor do último lançamento (+N/−N) fica ao lado do total.")]
     [SerializeField, Min(0.2f)] private float deltaSeconds = 2f;
 
-    private static readonly Color Backdrop = new Color(0.08f, 0.10f, 0.14f, 0.78f);
-    private static readonly Color Ganho = new Color(0.40f, 0.90f, 0.50f);
-    private static readonly Color Perda = new Color(1f, 0.42f, 0.38f);
+    [SerializeField] private Color Backdrop = new Color(0.08f, 0.10f, 0.14f, 0.78f);
+    [SerializeField] private Color Ganho = new Color(0.40f, 0.90f, 0.50f);
+    [SerializeField] private Color Perda = new Color(1f, 0.42f, 0.38f);
+
+    [Header("Texto dos pontos")]
+    [SerializeField] private string pointsLabel = "PONTOS";
+    [SerializeField] private Font textFont;
+    [SerializeField] private FontStyle textFontStyle = FontStyle.Bold;
+    [SerializeField] private Color textColor = Color.white;
 
     private GUIStyle style;
     private int lastDelta;
@@ -34,7 +40,7 @@ public class ScoreHUD : MonoBehaviour
     /// <summary>O selo está desenhado neste quadro.</summary>
     public bool Visible { get; private set; }
     /// <summary>Texto do total mostrado (testes).</summary>
-    public string Text => keeper != null ? $"PONTOS   {keeper.Score}" : "";
+    public string Text => keeper != null ? $"{pointsLabel}   {keeper.Score}" : "";
 
     private void Awake()
     {
@@ -79,6 +85,8 @@ public class ScoreHUD : MonoBehaviour
                 clipping = TextClipping.Overflow
             };
         }
+        style.font = textFont;
+        style.fontStyle = textFontStyle;
         Visible = true;
 
         string total = Text;
@@ -89,7 +97,7 @@ public class ScoreHUD : MonoBehaviour
         GUI.color = Backdrop;
         GUI.DrawTexture(new Rect(x, y, w, h), Texture2D.whiteTexture);
         GUI.color = prev;
-        style.normal.textColor = Color.white;
+        style.normal.textColor = textColor;
         GUI.Label(new Rect(x + paddingX * e, y, w, h), total, style);
 
         float t = Time.unscaledTime - deltaAt;
@@ -100,7 +108,7 @@ public class ScoreHUD : MonoBehaviour
             style.normal.textColor = c;
             string d = lastDelta > 0 ? $"+{lastDelta}" : $"−{-lastDelta}";
             GUI.Label(new Rect(x + w + 10f * e, y - t * 6f * e, 200f * e, h), d, style);
-            style.normal.textColor = Color.white;
+            style.normal.textColor = textColor;
         }
     }
 }

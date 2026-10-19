@@ -1,10 +1,8 @@
 using UnityEngine;
 
 /// <summary>
-/// HUD do tempo da fase. Usa o tempo real do StageController:
-///  - uma FAIXA horizontal no topo, da largura toda da tela, que encolhe com o tempo restante (verde → amarelo →
-///    vermelho, em degradê contínuo), fixa durante a partida e proporcional à resolução;
-///  - o cronômetro (mm:ss) num selo no alto da DIREITA, logo abaixo da faixa (fora dela). Sem o nome da fase.
+/// HUD provisoria da fase, no ALTO DA DIREITA. Usa o tempo real do StageController.
+/// Mostra SO o nome da fase e o cronometro decrescendo — a barra de progresso da fase NAO existe mais.
 /// Nao cria um segundo temporizador nem modifica os minigames.
 /// O tempo de CADA chamado é outro: veja <see cref="TicketManager"/> e a barra da lista do celular.
 /// <para>
@@ -29,15 +27,31 @@ public class StageTimerHUD : MonoBehaviour
     [SerializeField, Min(0f)] private float topMargin = 16f;
     [Tooltip("Distancia da borda DIREITA da tela. O padrao (100) deixa o selo FORA do botao de fechar das telas.")]
     [SerializeField, Min(0f)] private float rightMargin = 100f;
-    [Tooltip("Altura da faixa de tempo no topo da tela (pixels da referência 1080p).")]
-    [SerializeField, Min(2f)] private float barHeight = 10f;
 
     /// <summary>Resolução de referência das telas 2D do jogo (o selo acompanha a mesma escala).</summary>
     private const float RefLargura = 1920f;
     private const float RefAltura = 1080f;
 
-    private static readonly Color Backdrop = new Color(0.08f, 0.10f, 0.14f, 0.78f);
-    private static readonly Color Urgente = new Color(0.86f, 0.16f, 0.14f, 0.92f);
+    [Header("Cores do HUD")]
+    [SerializeField] private Color Backdrop = new Color(0.08f, 0.10f, 0.14f, 0.78f);
+    [SerializeField] private Color Urgente = new Color(0.86f, 0.16f, 0.14f, 0.92f);
+
+    [Header("Ícone e textos da fase")]
+    [Tooltip("Imagem do ícone da fase. Aceita textura PNG com transparência.")]
+    [SerializeField] private Texture2D stageIcon;
+    [SerializeField, Min(1f)] private float iconSize = 40f;
+    [SerializeField, Min(0f)] private float iconSpacing = 10f;
+    [SerializeField] private Color iconColor = Color.white;
+    [SerializeField] private string stageLabel = "FASE";
+    [SerializeField] private string speedRunLabel = "SPEED RUN";
+    [Tooltip("Altera somente o título do HUD para Speed Run; não altera o modo nem a duração da partida.")]
+    [SerializeField] private bool showSpeedRunLabel;
+    [SerializeField] private string timeLabel = "TEMPO";
+    [SerializeField] private bool showStageName = true;
+    [SerializeField] private bool showTime = true;
+    [SerializeField] private Font textFont;
+    [SerializeField] private FontStyle textFontStyle = FontStyle.Bold;
+    [SerializeField] private Color textColor = Color.white;
 
     [Header("Tensão no fim da fase")]
     [Tooltip("Com este tempo restante (s) o selo fica vermelho e começa o som de suspense.")]
@@ -131,18 +145,14 @@ public class StageTimerHUD : MonoBehaviour
         float duration = Mathf.Max(1f, stageController.DurationSeconds);
         float remaining = Mathf.Clamp(stageController.SecondsRemaining, 0f, duration);
         int seconds = Mathf.CeilToInt(remaining);
-        string text = $"{seconds / 60:00}:{seconds % 60:00}";   // só o tempo (sem o nome da fase)
+        string text = showStageName ? (showSpeedRunLabel ? speedRunLabel : $"{stageLabel} {stage}") : "";
+        if (showTime)
+            text += (string.IsNullOrEmpty(text) ? "" : "   |   ") + $"{timeLabel}  {seconds / 60:00}:{seconds % 60:00}";
+        if (string.IsNullOrEmpty(text) && stageIcon == null) return;
 
         // A escala acompanha o CanvasScaler das telas do jogo (referência 1920x1080), então o selo fica do
         // MESMO tamanho relativo em qualquer resolução — como o celular do jogador.
         float e = Escala;
-
-        // faixa do topo: largura toda, encolhe da direita para a esquerda conforme o tempo acaba
-        float fracao = remaining / duration;
-        float hb = Mathf.Max(2f, Mathf.Round(barHeight * e));
-        DrawRect(new Rect(0f, 0f, Screen.width, hb), new Color(0.05f, 0.07f, 0.09f, 0.75f));
-        DrawRect(new Rect(0f, 0f, Screen.width * fracao, hb), CorDaFaixa(fracao));
-
         // último minuto: vermelho; últimos segundos: pulsa (só o tamanho do selo, o texto continua legível)
         bool urgente = remaining <= warningSeconds;
         bool final = remaining <= finalSeconds;
@@ -152,22 +162,22 @@ public class StageTimerHUD : MonoBehaviour
 
         // O retangulo e medido PELO TEXTO: o fundo e sempre um selo colado na letra.
         Vector2 medida = labelStyle.CalcSize(new GUIContent(text));
-        float w = Mathf.Ceil(medida.x + 2f * paddingX * e);
-        float h = Mathf.Ceil(medida.y + 2f * paddingY * e);
+        float iconWidth = stageIcon != null ? (iconSize + (string.IsNullOrEmpty(text) ? 0f : iconSpacing)) * e : 0f;
+        float w = Mathf.Ceil(medida.x + iconWidth + 2f * paddingX * e);
+        float h = Mathf.Ceil(Mathf.Max(medida.y, stageIcon != null ? iconSize * e : 0f) + 2f * paddingY * e);
         float x = Screen.width - w - rightMargin * e;   // alto da DIREITA, à esquerda do botão de fechar
-        float y = hb + topMargin * e;   // abaixo da faixa, sem ficar comprimido nela
+        float y = topMargin * e;
 
         DrawRect(new Rect(x, y, w, h), urgente ? Urgente : Backdrop);
-        GUI.Label(new Rect(x + paddingX * e, y + paddingY * e, w - 2f * paddingX * e, h - 2f * paddingY * e),
+        if (stageIcon != null)
+        {
+            Color previous = GUI.color;
+            GUI.color = iconColor;
+            GUI.DrawTexture(new Rect(x + paddingX * e, y + (h - iconSize * e) * 0.5f, iconSize * e, iconSize * e), stageIcon, ScaleMode.ScaleToFit, true);
+            GUI.color = previous;
+        }
+        GUI.Label(new Rect(x + paddingX * e + iconWidth, y + paddingY * e, w - 2f * paddingX * e - iconWidth, h - 2f * paddingY * e),
             text, labelStyle);
-    }
-
-    /// <summary>Verde no início, amarelo na metade, vermelho no fim (degradê contínuo).</summary>
-    public static Color CorDaFaixa(float fracao)
-    {
-        Color verde = new Color(0.2f, 0.8f, 0.35f), amarelo = new Color(0.98f, 0.82f, 0.18f), vermelho = new Color(0.9f, 0.18f, 0.15f);
-        fracao = Mathf.Clamp01(fracao);
-        return fracao > 0.5f ? Color.Lerp(amarelo, verde, (fracao - 0.5f) * 2f) : Color.Lerp(vermelho, amarelo, fracao * 2f);
     }
 
     /// <summary>A mesma escala que o CanvasScaler das telas do jogo usa (referência 1920 x 1080).</summary>
@@ -177,17 +187,24 @@ public class StageTimerHUD : MonoBehaviour
     private void GarantirEstilo(float escala)
     {
         int tamanho = Mathf.Max(9, Mathf.RoundToInt(fontSize * escala));
-        if (labelStyle != null && labelStyle.fontSize == tamanho) return;
+        if (labelStyle != null && labelStyle.fontSize == tamanho)
+        {
+            labelStyle.font = textFont;
+            labelStyle.fontStyle = textFontStyle;
+            labelStyle.normal.textColor = textColor;
+            return;
+        }
 
         labelStyle = new GUIStyle(GUI.skin.label)
         {
             alignment = TextAnchor.MiddleCenter,
             fontSize = tamanho,
-            fontStyle = FontStyle.Bold,
+            font = textFont,
+            fontStyle = textFontStyle,
             wordWrap = false,
             clipping = TextClipping.Clip
         };
-        labelStyle.normal.textColor = Color.white;
+        labelStyle.normal.textColor = textColor;
     }
 
     private static void DrawRect(Rect rect, Color color)

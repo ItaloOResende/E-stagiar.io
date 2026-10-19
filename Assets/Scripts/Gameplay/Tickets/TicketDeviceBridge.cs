@@ -58,7 +58,7 @@ public abstract class TicketDeviceBridge : MonoBehaviour
     public IReadOnlyList<string> AcceptedTicketIds => acceptedTicketIds;
 
     private bool Accepts(TicketInstance t) => t != null && t.Definition != null && acceptedTicketIds.Contains(t.Definition.ticketId);
-    private bool Free => Current == null || Current.IsClosed || ticketManager == null || !Contains(ticketManager.Tickets, Current);
+    private bool Free => Current == null || ticketManager == null || !Contains(ticketManager.Tickets, Current);
 
     /// <summary>
     /// O chamado pode ser iniciado agora: há um equipamento livre que o aceita, ou nenhum equipamento da cena o aceita
@@ -66,35 +66,14 @@ public abstract class TicketDeviceBridge : MonoBehaviour
     /// </summary>
     public static bool CanStart(TicketInstance t)
     {
-        return Availability(t, out _, out _) != StartBlock.AllBusy;
-    }
-
-    /// <summary>Por que um chamado pendente pode (ou não) ser iniciado agora.</summary>
-    public enum StartBlock { Free, NoDevice, AllBusy }
-
-    /// <summary>
-    /// Equipamentos da cena que aceitam o chamado (<paramref name="total"/>) e quantos estão livres para RESERVÁ-LO agora
-    /// (<paramref name="free"/>), com os mesmos critérios da reserva (<see cref="AssignAll"/>): ligado, do mesmo
-    /// TicketManager e sem outro chamado. Assim o tablet nunca deixa iniciar um chamado que não teria equipamento.
-    /// </summary>
-    public static StartBlock Availability(TicketInstance t, out int total, out int free)
-    {
-        total = free = 0;
+        bool anyAccepts = false;
         foreach (TicketDeviceBridge b in active)
         {
-            if (b == null || !b.isActiveAndEnabled || !b.Accepts(t)) continue;
-            total++;
-            if (b.Free && !OwnedByOther(b, t)) free++;
+            if (b == null || !b.Accepts(t)) continue;
+            anyAccepts = true;
+            if (b.Free) return true;
         }
-        return total == 0 ? StartBlock.NoDevice : free > 0 ? StartBlock.Free : StartBlock.AllBusy;
-    }
-
-    // O equipamento já está reservado (owners) para outro chamado ainda aberto.
-    private static bool OwnedByOther(TicketDeviceBridge b, TicketInstance t)
-    {
-        foreach (KeyValuePair<TicketInstance, TicketDeviceBridge> kv in owners)
-            if (kv.Value == b && kv.Key != t && !kv.Key.IsClosed) return true;
-        return false;
+        return !anyAccepts;
     }
 
     /// <summary>
@@ -186,7 +165,7 @@ public abstract class TicketDeviceBridge : MonoBehaviour
     private bool IsRequesterStation(TicketInstance t)
     {
         StationEmployee e = Station;
-        return e != null && e.Occupied && t.Definition != null && e.employeeName == t.Definition.requester;
+        return e != null && t.Definition != null && e.employeeName == t.Definition.requester;
     }
 
     private void Claim(TicketInstance t)
@@ -201,18 +180,14 @@ public abstract class TicketDeviceBridge : MonoBehaviour
         t.AssignedNpc = stationNpc != null ? stationNpc.name : "";
         // o chamado é do funcionário da estação (placa da mesa); o local é a estação, nunca o rack ou o testador
         StationEmployee dono = Station;
-        if (dono != null && !dono.Occupied)   // estação sem funcionário: o solicitante é o da ficha, o local é a estação
-        {
-            if (!string.IsNullOrEmpty(dono.stationLabel)) t.Location = $"{dono.stationLabel} ({deviceLabel})";
-        }
-        else if (dono != null)
+        if (dono != null)
         {
             t.Requester = dono.employeeName;
             if (!string.IsNullOrEmpty(dono.department)) t.Department = dono.department;
             t.AssignedNpc = "";
             t.Location = $"Estação de {dono.employeeName} ({deviceLabel})";
         }
-        StationLocator.Show(this, dono != null ? dono.transform : deviceRoot);
+        StationLocator.Show(this, dono != null ? dono.transform : (deviceRoot != null ? deviceRoot : transform), ticketManager);
         if (prepareProblemOnClaim) StartCoroutine(PrepareLater(t));
         OnClaimed(t);
         Debug.Log($"Chamado #{t.Number} ({t.Definition.ticketId}) reservado: {deviceLabel}" +
@@ -306,10 +281,12 @@ public abstract class TicketDeviceBridge : MonoBehaviour
     protected virtual string DeliveryBlocker() => null;
 
     /// <summary>
-    /// A etapa concluída precisa continuar valendo na entrega (padrão: sim). Etapas de passagem, desfeitas pelo próprio
-    /// procedimento (ex.: abrir-gabinete, que precisa estar FECHADO para entregar), devolvem false.
+    /// Indica se a condição desta etapa deve continuar válida na entrega.
+    /// As subclasses podem retornar false para ações transitórias já concluídas.
+    /// O padrão mantém a revalidação das etapas existentes.
     /// </summary>
     protected virtual bool MustHoldOnDelivery(string stepId) => true;
+
 
     /// <summary>Este equipamento sabe avaliar a etapa?</summary>
     protected abstract bool Knows(string stepId);

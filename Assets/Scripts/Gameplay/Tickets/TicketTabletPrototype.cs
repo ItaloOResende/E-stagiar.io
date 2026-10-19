@@ -153,7 +153,11 @@ public class TicketTabletPrototype : MonoBehaviour
     private int recusaNumero = -1;
     private Texture2D texturaCirculo;
     private Sprite circuloGerado;
-    private class Card { public TicketInstance ticket; public TMP_Text tempo, recusa; public Button acao; public RectTransform barra; }
+    [Header("Foto do solicitante")]
+    [SerializeField] private bool mostrarFotos = true;
+    [SerializeField, Min(24f)] private float tamanhoFoto = 72f;
+    [SerializeField] private Color corFoto = Color.white;
+    private class Card { public Image foto; public TicketInstance ticket; public TMP_Text tempo, recusa; public Button acao; public RectTransform barra; }
     private class Hover { public Button button; public Vector3 baseScale; public float valor = 1; }
     private class Impacto { public RectTransform rect; public Image image; public float inicio; }
     private static bool Oculto => MainMenuScreen.Showing || StageReportScreen.Showing;
@@ -448,13 +452,43 @@ public class TicketTabletPrototype : MonoBehaviour
             }
             assinatura = "";
         });
+        v.foto = GarantirFoto(root);
+        AtualizarFoto(v);
         cards.Add(v); visuaisPendentes = true;
+    }
+    private Image GarantirFoto(RectTransform root)
+    {
+        var child = root.Find("FotoSolicitante");
+        Image foto = child != null ? child.GetComponent<Image>() : null;
+        if (foto == null)
+        {
+            var go = new GameObject("FotoSolicitante", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+            go.transform.SetParent(root, false);
+            go.transform.SetAsFirstSibling();
+            foto = go.GetComponent<Image>();
+        }
+        foto.preserveAspect = true;
+        foto.raycastTarget = false;
+        return foto;
+    }
+    private void AtualizarFoto(Card card)
+    {
+        if (card.foto == null) return;
+        card.foto.sprite = ticketManager != null ? ticketManager.FotoDoSolicitante(card.ticket.Requester) : null;
+        card.foto.color = corFoto;
+        card.foto.gameObject.SetActive(mostrarFotos && card.foto.sprite != null);
+        var layout = card.foto.GetComponent<LayoutElement>();
+        if (layout == null) layout = card.foto.gameObject.AddComponent<LayoutElement>();
+        layout.minHeight = layout.preferredHeight = Mathf.Max(24f, tamanhoFoto);
+        layout.minWidth = layout.preferredWidth = Mathf.Max(24f, tamanhoFoto);
+        layout.flexibleWidth = layout.flexibleHeight = 0;
     }
     private void AtualizarCards()
     {
         if (!aberto) return;
         foreach (var v in cards)
         {
+            AtualizarFoto(v);
             var c = v.ticket;
             bool livre = c.Status != TicketStatus.Pending || TicketDeviceBridge.CanStart(c);
             v.acao.interactable = livre;

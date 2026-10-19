@@ -1,64 +1,46 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// Seta discreta sobre a estação de um chamado EM ATENDIMENTO. Mostrada pelo <see cref="TicketDeviceBridge"/> ao
-/// reservar o equipamento e removida ao liberar (chamado concluído, troca de equipamento). Uma seta por equipamento.
-/// O modelo vem de <c>Resources/Indicador_Chamado</c> (gerado pelo menu de correções); sem ele, nada aparece.
-/// A seta (<see cref="Scale"/> × o modelo) flutua um pouco acima do ponto mais alto da estação e das divisórias em volta
-/// (<see cref="Clearance"/>) e balança devagar; não tem colisor (não atrapalha a mira).
-/// </summary>
+/// <summary>Sprite billboard dos chamados ativos. Aparência configurada no TicketManager.</summary>
 public class StationLocator : MonoBehaviour
 {
-    private const string PrefabPath = "Indicador_Chamado";
-    private static GameObject prefab;
-    private static bool loaded;
+    public const float Scale = 1.4f; // Compatibilidade com ferramentas antigas.
+    public const float Clearance = 0.3f;
     private static readonly Dictionary<Object, StationLocator> shown = new Dictionary<Object, StationLocator>();
-
-    /// <summary>Escala da seta sobre o modelo do Resources (2026-10-17: um pouco maior para ser vista de longe).</summary>
-    public const float Scale = 1.4f;
-    /// <summary>Folga (m) entre o ponto mais alto da estação/divisória e a base da seta.</summary>
-    public const float Clearance = 0.45f;
-
+    private Object owner;
     private Transform target;
-    private float baseHeight;
-    private float nextRefresh;
+    private TicketManager settings;
+    private SpriteRenderer visual;
+    private float heightOffset;
 
-    /// <summary>Seta ligada para este dono (equipamento), sobre <paramref name="station"/>.</summary>
-    public static void Show(Object owner, Transform station)
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetRegistry() => shown.Clear();
+
+    public static void Show(Object owner, Transform station, TicketManager settings = null)
     {
         if (owner == null || station == null) return;
         Hide(owner);
-        if (!loaded) { prefab = Resources.Load<GameObject>(PrefabPath); loaded = true; }
-        if (prefab == null) return;
-        GameObject go = Instantiate(prefab);
-        go.name = "Indicador_" + station.name;
-        foreach (Collider c in go.GetComponentsInChildren<Collider>(true)) Destroy(c);
+        if (settings == null) settings = Object.FindFirstObjectByType<TicketManager>();
+        var go = new GameObject("Indicador_" + station.name);
         var loc = go.AddComponent<StationLocator>();
+        loc.owner = owner;
         loc.target = station;
-        go.transform.localScale = prefab.transform.localScale * Scale;
-        loc.baseHeight = Mathf.Max(TopOf(station), DividerTop(station)) + Clearance;
+        loc.settings = settings;
+        loc.visual = go.AddComponent<SpriteRenderer>();
+        loc.heightOffset = Mathf.Max(TopOf(station), DividerTop(station)) - station.position.y;
         shown[owner] = loc;
+        loc.LateUpdate();
     }
 
     public static void Hide(Object owner)
     {
-        if (owner == null || !shown.TryGetValue(owner, out StationLocator loc)) return;
+        if (ReferenceEquals(owner, null) || !shown.TryGetValue(owner, out var loc)) return;
         shown.Remove(owner);
-        if (loc != null) Destroy(loc.gameObject);
+        if (loc != null) { loc.gameObject.SetActive(false); Destroy(loc.gameObject); }
     }
-
     public static int Count => shown.Count;
+    public static StationLocator Of(Object owner) => owner != null && shown.TryGetValue(owner, out var loc) ? loc : null;
 
-    /// <summary>Seta mostrada para um dono (testes).</summary>
-    public static StationLocator Of(Object owner) => owner != null && shown.TryGetValue(owner, out StationLocator l) ? l : null;
-
-    /// <summary>
-    /// Topo das divisórias em volta da estação: o mais alto entre os colisores ESTÁTICOS (sem Rigidbody) num raio de 1,6 m
-    /// e os renderers estáticos (divisórias sem colisor) cujo volume chega a 1,6 m do ponto da seta, até 2,3 m acima do
-    /// chão da estação (ignora paredes, teto, NPCs e objetos soltos). Assim a seta fica ACIMA da divisória e é vista do
-    /// corredor.
-    /// </summary>
     private static float DividerTop(Transform station)
     {
         float chao = station.position.y, top = chao;
@@ -68,14 +50,6 @@ public class StationLocator : MonoBehaviour
             float y = c.bounds.max.y;
             if (y > chao + 2.3f || c.bounds.size.y > 2.6f) continue;   // parede/teto
             top = Mathf.Max(top, y);
-        }
-        Vector3 p = station.position;
-        foreach (MeshRenderer r in FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
-        {
-            Bounds b = r.bounds;
-            if (b.max.y > chao + 2.3f || b.size.y > 2.6f || b.max.y <= top || r.GetComponentInParent<Rigidbody>() != null) continue;
-            Vector3 q = b.ClosestPoint(new Vector3(p.x, b.center.y, p.z));
-            if (new Vector2(q.x - p.x, q.z - p.z).sqrMagnitude <= 1.6f * 1.6f) top = b.max.y;
         }
         return top;
     }
@@ -90,14 +64,26 @@ public class StationLocator : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (target == null) { Destroy(gameObject); return; }
-        float t = Time.time;
-        if (t >= nextRefresh)   // o alvo pode ter sido movido: refaz a altura (topo da estação e das divisórias em volta)
-        {
-            nextRefresh = t + 0.5f;
-            baseHeight = Mathf.Max(TopOf(target), DividerTop(target)) + Clearance;
-        }
-        transform.position = new Vector3(target.position.x, baseHeight + Mathf.Sin(t * 2.2f) * 0.06f, target.position.z);
-        transform.rotation = Quaternion.Euler(0f, t * 60f, 0f);
+        if (target == null || owner == null) { Destroy(gameObject); return; }
+        var camera = settings != null && settings.chamadoCamera != null ? settings.chamadoCamera : Camera.main;
+        Sprite sprite = settings != null ? settings.chamadoSprite : null;
+        visual.enabled = sprite != null && camera != null;
+        if (!visual.enabled) return;
+        visual.sprite = sprite;
+        visual.color = settings.chamadoCor;
+        float size = Mathf.Max(0.05f, settings.chamadoTamanho);
+        float spriteHeight = Mathf.Max(0.001f, sprite.bounds.size.y);
+        float scale = size / spriteHeight;
+        transform.localScale = Vector3.one * scale;
+        transform.rotation = camera.transform.rotation;
+        Vector3 center = target.position + Vector3.up * (heightOffset + size * 0.5f) + settings.chamadoOffset;
+        center.y += Mathf.Sin(Time.time * settings.chamadoVelocidade) * settings.chamadoFlutuacao;
+        transform.position = center - transform.rotation * (sprite.bounds.center * scale);
+    }
+
+    private void OnDestroy()
+    {
+        if (!ReferenceEquals(owner, null) && shown.TryGetValue(owner, out var loc) && loc == this)
+            shown.Remove(owner);
     }
 }
