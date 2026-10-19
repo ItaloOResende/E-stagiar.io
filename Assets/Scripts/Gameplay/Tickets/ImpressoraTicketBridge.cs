@@ -28,7 +28,8 @@ public class ImpressoraTicketBridge : TicketDeviceBridge
     [Tooltip("IP do estado funcional quando a cena não sorteia o IP da rodada (sem StageController). Com fase, a " +
              "impressora usa o IP da rodada (ImpressoraRede), o mesmo do cartaz da sala de TI.")]
     [SerializeField] private string ipInicial = "192.168.0.20";
-    [Tooltip("Sorteia o IP da rodada (ImpressoraRede) no início de cada fase e a cada chamado que apaga o IP.")]
+    [Tooltip("Usa o IP vigente (ImpressoraRede, o do cartaz da sala de TI) e sorteia um novo a cada chamado que apaga " +
+             "o IP. Outros chamados e o início da fase não mudam o IP.")]
     [SerializeField] private bool sortearIpDaRodada = true;
 
     private StageController fase;
@@ -47,22 +48,8 @@ public class ImpressoraTicketBridge : TicketDeviceBridge
     private void Start()
     {
         fase = sortearIpDaRodada ? FindAnyObjectByType<StageController>() : null;
-        if (fase != null) fase.StageStarted += NovaRodada;
         string ip = fase != null ? ImpressoraRede.Garantir() : ipInicial;
         if (comecarFuncional) estacao.DefinirEstado(Criar(tonerPrefab), Criar(papelPrefab), ip);
-    }
-
-    private void OnDestroy()
-    {
-        if (fase != null) fase.StageStarted -= NovaRodada;
-    }
-
-    // Fase nova: IP novo (nunca o da rodada anterior). Impressora funcional e sem chamado passa a usar o IP novo.
-    private void NovaRodada()
-    {
-        ImpressoraRede.Sortear();
-        ImpressoraSession s = estacao.Sessao;
-        if ((Current == null || Current.IsClosed) && s.TemIp) estacao.DefinirEstado(estacao.TonerGuardado, estacao.PapelGuardado, ImpressoraRede.IpDaRodada);
     }
 
     private GameObject Criar(GameObject prefab)
@@ -91,7 +78,9 @@ public class ImpressoraTicketBridge : TicketDeviceBridge
         Debug.Log($"[Impressora] {DeviceLabel}: defeito '{ticketId}' aplicado.", this);
     }
 
-    // O chamado apagou o IP: a rede pede um IP novo (o cartaz da sala de TI mostra qual) durante todo o chamado.
+    // O chamado apagou o IP: cada chamado desses pede um IP novo (nunca o do chamado anterior), que o cartaz da sala de
+    // TI mostra durante todo o chamado. Reabrir o cartaz ou errar no painel não sorteia de novo; as outras impressoras,
+    // já configuradas, continuam funcionando com o IP delas.
     private void NovoIpDoChamado()
     {
         if (fase != null) ImpressoraRede.Sortear();

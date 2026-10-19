@@ -773,10 +773,15 @@ public class NotebookTela : MonoBehaviour
         }
     }
 
+    // Luz própria das vistas 3D do notebook (ModeloNaTela): sem ela a cópia era vista contra a luz da cena e as
+    // vistas saíam escuras, bem mais que as telas do PC (renders fixos) e da impressora.
+    private const float LuzDasVistas3D = 1.1f;
+
     private Vista3D NovaVista(RectTransform pai, string nome, Rect ancoras, Vector3 olhar, Vector3 cima, string[] enquadrar, float borda)
     {
         var v = new Vista3D { olhar = olhar, cima = cima, enquadrar = enquadrar, borda = borda };
         v.modelo = ModeloNaTela.Criar(pai, nome, new Vector2Int(1600, 1000));
+        v.modelo.LuzDaVista = LuzDasVistas3D;
         var rt = (RectTransform)v.modelo.transform;
         rt.anchorMin = ancoras.min;
         rt.anchorMax = ancoras.max;
@@ -803,12 +808,14 @@ public class NotebookTela : MonoBehaviour
                              new Vector3(0f, 1f, -0.42f), Vector3.back, new[] { "Base" }, 0.08f);   // de baixo, pouco inclinado: quase a proporção da vista "Baixo" (a 45° o notebook saía achatado), ainda com relevo
         v3Aberto.parafusos = false;  // parafusos só na vista de baixo (recolocados com a tampa aberta, ficariam soltos aqui)
         v3Lado = NovaVista(overlays[(int)NotebookVista.Lado], "Lado", centro, Vector3.left, Vector3.up, null, 0.1f);
-        // Frente: como o monitor e o gabinete na manutenção do PC, a tela de um lado e o teclado "em pé" do outro
+        // Frente: o notebook aberto "esticado", em pé para o jogador: a tela EM CIMA (dobradiça embaixo) e o teclado
+        // EMBAIXO, visto de cima (dobradiça em cima), centralizados, com a mesma largura e quase encostados, como uma
+        // peça só. Áreas estreitas o bastante para as duas câmeras serem limitadas pela LARGURA (mesma escala).
         Quaternion tampa = Quaternion.Euler(-110f, 0f, 0f);
-        v3Tela = NovaVista(overlays[(int)NotebookVista.Frente], "Tela", Rect.MinMaxRect(0.03f, 0.08f, 0.47f, 0.95f),
+        v3Tela = NovaVista(overlays[(int)NotebookVista.Frente], "Tela", Rect.MinMaxRect(0.30f, 0.515f, 0.70f, 0.97f),
                            tampa * Vector3.up, tampa * Vector3.forward, new[] { "Tampa" }, 0.06f);
         v3Tela.apenas = new[] { "Dobradica" };   // só a tampa com a tela
-        v3Teclado = NovaVista(overlays[(int)NotebookVista.Frente], "Teclado", Rect.MinMaxRect(0.49f, 0.08f, 0.86f, 0.95f)   /* à direita fica a miniatura da mão */,
+        v3Teclado = NovaVista(overlays[(int)NotebookVista.Frente], "Teclado", Rect.MinMaxRect(0.30f, 0.05f, 0.70f, 0.505f),
                               Vector3.down, Vector3.back, new[] { "Base" }, 0.06f);
         v3Teclado.ocultar = new[] { "Dobradica" };   // só a base com o teclado (a tela aberta ficaria na frente)
 

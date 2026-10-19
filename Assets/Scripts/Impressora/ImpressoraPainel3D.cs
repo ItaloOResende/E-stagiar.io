@@ -5,7 +5,7 @@ using UnityEngine.UI;
 /// Visor do painel 3D da impressora (no modelo do mundo), como a <c>Tela</c> do monitor (<see cref="MonitorDisplay"/>):
 /// mostra AO VIVO o estado do <see cref="ImpressoraEstacao"/> do objeto (o mesmo que a tela 2D do Ítalo comanda) —
 /// o que falta (toner, papel, IP) ou "PRONTA", e o IP confirmado. Vai no filho <c>Painel</c> do root lógico da
-/// impressora, junto do <see cref="ImpressoraPainelInteractable"/> (clicar no painel abre a tela no teclado do IP).
+/// impressora. O painel é parte da impressora: mirar nele é mirar nela (<see cref="ImpressoraPainelInteractable"/>).
 /// Só apresentação: não guarda estado e não depende de nome, tag nem do modelo 3D.
 /// </summary>
 public class ImpressoraPainel3D : MonoBehaviour

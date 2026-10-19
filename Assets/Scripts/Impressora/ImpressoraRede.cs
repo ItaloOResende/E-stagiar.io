@@ -2,10 +2,11 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// Endereço IP que a impressora da rede DEVE ter nesta rodada: a única referência, lida pelo cartaz da sala de TI
+/// Endereço IP vigente para configurar a impressora da rede: a única referência, lida pelo cartaz da sala de TI
 /// (<see cref="CartazIpImpressora"/>) e pela validação do painel (<see cref="ImpressoraSession.ConfirmarIp"/>).
-/// Sorteado no início de cada fase (<see cref="ImpressoraTicketBridge"/>, no <c>StageStarted</c>) e de novo a cada
-/// chamado que apaga o IP da impressora, sempre diferente do anterior: o jogador precisa ler o cartaz, não decorar.
+/// Definido na primeira impressora da cena (<see cref="Garantir"/>) e sorteado de novo a CADA chamado que apaga o IP
+/// de uma impressora (<see cref="ImpressoraTicketBridge"/>), sempre diferente do anterior: o jogador precisa ler o
+/// cartaz, não decorar. Chamados sem essa mecânica, o início da fase, o cartaz e as tentativas no painel não sorteiam.
 /// Rede do escritório: 192.168.0.0/24 (a mesma do IP inicial que a impressora já usava); a impressora fica na faixa
 /// 192.168.0.20–99. Sem rodada (cenas antigas, testes Edit Mode): <see cref="IpDaRodada"/> vazio = qualquer IPv4
 /// válido é aceito, como antes.

@@ -25,7 +25,8 @@ public static class IconesInteracao
     private static Sprite Abrir => abrir != null ? abrir : abrir = Carregar("icone_abrir");
     /// <summary>Desenho da chave de fenda (aviso de ferramenta que falta, como o alicate na caixa de cabo).</summary>
     public static Sprite ChaveDeFenda => chave != null ? chave : chave = Carregar("icone_chave_fenda");
-    private static Sprite Crimpador => crimpador != null ? crimpador : crimpador = Carregar("icone_crimpador");
+    /// <summary>Desenho do alicate de crimpar (aviso de ferramenta que falta na crimpagem).</summary>
+    public static Sprite Crimpador => crimpador != null ? crimpador : crimpador = Carregar("icone_crimpador");
     private static Sprite Impressora => impressora != null ? impressora : impressora = Carregar("icone_impressora");
     private static Sprite Monitor => monitor != null ? monitor : monitor = Carregar("icone_monitor");
     private static Sprite Rack => rack != null ? rack : rack = Carregar("icone_rack");

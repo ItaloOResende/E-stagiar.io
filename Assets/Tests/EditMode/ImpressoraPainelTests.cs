@@ -27,7 +27,7 @@ public class ImpressoraPainelTests
         Call(s, "UsarEncaixe", Parte("Papel"), true, Parte("Papel"));
         Assert.AreEqual("ERRO - VERIFICAR", Status(s), "sem rede configurada");
 
-        Call(s, "Digitar", "192168000050");
+        Call(s, "Digitar", "192168050");
         Assert.AreEqual("ERRO - VERIFICAR", Status(s), "digitado mas não confirmado ainda não vale");
         Assert.IsTrue((bool)Call(s, "ConfirmarIp"));
         Assert.AreEqual("PRONTA", Status(s), "só o IP: não existe máscara de sub-rede");
@@ -46,17 +46,27 @@ public class ImpressoraPainelTests
         Assert.AreEqual("192.", dig(), "3 dígitos: o ponto entra sozinho");
         Call(s, "Digitar", "168.1.");
         Assert.AreEqual("192.168.1.", dig(), "ponto fecha o grupo antes dos 3 dígitos");
-        Assert.AreEqual("192.168.001.___", visor(dig()));
+        Assert.AreEqual("192.168.1._", visor(dig()), "visor sem zeros artificiais, como o cartaz");
         Call(s, "Digitar", "10");
-        Assert.AreEqual("192.168.001.10_", visor(dig()));
+        Assert.AreEqual("192.168.1.10", visor(dig()));
         Call(s, "Digitar", "99");
         Assert.AreEqual("192.168.1.109", dig(), "último grupo: nada além de 3 dígitos");
 
         Call(s, "Limpar");
+        Assert.AreEqual("_._._._", visor(""));
         Call(s, "Digitar", "300");
-        Assert.AreEqual("30.0", dig(), "o dígito que passaria de 255 começa o próximo grupo");
+        Assert.AreEqual("30.0.", dig(), "o dígito que passaria de 255 começa o próximo grupo (e o 0 fecha sozinho)");
         Call(s, "Digitar", "..");
         Assert.AreEqual("30.0.", dig(), "ponto repetido não cria grupo vazio");
+
+        // o IP do cartaz digitado só com números: o grupo "0" fecha sozinho, sem segmento extra
+        Call(s, "Limpar");
+        Call(s, "Digitar", "192168061");
+        Assert.AreEqual("192.168.0.61", dig());
+        Assert.AreEqual("192.168.0.61", visor(dig()));
+        Call(s, "Limpar");
+        Call(s, "Digitar", "192.168.0.61");
+        Assert.AreEqual("192.168.0.61", dig(), "com pontos digitados dá o mesmo resultado");
 
         // corrigir números anteriores: Apagar volta pelos grupos
         Call(s, "Limpar");
@@ -88,16 +98,24 @@ public class ImpressoraPainelTests
             Assert.AreEqual("NaoConfere", Get(s, "UltimaRecusa").ToString());
             Assert.AreEqual("", (string)Get(s, "IpSalvo"), "nada é salvo");
             Call(s, "Limpar");
-            Call(s, "Digitar", "192.168.000.042");
-            Assert.IsTrue((bool)Call(s, "ConfirmarIp"), "o IP do cartaz (com zeros à esquerda) vale");
+            Call(s, "Digitar", "192168042");
+            Assert.IsTrue((bool)Call(s, "ConfirmarIp"), "o IP do cartaz, digitado só com números, vale");
             Assert.IsTrue((bool)Get(s, "RedeConfigurada"));
 
             string anterior = daRodada();
             string novo = (string)rede.GetMethod("Sortear").Invoke(null, null);
-            Assert.AreNotEqual(anterior, novo, "rodada nova nunca repete o IP");
+            Assert.AreNotEqual(anterior, novo, "chamado novo nunca repete o IP");
             Assert.AreEqual(novo, daRodada(), "cartaz e validação leem o mesmo valor");
-            Assert.IsFalse((bool)Get(s, "RedeConfigurada"), "o IP da rodada anterior deixa de valer");
+            Assert.IsTrue((bool)Get(s, "RedeConfigurada"), "o IP novo de outro chamado não desconfigura esta impressora");
             StringAssert.StartsWith("192.168.0.", novo);
+
+            object outra = Activator.CreateInstance(T("ImpressoraSession"));
+            Call(outra, "Digitar", anterior);
+            Assert.IsFalse((bool)Call(outra, "ConfirmarIp"), "o IP do chamado anterior não vale para o chamado novo");
+            Call(outra, "Limpar");
+            Call(outra, "Digitar", novo);
+            Assert.IsTrue((bool)Call(outra, "ConfirmarIp"));
+            Assert.AreEqual(novo, daRodada(), "tentar de novo no painel não sorteia outro IP");
         }
         finally { definir(""); }
     }

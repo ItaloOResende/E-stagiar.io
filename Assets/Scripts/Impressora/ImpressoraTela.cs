@@ -19,7 +19,7 @@ public enum ImpressoraVista { Toner, Papel, Painel, Teste }
 ///  - <b>Toner</b>: a frente aberta, com o compartimento do cartucho.
 ///  - <b>Papel</b>: a bandeja de papel puxada para fora.
 ///  - <b>Painel</b>: configuração de rede (só o campo do endereço IP + teclado numérico), com máscara de ENTRADA IPv4:
-///    os pontos entram sozinhos e o visor mostra o formato 192.168.001.010 (<see cref="ImpressoraSession.FormatarVisor"/>).
+///    os pontos entram sozinhos e o visor mostra o IP como o cartaz (192.168.0.61, <see cref="ImpressoraSession.FormatarVisor"/>).
 ///    Também aceita o TECLADO FÍSICO: números, ponto (fecha o grupo antes dos 3 dígitos), Backspace (apaga, voltando
 ///    pelos grupos), Delete (limpa) e Enter (confirma).
 /// Os textos são neutros: a tela não diz o que está faltando.
@@ -714,25 +714,18 @@ public class ImpressoraTela : MonoBehaviour
         ipSalvoTxt.text = s.TemIp ? "Configurado: " + s.IpSalvo : "Nenhum endereço configurado";
     }
 
-    // O visor do IP: em digitação, o formato da máscara de entrada (192.168.001.___) com o cursor piscando; parado,
-    // o IP salvo no mesmo formato (verde) ou o molde vazio.
+    // O visor do IP: em digitação, a máscara de entrada (192.168.0._) com o cursor piscando; parado, o IP salvo como o
+    // cartaz o escreve (verde) ou o molde vazio.
     private void Visor(Text visor, string digitado, string salvo, bool cursor)
     {
         bool digitando = digitado.Length > 0;
         string txt = digitando ? ImpressoraSession.FormatarVisor(digitado)
-                   : salvo.Length > 0 ? Completo(salvo) : "___.___.___.___";
+                   : salvo.Length > 0 ? salvo : ImpressoraSession.FormatarVisor("");
         visor.text = txt + (cursor ? "|" : " ");
         visor.color = digitando ? (ImpressoraSession.IpEhValido(digitado) ? Verde : TextoClaro)
                     : salvo.Length > 0 ? Verde : TextoFraco;
     }
 
-    // 192.168.1.10 -> 192.168.001.010 (o formato do visor)
-    private static string Completo(string ip)
-    {
-        string[] g = ip.Split('.');
-        for (int i = 0; i < g.Length; i++) g[i] = g[i].PadLeft(3, '0');
-        return string.Join(".", g);
-    }
 
     // Mesmo padrão dos minigames (FeedbackManutencao): sucesso, requisito e erro vão para o cartão do rodapé; o texto
     // fraco ("Imprimindo...", "Peça retirada.") continua na linha de status.

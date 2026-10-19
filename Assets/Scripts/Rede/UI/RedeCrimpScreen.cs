@@ -64,11 +64,15 @@ public class RedeCrimpScreen : MonoBehaviour
     private const float CaixaCortarDireita = -220f;   // borda direita da caixa (não cobre o cabo em pé)
     private const float CaixaCortarX = CaixaCortarDireita - CaixaCortarLargura * 0.5f;
     private const float CaixaCortarY = 40f;
-    private const float SaidaCaixaY = -40f;           // altura em que o cabo sai da caixa (na horizontal)
+    // Bico de saída desenhado na arte caixa.png (lado direito, ~97% da largura e ~52% da altura a partir de cima): o cabo
+    // sai DELE, e o ponto de corte fica no meio do trecho de cabo exposto. Antes o cabo saía 64 px abaixo do bico e o
+    // corte ficava colado na caixa, desalinhados do desenho.
+    private const float BicoArteX = CaixaCortarX + CaixaCortarLargura * (0.968f - 0.5f);
+    private const float SaidaCaixaY = CaixaCortarY + CaixaCortarAltura * (0.5f - 0.523f);   // altura em que o cabo sai
     private const float SaidaCaboComprimento = 300f;  // quanto o cabo sai para fora da caixa
     private const float SaidaCaboEspessura = 90f;
-    private const float SaidaCaboX = CaixaCortarDireita + SaidaCaboComprimento * 0.5f;
-    private const float PontoCorteX = -140f;          // x do ponto certo do corte (faixa amarela sobre o cabo)
+    private const float SaidaCaboX = BicoArteX - 10f + SaidaCaboComprimento * 0.5f;   // começa 10 px dentro do bico
+    private const float PontoCorteX = BicoArteX + SaidaCaboComprimento * 0.5f;          // meio do trecho exposto
     private const float CaboCentroY = 30f;            // centro (y) do container do cabo em pé
 
     private readonly RedeCrimpSession sessao = new RedeCrimpSession();
@@ -474,9 +478,10 @@ public class RedeCrimpScreen : MonoBehaviour
             Caixa(caixaCortar, "Faixa", new Color(0.30f, 0.22f, 0.14f), new Vector2(290f, 40f), new Vector2(460f, 60f));
         }
 
-        // "Boca" escura NA LATERAL direita, por onde o cabo sai (fica sempre: é ela que explica o cabo saindo).
-        Caixa(caixaCortar, "Boca", new Color(0.15f, 0.11f, 0.07f, spriteCaixa != null ? 0.85f : 1f),
-            new Vector2(CaixaCortarLargura * 0.5f, SaidaCaixaY - CaixaCortarY), new Vector2(96f, SaidaCaboEspessura + 96f));
+        // "Boca" escura por onde o cabo sai: só na caixa desenhada por código. A arte caixa.png já tem o bico.
+        if (spriteCaixa == null)
+            Caixa(caixaCortar, "Boca", new Color(0.15f, 0.11f, 0.07f),
+                new Vector2(CaixaCortarLargura * 0.5f, SaidaCaixaY - CaixaCortarY), new Vector2(96f, SaidaCaboEspessura + 96f));
 
         // O cabo que sai de lado e vai para a direita.
         Caixa(faseCortar, "CaboDaLateral", spriteCapa != null ? Color.white : AzulCapa,
@@ -751,8 +756,8 @@ public class RedeCrimpScreen : MonoBehaviour
     {
         if (!exigirAlicate || TemAlicate()) return true;
         TocarSe(somErro);
-        // não mostra QUAL ferramenta (o jogador descobre olhando os objetos): só que falta uma
-        FeedbackManutencao.Mostrar(this, "É necessária uma ferramenta adequada para trabalhar no cabo.", TipoFeedback.Alerta);
+        // mesmo recado do PC e do notebook (FeedbackManutencao.FaltaFerramenta): "Falta ferramenta" com o desenho do alicate
+        FeedbackManutencao.FaltaFerramenta(this, IconesInteracao.Crimpador);
         return false;
     }
 

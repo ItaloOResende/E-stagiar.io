@@ -996,8 +996,8 @@ MonoBehaviour:
   handCursorHotspot: {x: 280, y: 0}
   handCursorHeight: 48
   rearCursor: {fileID: 2800000, guid: 3227945b84be3874c8be2a8e896fd18a, type: 3}
-  rearCursorHotspot: {x: 10, y: 246}
-  screwdriverToScrewRatio: 4
+  rearCursorHotspot: {x: 92, y: 484}
+  screwdriverToScrewRatio: 3
 --- !u!1 &894725513950662022
 GameObject:
   m_ObjectHideFlags: 0
@@ -6928,7 +6928,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -132, y: 24}
+  m_AnchoredPosition: {x: -214, y: 24}
   m_SizeDelta: {x: 110, y: 90}
   m_Pivot: {x: 1, y: 0}
 --- !u!222 &13686754566407525

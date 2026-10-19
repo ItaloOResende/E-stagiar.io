@@ -23,10 +23,11 @@ public enum ImpressoraEncaixeResultado
 ///  - A impressora só fica PRONTA com toner instalado, papel na bandeja e um IP válido confirmado
 ///    (<see cref="RedeConfigurada"/>). Não existe máscara de sub-rede: só o endereço IP.
 ///  - Digitação com MÁSCARA DE ENTRADA IPv4 (formatação, não máscara de sub-rede): só números; os pontos entram
-///    sozinhos. Cada grupo (octeto) vai de 0 a 255 e passa ao próximo com 3 dígitos, com "." (fecha o grupo antes) ou
-///    quando o próximo dígito estouraria 255 (ex.: "30" + "0" → "30.0"). Apagar volta pelos grupos, então dá para
-///    corrigir os números anteriores. O visor mostra o formato completo (<see cref="FormatarVisor"/>,
-///    ex.: 192.168.001.010); o IP salvo fica normalizado (192.168.1.10).
+///    sozinhos. Cada grupo (octeto) vai de 0 a 255, sem zeros à esquerda, e passa ao próximo com 3 dígitos, com "."
+///    (fecha o grupo antes), quando o próximo dígito estouraria 255 (ex.: "30" + "0" → "30.0") ou quando o grupo é
+///    "0" (um octeto que começa com 0 só pode ser 0: "192168061" → "192.168.0.61"). Apagar volta pelos grupos, então
+///    dá para corrigir os números anteriores. O visor mostra o IP como o cartaz escreve (<see cref="FormatarVisor"/>,
+///    ex.: 192.168.0.6_), sem zeros artificiais; o IP salvo fica normalizado (192.168.0.61).
 /// Sem dependência de UI, modelo, tag ou nome.
 /// </summary>
 public class ImpressoraSession
@@ -51,9 +52,10 @@ public class ImpressoraSession
 
     /// <summary>Há um IP confirmado.</summary>
     public bool TemIp => IpSalvo.Length > 0;
-    /// <summary>A rede da impressora está configurada: o IP confirmado é o exigido na rodada
-    /// (<see cref="ImpressoraRede"/>; sem regra, qualquer IP válido).</summary>
-    public bool RedeConfigurada => TemIp && ImpressoraRede.Confere(IpSalvo);
+    /// <summary>A rede da impressora está configurada: há um IP aceito. O painel só aceita o IP vigente
+    /// (<see cref="ImpressoraRede"/>, o do cartaz; sem regra, qualquer IP válido) e o jogo só define IPs vigentes, então
+    /// um IP novo sorteado para o chamado de OUTRA impressora não desconfigura esta.</summary>
+    public bool RedeConfigurada => TemIp;
 
     /// <summary>Por que o último <see cref="ConfirmarIp"/> foi recusado.</summary>
     public enum RecusaIp { Nenhuma, Incompleto, NaoConfere }
@@ -109,16 +111,19 @@ public class ImpressoraSession
     private void DigitarNumero(char c)
     {
         string atual = grupos[grupos.Count - 1];
-        // grupo cheio (3 dígitos) ou o dígito estouraria 255: o número começa o próximo grupo
-        if (atual.Length == 3 || (atual.Length > 0 && int.Parse(atual + c) > 255))
+        // grupo completo ("0", 3 dígitos) ou o dígito estouraria 255: o número começa o próximo grupo
+        if (GrupoCompleto(atual) || (atual.Length > 0 && int.Parse(atual + c) > 255))
         {
             if (grupos.Count == 4) return;   // último grupo completo: não cabe mais nada
             grupos.Add("");
         }
         grupos[grupos.Count - 1] += c;
-        // grupo completo com 3 dígitos: o ponto entra sozinho (menos no último)
-        if (grupos[grupos.Count - 1].Length == 3 && grupos.Count < 4) grupos.Add("");
+        // grupo completo: o ponto entra sozinho (menos no último)
+        if (GrupoCompleto(grupos[grupos.Count - 1]) && grupos.Count < 4) grupos.Add("");
     }
+
+    // Octeto que não aceita mais dígitos: 3 dígitos, ou "0" (sem zero à esquerda: 0 seguido de dígito não existe).
+    private static bool GrupoCompleto(string g) => g.Length == 3 || g == "0";
 
     // "." fecha o grupo atual antes dos 3 dígitos (ex.: 192.168.1.): grupo vazio ou o último não fecham
     private void FecharGrupo()
@@ -170,19 +175,15 @@ public class ImpressoraSession
     }
 
     /// <summary>
-    /// Visor com a máscara de entrada: grupos fechados com 3 dígitos (zeros à esquerda), o grupo atual como digitado e
-    /// os que faltam em "___". Ex.: "192.168.1" → "192.168.1__.___"; "192.168.1.10" → "192.168.001.10_".
+    /// Visor com a máscara de entrada, no mesmo formato do cartaz (sem zeros à esquerda): os grupos como digitados e
+    /// cada grupo que falta (ou o atual, vazio) como "_". Ex.: "" → "_._._._"; "192.168.0." → "192.168.0._";
+    /// "192.168.0.61" → "192.168.0.61".
     /// </summary>
     public static string FormatarVisor(string digitado)
     {
         string[] g = string.IsNullOrEmpty(digitado) ? new string[0] : digitado.Split('.');
         var partes = new string[4];
-        for (int i = 0; i < 4; i++)
-        {
-            if (i >= g.Length) partes[i] = "___";
-            else if (i < g.Length - 1) partes[i] = g[i].PadLeft(3, '0');
-            else partes[i] = g[i].PadRight(3, '_');
-        }
+        for (int i = 0; i < 4; i++) partes[i] = i < g.Length && g[i].Length > 0 ? g[i] : "_";
         return string.Join(".", partes);
     }
 

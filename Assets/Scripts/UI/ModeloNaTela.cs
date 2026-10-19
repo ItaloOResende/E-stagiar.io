@@ -29,6 +29,20 @@ public class ModeloNaTela : MonoBehaviour
 
     public Transform Modelo => raiz;
 
+    private Light luz;
+    private float luzDaVista;
+
+    /// <summary>
+    /// Luz própria da vista (0 = sem luz própria): uma luz pontual na câmera, com alcance só até o modelo. A cópia fica
+    /// longe da cena e só recebe a luz direcional, que em algumas vistas vem de TRÁS do que a câmera mostra (o modelo
+    /// saía escuro, como se houvesse um véu preto). Por estar a quilômetros da cena, não ilumina mais nada.
+    /// </summary>
+    public float LuzDaVista
+    {
+        get => luzDaVista;
+        set { luzDaVista = Mathf.Max(0f, value); AjustarCamera(); }
+    }
+
     /// <summary>Cria a RawImage (esticada no pai) com o componente.</summary>
     public static ModeloNaTela Criar(Transform pai, string nome, Vector2Int resolucao)
     {
@@ -184,6 +198,7 @@ public class ModeloNaTela : MonoBehaviour
         cam.transform.position = centro - olhar * dist;
         cam.transform.rotation = Quaternion.LookRotation(olhar, cima);
         cam.farClipPlane = dist * 2f + 2f;
+        AjustarLuz(dist);
 
         // tamanho ortográfico: os 8 cantos do alvo no espaço da câmera cabem na imagem (no aspecto dela)
         Vector2 ext = Vector2.zero;
@@ -226,16 +241,35 @@ public class ModeloNaTela : MonoBehaviour
         imagem.uvRect = new Rect(0f, 0f, 1f, 1f);
     }
 
+    private void AjustarLuz(float dist)
+    {
+        if (luzDaVista <= 0f) { if (luz != null) luz.enabled = false; return; }
+        if (luz == null)
+        {
+            luz = new GameObject("LuzDaVista").AddComponent<Light>();
+            luz.transform.SetParent(cam.transform, false);
+            luz.type = LightType.Point;
+            luz.shadows = LightShadows.None;
+            luz.renderMode = LightRenderMode.ForcePixel;
+            luz.color = Color.white;
+        }
+        luz.enabled = cam.enabled;
+        luz.intensity = luzDaVista;
+        luz.range = dist * 2f + 1f;
+    }
+
     private void OnRectTransformDimensionsChange() => AjustarCamera();
 
     private void OnEnable()
     {
         if (cam != null) { cam.enabled = true; AjustarCamera(); }
+        if (luz != null) luz.enabled = luzDaVista > 0f;
     }
 
     private void OnDisable()
     {
         if (cam != null) cam.enabled = false;
+        if (luz != null) luz.enabled = false;
     }
 
     private void Limpar()
@@ -243,6 +277,7 @@ public class ModeloNaTela : MonoBehaviour
         if (raiz != null) Destroy(raiz.gameObject);
         raiz = null;
         cam = null;
+        luz = null;   // filha da câmera, destruída com a cópia
     }
 
     private void OnDestroy()

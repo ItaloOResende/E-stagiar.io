@@ -19,6 +19,11 @@ public class NotebookModeloEstado : MonoBehaviour
     private static readonly int Shade1 = Shader.PropertyToID("_1st_ShadeColor");
     private static readonly int Shade2 = Shader.PropertyToID("_2nd_ShadeColor");
     private static readonly int Emissive = Shader.PropertyToID("_Emissive_Color");
+    private static readonly int EmissiveTex = Shader.PropertyToID("_Emissive_Tex");
+    private static readonly int EmissionMap = Shader.PropertyToID("_EmissionMap");
+    private static readonly int EmissionColor = Shader.PropertyToID("_EmissionColor");
+    /// <summary>Brilho próprio da tela ligada com imagem (como o monitor do PC, que é Unlit), sem estourar as cores.</summary>
+    private const float BrilhoDaImagem = 0.75f;
 
     [Header("Imagens da tela (as mesmas da tela 2D)")]
     [SerializeField] private Texture telaSistema;
@@ -169,7 +174,11 @@ public class NotebookModeloEstado : MonoBehaviour
         }
     }
 
-    // Tela e LED "acesos" ficam com a mesma cor nas áreas de sombra (sem degrau do toon) e com emissão.
+    // Tela e LED "acesos" ficam com a mesma cor nas áreas de sombra (sem degrau do toon) e com emissão. Com imagem
+    // (BIOS, instalação, sistema) a emissão é a PRÓPRIA imagem. O material da tela (M_Notebook_Tela) é URP/Lit, cuja
+    // emissão só existe com a keyword _EMISSION: sem ela a tela só aparecia com a luz da cena — escura na tela 2D,
+    // onde a cópia do modelo é vista contra a luz. A keyword é ligada numa instância do material SÓ deste renderer
+    // (o asset compartilhado não muda); _Emissive_* continuam para materiais Toon.
     private void Pintar(Renderer r, Texture tex, Color cor, bool aceso)
     {
         if (r == null) return;
@@ -183,8 +192,29 @@ public class NotebookModeloEstado : MonoBehaviour
         bloco.SetColor(BaseColor, cor);
         bloco.SetColor(Shade1, aceso ? cor : cor * 0.8f);
         bloco.SetColor(Shade2, aceso ? cor : cor * 0.65f);
-        bloco.SetColor(Emissive, aceso && tex == null ? cor : Color.black);
+        GarantirEmissao(r);
+        bloco.SetTexture(EmissiveTex, t);
+        bloco.SetTexture(EmissionMap, t);
+        bloco.SetColor(EmissionColor, !aceso ? Color.black : tex == null ? cor : cor * BrilhoDaImagem);
+        bloco.SetColor(Emissive, !aceso ? Color.black : tex == null ? cor : cor * BrilhoDaImagem);
         r.SetPropertyBlock(bloco);
+    }
+
+    private readonly System.Collections.Generic.HashSet<Renderer> comEmissao = new System.Collections.Generic.HashSet<Renderer>();
+
+    private void GarantirEmissao(Renderer r)
+    {
+        if (!Application.isPlaying || !comEmissao.Add(r)) return;
+        Material m = r.material;   // instância só deste renderer
+        instancias.Add(m);
+        if (m.HasProperty(EmissionColor)) m.EnableKeyword("_EMISSION");
+    }
+
+    private readonly System.Collections.Generic.List<Material> instancias = new System.Collections.Generic.List<Material>();
+
+    private void OnDestroy()
+    {
+        foreach (Material m in instancias) if (m != null) Destroy(m);
     }
 
     private static void Mostrar(GameObject go, bool ativo)
