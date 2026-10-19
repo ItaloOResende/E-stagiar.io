@@ -213,7 +213,7 @@ public class PauseMenu : MonoBehaviour
         sensAtual = salvarPreferencias ? PlayerPrefs.GetFloat(prefixoPreferencias + ".Sensitivity", inicial) : inicial;
         volumeAtual = Mathf.Clamp01(volumeAtual); sensAtual = Mathf.Clamp(sensAtual, sensibilidadeMinima, sensibilidadeMaxima);
         volumeUI.SetValueWithoutNotify(volumeAtual); sensUI.SetValueWithoutNotify(sensAtual);
-        configuracoesProntas = true; AplicarVolume(volumeAtual); AplicarSensibilidade(sensAtual);
+        configuracoesProntas = true; AplicarVolume(volumeAtual); AplicarSensibilidade(sensAtual); preferenciasSujas = false;
         if (EventSystem.current == null) Debug.LogWarning("PauseMenu: configure um EventSystem com InputSystemUIInputModule na cena.", this);
     }
     private void OnEnable() { if (Application.isPlaying) Canvas.willRenderCanvases += GarantirCursor; }
@@ -287,6 +287,7 @@ public class PauseMenu : MonoBehaviour
     {
         if (estado != Estado.Fechado || !PodeAbrir()) return;
         if (dono != null && dono != this) return; dono = this;
+        RecarregarPreferenciasCompartilhadas();
         estado = Estado.Capturando; IsPaused = true;
         escalaTempoAnterior = Time.timeScale; audioPausadoAntes = AudioListener.pause;
         cursorLockAnterior = Cursor.lockState; cursorVisivelAnterior = Cursor.visible;
@@ -315,6 +316,14 @@ public class PauseMenu : MonoBehaviour
         UICursor.LimparSobreposicao();
         raiz.gameObject.SetActive(false); LiberarCaptura();
         StartCoroutine(AbrirComCaptura());
+    }
+    private void RecarregarPreferenciasCompartilhadas()
+    {
+        if (!salvarPreferencias || !configuracoesProntas) return;
+        float volume = Mathf.Clamp01(PlayerPrefs.GetFloat(prefixoPreferencias + ".Volume", volumeAtual));
+        float sens = Mathf.Clamp(PlayerPrefs.GetFloat(prefixoPreferencias + ".Sensitivity", sensAtual), sensibilidadeMinima, sensibilidadeMaxima);
+        volumeUI.SetValueWithoutNotify(volume); sensUI.SetValueWithoutNotify(sens);
+        AplicarVolume(volume); AplicarSensibilidade(sens); preferenciasSujas = false;
     }
     private void GuardarControle(Behaviour c)
     {

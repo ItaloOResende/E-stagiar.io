@@ -182,7 +182,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 2800000, guid: b40d5735aa39d13409d8b54263c2445e, type: 3}
+        m_Texture: {fileID: 2800000, guid: 98a387cff3e971b49bf679798ec9046c, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MaskGloss:
@@ -551,7 +551,7 @@ Material:
     - _OutlineExtrudeMethod: 0
     - _OutlineOverridden: 0
     - _OutlineVisible: 1
-    - _OutlineWidth: 3.48
+    - _OutlineWidth: 1
     - _OutlineWidthAffectedByViewDistance: 0
     - _OutlineZPostionInCamera: 0
     - _Outline_Width: 20
@@ -576,8 +576,8 @@ Material:
     - _RimLightColorPower: 10
     - _RimLightInLight: 1
     - _RimLightOverridden: 0
-    - _RimLightSoftness: 0.354
-    - _RimLightUnfill: 0.69
+    - _RimLightSoftness: 1
+    - _RimLightUnfill: 1.5
     - _RimLightVisible: 1
     - _RimLight_FeatherOff: 0
     - _RimLight_InsideMask: 0.0001
@@ -715,13 +715,13 @@ Material:
     - _IridescenceThicknessRemap: {r: 0, g: 1, b: 0, a: 0}
     - _MainColor: {r: 1, g: 1, b: 1, a: 1}
     - _MatCapColor: {r: 1, g: 1, b: 1, a: 1}
-    - _OutlineColor: {r: 1, g: 0, b: 0.0367105, a: 1}
+    - _OutlineColor: {r: 0.08678532, g: 0.10146136, b: 0.19245279, a: 1}
     - _OutlineMaskColor: {r: 0, g: 0, b: 0, a: 1}
-    - _OutlineOffset: {r: 0, g: 0, b: 0, a: 0}
+    - _OutlineOffset: {r: 1, g: 1, b: 1, a: 1}
     - _Outline_Color: {r: 0, g: 0, b: 0, a: 1}
     - _OverallShadowColor: {r: 0.26753289, g: 0.29707545, b: 0.8490566, a: 1}
     - _PTCol: {r: 0, g: 0, b: 0, a: 1}
-    - _RimLightColor: {r: 1, g: 0, b: 0.02161038, a: 1}
+    - _RimLightColor: {r: 0.53396225, g: 0.80812883, b: 1, a: 1}
     - _RimLightMaskColor: {r: 1, g: 0, b: 1, a: 1}
     - _SSAOColor: {r: 0, g: 0, b: 0, a: 0}
     - _SecondShadeMaskColor: {r: 0, g: 0, b: 1, a: 1}

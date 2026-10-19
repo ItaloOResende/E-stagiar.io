@@ -6,6 +6,27 @@ using UnityEngine;
 /// da fase 2 em diante a chegada e adaptativa e pode sobrepor atendimentos.</summary>
 public class TicketManager : MonoBehaviour
 {
+    [Serializable]
+    public class FotoSolicitante
+    {
+        public string nome;
+        public Sprite foto;
+    }
+    [Header("Fotos dos solicitantes")]
+    [Tooltip("Use o mesmo nome da ficha ou do StationEmployee. Não diferencia maiúsculas de minúsculas.")]
+    [SerializeField] private List<FotoSolicitante> fotosSolicitantes = new List<FotoSolicitante>();
+    [SerializeField] private Sprite fotoPadrao;
+
+    public Sprite FotoDoSolicitante(string nome)
+    {
+        if (fotosSolicitantes != null)
+            foreach (var item in fotosSolicitantes)
+                if (item != null && item.foto != null && !string.IsNullOrWhiteSpace(item.nome) &&
+                    string.Equals(item.nome.Trim(), nome?.Trim(), StringComparison.OrdinalIgnoreCase))
+                    return item.foto;
+        return fotoPadrao;
+    }
+
     [Header("Catalogo de chamados")]
     [SerializeField] private List<TicketDefinition> catalog = new List<TicketDefinition>();
     [SerializeField] private TicketDefinition tutorialTicket;

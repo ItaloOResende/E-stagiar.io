@@ -18,7 +18,7 @@ public static class SupervisorSetup
 {
     private const string ScenePath = "Assets/Scenes/Office_Placeholder.unity";
     private const string PrefabPath = "Assets/Prefabs/Gameplay/NPC_Supervisor.prefab";
-    private const string ModelPath = "Assets/Art/Models/character2.fbx";
+    private const string ModelPath = "Assets/Art/Models/npc/character2.fbx";
     private const string MaterialPath = "Assets/Art/Materials/M_Character_Tex1_1.mat";
     private const string NavDataPath = "Assets/Scenes/Office_Placeholder/NavMesh_Escritorio.asset";
     private const float Height = 1.75f;

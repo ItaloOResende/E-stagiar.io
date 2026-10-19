@@ -50,7 +50,7 @@ public static class ReorganizacaoEscritorioSetup
     };
     private static readonly Dictionary<string, string> NpcDe = new Dictionary<string, string>
     {
-        { "Carmen", "Assets/Art/Models/character2.fbx" }, { "Paula", "Assets/Art/Models/npc2.fbx" },
+        { "Carmen", "Assets/Art/Models/npc/character2.fbx" }, { "Paula", "Assets/Art/Models/npc/npc2.fbx" },
     };
     private static readonly (int sx, int sz)[] OrdemVagas = { (-1, 1), (1, 1), (-1, -1), (1, -1) };   // NO, NE, SO, SE
 

@@ -51,8 +51,8 @@ public static class CorrecoesFinaisSetup
     // dois NPCs = os dois modelos de funcionário do projeto (o personagem do jogador e o chefe não entram)
     private static readonly (string modelo, string nome, string setor)[] Npcs =
     {
-        ("Assets/Art/Models/character2.fbx", "Carmen", "Atendimento"),   // estação de desktop (chamados de PC e rack)
-        ("Assets/Art/Models/npc2.fbx", "Paula", "Comercial"),            // estação de notebook (chamados de notebook)
+        ("Assets/Art/Models/npc/character2.fbx", "Carmen", "Atendimento"),   // estação de desktop (chamados de PC e rack)
+        ("Assets/Art/Models/npc/npc2.fbx", "Paula", "Comercial"),            // estação de notebook (chamados de notebook)
     };
 
     private static List<string> L => OfficeGameplaySetup.log;

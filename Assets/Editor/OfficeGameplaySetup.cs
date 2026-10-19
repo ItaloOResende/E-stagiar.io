@@ -50,7 +50,7 @@ public static class OfficeGameplaySetup
         ("Francisco", "Comercial"), ("Marcia", "Financeiro"), ("Carmen", "RH"),
         ("Paula", "Marketing"), ("Laura", "Diretoria"), ("Joana", "Administrativo"),
     };
-    private static readonly string[] NpcModels = { "Assets/Art/Models/npc2.fbx", "Assets/Art/Models/character2.fbx" };
+    private static readonly string[] NpcModels = { "Assets/Art/Models/npc/npc2.fbx", "Assets/Art/Models/npc/character2.fbx" };
 
     internal static List<string> log;
 

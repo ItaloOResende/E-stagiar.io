@@ -45,7 +45,7 @@ public static class TesteIntegradoSetup
     private static readonly string[] PrinterTickets =
         { ImpressoraTicketBridge.SemPapel, ImpressoraTicketBridge.SemToner, ImpressoraTicketBridge.SemIp, ImpressoraTicketBridge.SemImpressao };
     private static readonly string[] RestockLoose = { "Pickup_RamSodimm", "Pickup_Ssd", "Pickup_Toner", "Pickup_ResmaPapel" };
-    private static readonly string[] NpcModels = { "Assets/Art/Models/npc2.fbx", "Assets/Art/Models/character2.fbx" };
+    private static readonly string[] NpcModels = { "Assets/Art/Models/npc/npc2.fbx", "Assets/Art/Models/npc/character2.fbx" };
 
     [MenuItem("Tools/E-stagiar.io/Teste integrado (4 estações)")]
     public static void Run()
