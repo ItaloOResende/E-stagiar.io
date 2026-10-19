@@ -20,11 +20,16 @@ public class StationEmployee : MonoBehaviour
     [Tooltip("Identificação da estação (ex.: \"Estação 03\"). Estação SEM funcionário (nome vazio, sem NPC) usa isto " +
              "na plaquinha e no local do chamado.")]
     public string stationLabel = "";
+    [Tooltip("Nome mostrado SÓ na plaquinha quando a estação não tem funcionário (nome vazio): a mesa não recebe " +
+             "chamados por isso — só não fica com \"Estação NN\" escrito. Vazio = usa a identificação da estação.")]
+    public string nomeNaPlaca = "";
+    [Tooltip("Cor do detalhe (faixa) da plaquinha desta mesa. Alfa 0 = a cor do material (azul).")]
+    public Color corDaPlaca = new Color(0f, 0f, 0f, 0f);
 
     /// <summary>Estação ocupada por um funcionário (NPC). Vazia = só a identificação da estação.</summary>
     public bool Occupied => !string.IsNullOrEmpty(employeeName);
     /// <summary>O que a plaquinha mostra: o nome do funcionário ou, sem funcionário, a identificação da estação.</summary>
-    public string DisplayName => Occupied ? employeeName : stationLabel;
+    public string DisplayName => Occupied ? employeeName : !string.IsNullOrEmpty(nomeNaPlaca) ? nomeNaPlaca : stationLabel;
 
     public static IReadOnlyList<StationEmployee> All => all;
 

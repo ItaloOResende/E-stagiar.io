@@ -173,8 +173,10 @@ public abstract class TicketDeviceBridge : MonoBehaviour
             {
                 if (b == null || !b.isActiveAndEnabled || b.ticketManager != manager || !b.Accepts(t) || !b.Free) continue;
                 if (anyFresh && b.RecentlyServed) continue;
-                // a estação do PRÓPRIO solicitante da ficha vem primeiro; depois, a que atendeu menos
-                bool dono = b.IsRequesterStation(t), bestDono = best != null && best.IsRequesterStation(t);
+                // a estação do PRÓPRIO solicitante da ficha vem primeiro, MAS só se ainda não atendeu nenhum chamado na
+                // partida: fichas repetidas (ou duas do mesmo solicitante) mandavam o MESMO computador de novo com outros
+                // ainda sem chamado. Depois, a que atendeu menos (sorteio no empate): só repete com todos já usados.
+                bool dono = b.IsRequesterStation(t) && b.ClaimCount == 0, bestDono = best != null && best.IsRequesterStation(t) && best.ClaimCount == 0;
                 if (best != null && bestDono && !dono) continue;
                 if (best == null || (dono && !bestDono) || b.ClaimCount < best.ClaimCount) { best = b; ties = 1; }
                 else if (b.ClaimCount == best.ClaimCount && Random.Range(0, ++ties) == 0) best = b;   // sorteio justo no empate

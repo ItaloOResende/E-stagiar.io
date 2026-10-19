@@ -28,14 +28,20 @@ public static class NpcCaminhadaMenu
                 agent = Undo.AddComponent<NavMeshAgent>(go);
                 agent.radius = 0.3f;
                 agent.height = 1.65f;
-                agent.speed = 1.2f;
-                agent.angularSpeed = 240f;
-                agent.acceleration = 6f;
+                agent.speed = 1.1f;
+                agent.angularSpeed = 360f;
+                agent.acceleration = 8f;
                 agent.stoppingDistance = 0.3f;
                 agent.obstacleAvoidanceType = ObstacleAvoidanceType.HighQualityObstacleAvoidance;
                 agent.avoidancePriority = Random.Range(40, 60);
             }
-            var c = go.GetComponent<NpcCaminhada>() ?? Undo.AddComponent<NpcCaminhada>(go);
+            // colisor do tamanho do agente + Rigidbody cinemático: o jogador não atravessa nem empurra o NPC
+            var cap = go.GetComponent<CapsuleCollider>();
+            if (cap == null) { cap = Undo.AddComponent<CapsuleCollider>(go); cap.radius = agent.radius; cap.height = agent.height; cap.center = Vector3.up * agent.height / 2f; }
+            var rb = go.GetComponent<Rigidbody>();
+            if (rb == null) { rb = Undo.AddComponent<Rigidbody>(go); rb.isKinematic = true; rb.useGravity = false; }
+            var c = go.GetComponent<NpcCaminhada>();
+            if (c == null) c = Undo.AddComponent<NpcCaminhada>(go);
             if (pontos != null) c.Destinos = pontos.transform;
             EditorUtility.SetDirty(go);
             Debug.Log($"{go.name}: caminhada ligada ({(pontos != null ? "destinos = Pontos_Circulacao" : "destinos aleatórios no NavMesh")}).", go);

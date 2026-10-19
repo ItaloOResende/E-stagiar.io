@@ -17,6 +17,8 @@ public static class NpcSeparacao
     public const float Folga = 0.08f;
     /// <summary>Fração da sobreposição corrigida por quadro (suaviza o empurrão).</summary>
     private const float Correcao = 0.5f;
+    /// <summary>Velocidade máxima (m/s) do afastamento: sem limite, NPCs sobrepostos "pulavam" de um quadro para o outro.</summary>
+    private const float VelocidadeMaxima = 0.8f;
 
     private static readonly List<NavMeshAgent> agentes = new List<NavMeshAgent>();
 
@@ -63,6 +65,6 @@ public static class NpcSeparacao
                         : Quaternion.Euler(0f, agentes.IndexOf(self) * 137f, 0f) * Vector3.forward;   // exatamente juntos
             empurrao += dir * ((min - dist) * parte);
         }
-        if (empurrao.sqrMagnitude > 1e-8f) self.Move(empurrao * Correcao);
+        if (empurrao.sqrMagnitude > 1e-8f) self.Move(Vector3.ClampMagnitude(empurrao * Correcao, VelocidadeMaxima * Time.deltaTime));
     }
 }

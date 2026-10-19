@@ -28,11 +28,25 @@ public class NpcCaminhada : MonoBehaviour
     [Tooltip("Parado (sem conseguir andar) por este tempo (s) com caminho ativo: escolhe outro destino.")]
     [Min(0.5f)] [SerializeField] private float tempoPreso = 3f;
 
+    [Header("Movimento natural")]
+    [Tooltip("Giro máximo (graus/s). O corpo vira para onde o NPC REALMENTE anda (não para o rumo planejado): ao desviar " +
+             "de alguém ele não anda de lado.")]
+    [Min(30f)] [SerializeField] private float giro = 200f;
+    [Tooltip("Em curva fechada (mais que este ângulo entre o corpo e o rumo) o NPC quase para e vira antes de seguir.")]
+    [Range(10f, 120f)] [SerializeField] private float anguloParaDesacelerar = 50f;
+    [Tooltip("Modelo (filho) que balança ao andar, como o chefe. Vazio = o primeiro filho com renderer.")]
+    [SerializeField] private Transform visual;
+    [SerializeField] private float alturaBalanco = 0.025f;
+    [SerializeField] private float frequenciaBalanco = 1.8f;
+
     private NavMeshAgent agent;
     private Vector3 inicio;
     private Vector3? destino;
     private float esperarAte, paradoDesde = -1f;
     private int ultimoIndice = -1;
+    private float velocidadeBase;
+    private Vector3 visualRepouso;
+    private float fasePasso;
 
     /// <summary>Destino atual (null = parado esperando).</summary>
     public Vector3? Destino => destino;
@@ -42,6 +56,11 @@ public class NpcCaminhada : MonoBehaviour
     {
         agent = GetComponent<NavMeshAgent>();
         inicio = transform.position;
+        velocidadeBase = agent.speed;
+        agent.updateRotation = false;   // a rotação é feita aqui, pela velocidade real
+        if (visual == null)
+            foreach (Transform c in transform) if (c.GetComponentInChildren<Renderer>() != null) { visual = c; break; }
+        if (visual != null) visualRepouso = visual.localPosition;
     }
 
     private void Start() => NavMeshSpawn.Garantir(agent);   // nasceu fora do NavMesh: vai ao ponto válido mais próximo
@@ -65,6 +84,8 @@ public class NpcCaminhada : MonoBehaviour
     {
         if (agent == null || !agent.isActiveAndEnabled || !agent.isOnNavMesh) return;
         NpcSeparacao.Aplicar(agent);   // não atravessar outros NPCs (parados ou andando)
+        Girar();
+        Balancar();
         if (destino == null)
         {
             if (Time.time >= esperarAte) Escolher();
@@ -85,6 +106,31 @@ public class NpcCaminhada : MonoBehaviour
             else if (Time.time - paradoDesde > tempoPreso) { paradoDesde = -1f; Escolher(); }
         }
         else paradoDesde = -1f;
+    }
+
+    // Corpo virado para a velocidade REAL (com o desvio de outros agentes ela difere do rumo); em curva fechada a
+    // velocidade cai, então o NPC vira quase parado em vez de deslizar de lado ou dar um giro brusco andando.
+    private void Girar()
+    {
+        Vector3 rumo = agent.desiredVelocity.sqrMagnitude > 0.01f ? agent.desiredVelocity : agent.velocity;
+        rumo.y = 0f;
+        if (rumo.sqrMagnitude < 0.0025f) { agent.speed = velocidadeBase; return; }
+        float angulo = Vector3.Angle(transform.forward, rumo);
+        agent.speed = velocidadeBase * Mathf.Lerp(1f, 0.15f, Mathf.InverseLerp(anguloParaDesacelerar * 0.4f, anguloParaDesacelerar, angulo));
+        Vector3 real = agent.velocity; real.y = 0f;
+        Vector3 olhar = real.sqrMagnitude > 0.04f ? real : rumo;
+        transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(olhar), giro * Time.deltaTime);
+    }
+
+    // Balanço vertical leve do modelo ao andar (o mesmo do chefe, SupervisorPatrol.Bob): só o filho visual se move; o
+    // agente e o colisor ficam no chão.
+    private void Balancar()
+    {
+        if (visual == null) return;
+        float v = agent.velocity.magnitude;
+        if (v > 0.05f) fasePasso += Time.deltaTime * frequenciaBalanco * Mathf.PI * 2f;
+        float h = v > 0.05f ? Mathf.Abs(Mathf.Sin(fasePasso)) * alturaBalanco * Mathf.Clamp01(v / Mathf.Max(0.1f, velocidadeBase)) : 0f;
+        visual.localPosition = Vector3.Lerp(visual.localPosition, visualRepouso + Vector3.up * h, 1f - Mathf.Exp(-12f * Time.deltaTime));
     }
 
     /// <summary>Escolhe e segue um destino livre (público para testes).</summary>
