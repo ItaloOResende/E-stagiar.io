@@ -1,5 +1,13 @@
 fileFormatVersion: 2
+<<<<<<< HEAD
 guid: 9d9419bad3681eb4aa4267954cfb77f1
+=======
+<<<<<<<< HEAD:Assets/Art/Materials/xadrez 11.mat.meta
+guid: 73f7d27c758a09d41bd154dace879a78
+========
+guid: 76c8cf3b91575364cbb89df4d1600b9b
+>>>>>>>> 1fea6fe5c3350296904c4a8b4407ba199cce12de:Assets/Art/Materials/boss baby.mat.meta
+>>>>>>> 1fea6fe5c3350296904c4a8b4407ba199cce12de
 NativeFormatImporter:
   externalObjects: {}
   mainObjectFileID: 2100000
