@@ -1,0 +1,64 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85f0ba56fa892af4293ac2e2dbc4e937, type: 3}
+  m_Name: TutorialMontagemCompleta
+  m_EditorClassIdentifier: Assembly-CSharp::TicketDefinition
+  ticketId: pc-montagem-completa
+  title: Primeiro dia - Montagem completa
+  description: Encontre o solicitante, monte o PC vazio, conecte cabos, instale o
+    sistema e teste.
+  requester: Augusto
+  department: TI
+  minimumStage: 0
+  tutorialOnly: 1
+  steps:
+  - id: posicionar-equipamentos
+    description: Levar o gabinete e o monitor da sala de TI ate a mesa
+    weight: 2
+  - id: abrir-gabinete
+    description: Abrir o gabinete
+    weight: 1
+  - id: instalar-placa-mae
+    description: Instalar a placa-mae
+    weight: 2
+  - id: instalar-fonte
+    description: Instalar a fonte de alimentacao
+    weight: 2
+  - id: instalar-cooler
+    description: Instalar o cooler
+    weight: 1
+  - id: instalar-ram
+    description: Instalar a memoria RAM
+    weight: 1
+  - id: instalar-hd
+    description: Instalar o armazenamento
+    weight: 1
+  - id: fechar-gabinete
+    description: Fechar o gabinete
+    weight: 1
+  - id: conectar-energia
+    description: Conectar a alimentacao
+    weight: 1
+  - id: conectar-video
+    description: Conectar o monitor
+    weight: 1
+  - id: conectar-rede
+    description: Conectar o cabo de rede
+    weight: 1
+  - id: instalar-sistema
+    description: Instalar o sistema operacional
+    weight: 2
+  - id: validar-funcionamento
+    description: Verificar que a estacao esta pronta
+    weight: 1
+  complexity: 3
+  slaSecondsOverride: 7200
