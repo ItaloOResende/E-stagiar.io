@@ -487,7 +487,7 @@ public class NotebookTela : MonoBehaviour
                     break;
                 case NotebookParafusoResultado.FerramentaErrada:
                     InteractionSounds.Raise(InteractionSound.Error);   // ferramenta errada: som de erro
-                    Mensagem("Precisa de uma chave de fenda na mão.", Vermelho);
+                    Mensagem("É necessária uma ferramenta adequada para recolocar os parafusos.", Amarelo);
                     Recusar(indice);
                     break;
                 default:
@@ -513,7 +513,7 @@ public class NotebookTela : MonoBehaviour
                 break;
             case NotebookParafusoResultado.FerramentaErrada:
                 InteractionSounds.Raise(InteractionSound.Error);   // ferramenta errada: som de erro
-                Mensagem("Precisa de uma chave de fenda na mão.", Vermelho);
+                Mensagem("É necessária uma ferramenta adequada para remover os parafusos.", Amarelo);
                 Recusar(indice);
                 break;
             case NotebookParafusoResultado.JaRemovido:
@@ -552,16 +552,16 @@ public class NotebookTela : MonoBehaviour
                 break;
             case NotebookEncaixeResultado.PecaErrada:
                 InteractionSounds.Raise(InteractionSound.Error);   // peça no encaixe errado
-                Mensagem("Essa peça não encaixa aqui.", Vermelho);
+                Mensagem("Este item não é compatível com este encaixe.", Vermelho);
                 break;
             case NotebookEncaixeResultado.MaoCheia:
-                Mensagem("Tire a peça da mão para retirar esta.", Amarelo);
+                Mensagem("Com as mãos ocupadas não é possível retirar a peça.", Amarelo);
                 break;
             case NotebookEncaixeResultado.Fechado:
                 Mensagem("A tampa de baixo ainda está fechada.", Amarelo);
                 break;
             case NotebookEncaixeResultado.PecaQuebrada:
-                Mensagem("Essa peça quebrou na queda: pegue outra.", Vermelho);
+                Mensagem("Este item está danificado e não pode ser instalado.", Vermelho);
                 break;
         }
         Atualizar();
@@ -589,14 +589,14 @@ public class NotebookTela : MonoBehaviour
                 Mensagem("Pendrive retirado.", TextoFraco);
                 break;
             case NotebookUsbResultado.PrecisaPendrive:
-                Mensagem("Ponha um pendrive na mão e clique na porta USB.", Amarelo);
+                Mensagem("A porta precisa de um dispositivo compatível.", Amarelo);
                 break;
             case NotebookUsbResultado.ItemErrado:
                 InteractionSounds.Raise(InteractionSound.Error);   // item errado na porta USB
-                Mensagem("Só um pendrive entra nessa porta.", Vermelho);
+                Mensagem("Este item não é compatível com esta porta.", Vermelho);
                 break;
             case NotebookUsbResultado.MaoCheia:
-                Mensagem("Tire o que está na mão para retirar o pendrive.", Amarelo);
+                Mensagem("Com as mãos ocupadas não é possível retirar o dispositivo.", Amarelo);
                 break;
         }
         Atualizar();
@@ -1025,7 +1025,7 @@ public class NotebookTela : MonoBehaviour
         msgTxt.text = cartao ? "" : texto;
         msgTxt.color = cor;
         if (cartao)
-            FeedbackManutencao.Mostrar(this, texto, cor == Verde ? TipoFeedback.Sucesso : TipoFeedback.Alerta);
+            FeedbackManutencao.Mostrar(this, texto, FeedbackManutencao.TipoDaCor(cor == Verde, cor == Vermelho));
     }
 
     private void Fechar()

@@ -230,7 +230,7 @@ public class CorrecoesFinaisTests
             yield return Tecla(Key.Escape);
             yield return null;
             Assert.IsFalse(TelaAberta, $"{alvoNome}: Esc fecha");
-            Assert.IsFalse((bool)T("PauseMenuScreen").GetProperty("Showing").GetValue(null), "o Esc que fechou a tela não pausa");
+            Assert.IsFalse((bool)T("PauseMenu").GetProperty("IsPaused").GetValue(null), "o Esc que fechou a tela não pausa");
             Assert.IsTrue(((Behaviour)player.GetComponent(T("PlayerLook"))).enabled, "câmera volta");
             Assert.IsTrue(((Behaviour)player.GetComponent(T("PlayerMovement"))).enabled, "movimento volta");
             // em batchmode (sem janela em foco) a Unity não trava o cursor: aí só dá para conferir no Editor
@@ -334,7 +334,7 @@ public class CorrecoesFinaisTests
 
         yield return Tecla(Key.Escape);
         float antes = (float)Get(stage, "SecondsRemaining");   // já parado
-        Assert.IsTrue((bool)T("PauseMenuScreen").GetProperty("Showing").GetValue(null), "Esc no 3D pausa");
+        Assert.IsTrue((bool)T("PauseMenu").GetProperty("IsPaused").GetValue(null), "Esc no 3D pausa");
         Assert.AreEqual(0f, Time.timeScale, "jogo parado");
         Assert.AreEqual(CursorLockMode.None, Cursor.lockState, "cursor livre no menu");
         Assert.IsFalse(((Behaviour)Object.FindAnyObjectByType(T("SupervisorPerception"))).enabled, "supervisor não percebe nada na pausa");
@@ -343,7 +343,8 @@ public class CorrecoesFinaisTests
         Assert.AreEqual(antes, (float)Get(stage, "SecondsRemaining"), 0.001f, "o relógio da fase não anda na pausa");
 
         yield return Tecla(Key.Escape);
-        Assert.IsFalse((bool)T("PauseMenuScreen").GetProperty("Showing").GetValue(null), "Esc retoma");
+        yield return new WaitForSecondsRealtime(0.4f);   // o PauseMenu fecha com animação (tempo real)
+        Assert.IsFalse((bool)T("PauseMenu").GetProperty("IsPaused").GetValue(null), "Esc retoma");
         Assert.AreEqual(1f, Time.timeScale);
         Assert.IsTrue(((Behaviour)player.GetComponent(T("PlayerLook"))).enabled && ((Behaviour)player.GetComponent(T("PlayerMovement"))).enabled);
         Assert.IsTrue(((Behaviour)Object.FindAnyObjectByType(T("SupervisorPerception"))).enabled);

@@ -76,10 +76,14 @@ public class SupervisorAlertHUD : MonoBehaviour
         // a pontuação pode ter sido lançada antes deste aviso (ordem dos assinantes do Witnessed)
         ScoreKeeper keeper = FindFirstObjectByType<ScoreKeeper>();
         SetPenalty(keeper != null ? keeper.EntryFor(inf) : null, inf);
-        shownAt = vignetteAt = Time.unscaledTime;
+        // supervisor com SupervisorFeedback: o alerta sonoro e o vermelho são dele (modelo); aqui só o cartão e a seta
+        SupervisorFeedback proprio = witness != null ? witness.GetComponentInParent<SupervisorFeedback>() : null;
+        bool alertaDoSupervisor = proprio != null && proprio.CuidaDoAlerta;
+        shownAt = Time.unscaledTime;
+        vignetteAt = alertaDoSupervisor ? -999f : Time.unscaledTime;
         indicatorUntil = Time.unscaledTime + indicatorDuration;
         card.gameObject.SetActive(true);
-        InteractionSounds.Raise(InteractionSound.SupervisorAlert);
+        if (!alertaDoSupervisor) InteractionSounds.Raise(InteractionSound.SupervisorAlert);
     }
 
     private void OnWitnessed(Infraction inf, Transform witness) => Show(inf, witness);

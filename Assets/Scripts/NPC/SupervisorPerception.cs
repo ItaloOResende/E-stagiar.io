@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 /// <summary>
 /// O que o supervisor consegue PERCEBER das infrações abertas no <see cref="InfractionLog"/> (não é câmera de segurança):
@@ -29,17 +30,29 @@ public class SupervisorPerception : MonoBehaviour
     [Tooltip("Reagir (parar, olhar, reprovar) ao perceber. Desligado = só registra.")]
     [SerializeField] private bool react = true;
 
+    [Header("Desempenho e audicao")]
+    [SerializeField, Min(0.02f)] private float perceptionInterval = 0.1f;
+    [SerializeField, Min(0f)] private float hearingWindow = 0.6f;
+    private float nextScan;
+    private readonly RaycastHit[] hits = new RaycastHit[64];
+    private readonly Dictionary<GameObject, Renderer[]> rendererCache = new Dictionary<GameObject, Renderer[]>();
+    private SupervisorFeedback feedback;
     private SupervisorPatrol patrol;
+    private void OnDisable() { rendererCache.Clear(); nextScan = 0f; }
+
 
     public float ViewDistance { get => viewDistance; set => viewDistance = value; }
     public float FieldOfView { get => fieldOfView; set => fieldOfView = value; }
     public float HearingRadius { get => hearingRadius; set => hearingRadius = value; }
     public float FloorNoticeDistance { get => floorNoticeDistance; set => floorNoticeDistance = value; }
 
-    private void Awake() => patrol = GetComponent<SupervisorPatrol>();
+    private void Awake() { patrol = GetComponent<SupervisorPatrol>(); feedback = GetComponent<SupervisorFeedback>(); }
 
     private void Update()
     {
+        if (Time.time < nextScan || Time.timeScale <= 0f) return;
+        nextScan = Time.time + Mathf.Max(0.02f, perceptionInterval);
+        if (rendererCache.Count > 256) rendererCache.Clear();
         var open = InfractionLog.Open;
         for (int i = open.Count - 1; i >= 0; i--)
         {
@@ -47,45 +60,48 @@ public class SupervisorPerception : MonoBehaviour
             Infraction inf = open[i];
             if (!CanPerceive(inf)) continue;
             if (!InfractionLog.MarkWitnessed(inf, transform)) continue;
+            if (feedback != null) feedback.NotifyInfraction();
             if (react && patrol != null) patrol.React(CurrentPosition(inf));
         }
     }
 
-    private static Vector3 CurrentPosition(Infraction inf) =>
+    private Vector3 CurrentPosition(Infraction inf) =>
         inf.Item != null && inf.Item.activeInHierarchy ? Center(inf.Item) : inf.Position;
 
-    private static Vector3 Center(GameObject g)
+    private Vector3 Center(GameObject g)
     {
-        Renderer[] rs = g.GetComponentsInChildren<Renderer>();
+        if (!rendererCache.TryGetValue(g, out Renderer[] rs))
+        { rs = g.GetComponentsInChildren<Renderer>(); rendererCache[g] = rs; }
         if (rs.Length == 0) return g.transform.position;
-        Bounds b = rs[0].bounds;
-        foreach (Renderer r in rs) b.Encapsulate(r.bounds);
+        Bounds b = new Bounds(g.transform.position, Vector3.zero);
+        bool found = false;
+        foreach (Renderer r in rs) if (r != null && r.enabled) { if (!found) { b = r.bounds; found = true; } else b.Encapsulate(r.bounds); }
         return b.center;
     }
 
     /// <summary>O supervisor percebe esta infração agora (visão, ou audição para quedas/quebras)?</summary>
     public bool CanPerceive(Infraction inf)
     {
+        if (inf == null || inf.Resolved) return false;
         Vector3 target = CurrentPosition(inf);
-        Vector3 eye = transform.position + Vector3.up * eyeHeight;
-        Vector3 flat = target - transform.position;
-        flat.y = 0f;
+        Vector3 flat = target - transform.position; flat.y = 0f;
         float dist = flat.magnitude;
-        bool clear = LineOfSight(eye, target, inf.Item);
-
-        if (!inf.IsOngoing && hearingRadius > 0f && dist <= hearingRadius && clear) return true;   // ouviu a queda
+        bool audible = !inf.IsOngoing && hearingRadius > 0f &&
+            Time.time - inf.Time <= hearingWindow && dist <= hearingRadius;
         float range = inf.IsOngoing ? Mathf.Min(viewDistance, floorNoticeDistance) : viewDistance;
-        if (dist > range) return false;
-        if (dist > 0.3f && Vector3.Angle(transform.forward, flat) > fieldOfView * 0.5f) return false;
-        return clear;
+        bool visible = dist <= range && (dist <= 0.3f || Vector3.Angle(transform.forward, flat) <= fieldOfView * 0.5f);
+        return (audible || visible) && LineOfSight(transform.position + Vector3.up * eyeHeight, target, inf.Item);
     }
 
     private bool LineOfSight(Vector3 eye, Vector3 target, GameObject item)
     {
         Transform p = player != null ? player : patrol != null ? patrol.Player : null;
         Vector3 d = target - eye;
-        foreach (RaycastHit h in Physics.RaycastAll(eye, d.normalized, d.magnitude, occluders, QueryTriggerInteraction.Ignore))
+        int count = Physics.RaycastNonAlloc(eye, d.normalized, hits, d.magnitude, occluders, QueryTriggerInteraction.Ignore);
+        if (count == hits.Length) return false; // Conservador quando o buffer enche.
+        for (int i = 0; i < count; i++)
         {
+            RaycastHit h = hits[i];
             Transform t = h.collider.transform;
             if (t.IsChildOf(transform) || item != null && t.IsChildOf(item.transform) || p != null && t.IsChildOf(p)) continue;
             if (h.collider.attachedRigidbody != null && !h.collider.attachedRigidbody.isKinematic) continue;   // outros itens soltos

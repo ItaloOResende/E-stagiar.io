@@ -139,7 +139,6 @@ public class RedeCrimpScreen : MonoBehaviour
     private Canvas canvasTela;
     private AudioSource somUi;
     private Image alicateImg;
-    private AvisoRodape aviso;
 
     // Efeitos do protótipo: alicate seguindo o mouse (etapa de cortar) e a "batida" de entrada de cada etapa.
     private float alicateFechando;
@@ -752,18 +751,9 @@ public class RedeCrimpScreen : MonoBehaviour
     {
         if (!exigirAlicate || TemAlicate()) return true;
         TocarSe(somErro);
-        Aviso("Falta ferramenta", spriteAlicateAberto);   // o desenho do alicate que ele precisa pegar
+        // não mostra QUAL ferramenta (o jogador descobre olhando os objetos): só que falta uma
+        FeedbackManutencao.Mostrar(this, "É necessária uma ferramenta adequada para trabalhar no cabo.", TipoFeedback.Alerta);
         return false;
-    }
-
-    /// <summary>
-    /// Aviso curto no rodapé (<see cref="AvisoRodape"/>): o próprio jogo diz o que impediu a ação, sem caixa de
-    /// diálogo. <paramref name="icone"/> é o desenho da ferramenta que falta, quando é o caso.
-    /// </summary>
-    private void Aviso(string texto, Sprite icone = null)
-    {
-        if (aviso == null) aviso = gameObject.AddComponent<AvisoRodape>();
-        aviso.Mostrar(texto, icone);
     }
 
     private void Fechar()

@@ -306,10 +306,8 @@ public static class CorrecoesFinaisSetup
     private static void PausaNaFase(Scene scene)
     {
         StageController stage = Object.FindAnyObjectByType<StageController>(FindObjectsInactive.Include);
-        var p = stage.GetComponent<PauseMenuScreen>() ?? stage.gameObject.AddComponent<PauseMenuScreen>();
-        var so = new SerializedObject(p);
-        so.FindProperty("stage").objectReferenceValue = stage;
-        so.ApplyModifiedPropertiesWithoutUndo();
+        // pausa oficial = PauseMenu (do Matheus); acha tablet, câmera e fase sozinho
+        if (stage.GetComponent<PauseMenu>() == null) stage.gameObject.AddComponent<PauseMenu>();
         L.Add("menu de pausa (Esc) no objeto Chamados");
     }
 

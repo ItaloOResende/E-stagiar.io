@@ -620,18 +620,18 @@ public class ImpressoraTela : MonoBehaviour
                 break;
             case ImpressoraEncaixeResultado.PrecisaPeca:
                 Mensagem(encaixe == ImpressoraParte.Toner
-                    ? "Ponha um cartucho de toner na mão e clique no compartimento."
-                    : "Ponha uma resma de papel na mão e clique na bandeja.", Amarelo);
+                    ? "O compartimento precisa de um item compatível."
+                    : "A bandeja precisa de um item compatível.", Amarelo);
                 break;
             case ImpressoraEncaixeResultado.PecaErrada:
                 InteractionSounds.Raise(InteractionSound.Error);   // peça no encaixe errado
-                Mensagem("Essa peça não entra aqui.", Vermelho);
+                Mensagem("Este item não é compatível com este encaixe.", Vermelho);
                 break;
             case ImpressoraEncaixeResultado.MaoCheia:
-                Mensagem("Tire a peça da mão para retirar esta.", Amarelo);
+                Mensagem("Com as mãos ocupadas não é possível retirar a peça.", Amarelo);
                 break;
             case ImpressoraEncaixeResultado.PecaQuebrada:
-                Mensagem("Esse cartucho quebrou na queda: pegue outro.", Vermelho);
+                Mensagem("Este item está danificado e não pode ser instalado.", Vermelho);
                 break;
         }
         Atualizar();
@@ -660,7 +660,10 @@ public class ImpressoraTela : MonoBehaviour
         if (!s.ConfirmarIp())
         {
             InteractionSounds.Raise(InteractionSound.Error);
-            Mensagem("IP incompleto. Preencha os 4 grupos (ex.: 192.168.001.010).", Vermelho);
+            // não diz qual é o IP certo: só se o formato está incompleto ou se não confere com o exigido
+            Mensagem(s.UltimaRecusa == ImpressoraSession.RecusaIp.NaoConfere
+                ? "A configuração informada não corresponde aos requisitos da rede."
+                : "Endereço incompleto: preencha os quatro grupos.", Vermelho);
         }
         else
         {
@@ -731,11 +734,15 @@ public class ImpressoraTela : MonoBehaviour
         return string.Join(".", g);
     }
 
+    // Mesmo padrão dos minigames (FeedbackManutencao): sucesso, requisito e erro vão para o cartão do rodapé; o texto
+    // fraco ("Imprimindo...", "Peça retirada.") continua na linha de status.
     private void Mensagem(string texto, Color cor)
     {
         if (msgTxt == null) return;
-        msgTxt.text = texto;
+        bool cartao = !string.IsNullOrEmpty(texto) && (cor == Verde || cor == Amarelo || cor == Vermelho);
+        msgTxt.text = cartao ? "" : texto;
         msgTxt.color = cor;
+        if (cartao) FeedbackManutencao.Mostrar(this, texto, FeedbackManutencao.TipoDaCor(cor == Verde, cor == Vermelho));
     }
 
     private void Fechar()

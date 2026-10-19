@@ -74,6 +74,35 @@ public class ImpressoraPainelTests
     }
 
     [Test]
+    public void IpDaRodada_SoAceitaOCartaz_ESorteioMuda()
+    {
+        Type rede = T("ImpressoraRede");
+        Action<string> definir = ip => rede.GetMethod("Definir").Invoke(null, new object[] { ip });
+        Func<string> daRodada = () => (string)rede.GetProperty("IpDaRodada").GetValue(null);
+        try
+        {
+            definir("192.168.0.42");
+            object s = Activator.CreateInstance(T("ImpressoraSession"));
+            Call(s, "Digitar", "192.168.0.43");
+            Assert.IsFalse((bool)Call(s, "ConfirmarIp"), "IP válido mas diferente do cartaz: recusado");
+            Assert.AreEqual("NaoConfere", Get(s, "UltimaRecusa").ToString());
+            Assert.AreEqual("", (string)Get(s, "IpSalvo"), "nada é salvo");
+            Call(s, "Limpar");
+            Call(s, "Digitar", "192.168.000.042");
+            Assert.IsTrue((bool)Call(s, "ConfirmarIp"), "o IP do cartaz (com zeros à esquerda) vale");
+            Assert.IsTrue((bool)Get(s, "RedeConfigurada"));
+
+            string anterior = daRodada();
+            string novo = (string)rede.GetMethod("Sortear").Invoke(null, null);
+            Assert.AreNotEqual(anterior, novo, "rodada nova nunca repete o IP");
+            Assert.AreEqual(novo, daRodada(), "cartaz e validação leem o mesmo valor");
+            Assert.IsFalse((bool)Get(s, "RedeConfigurada"), "o IP da rodada anterior deixa de valer");
+            StringAssert.StartsWith("192.168.0.", novo);
+        }
+        finally { definir(""); }
+    }
+
+    [Test]
     public void PedidoDeVista_ValeUmaVez()
     {
         var go = new GameObject("Impressora");

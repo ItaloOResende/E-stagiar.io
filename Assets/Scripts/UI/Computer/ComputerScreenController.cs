@@ -661,6 +661,7 @@ public class ComputerScreenController : MonoBehaviour
             {
                 InteractionSounds.Raise(InteractionSound.Error);   // ferramenta errada: som de erro + parafuso recusando
                 views[index].PlayRejected();
+                AvisarFerramenta(held, "recolocar");
             }
             return;
         }
@@ -672,8 +673,17 @@ public class ComputerScreenController : MonoBehaviour
             case ScrewRemovalResult.WrongTool:
                 InteractionSounds.Raise(InteractionSound.Error);
                 views[index].PlayRejected();
+                AvisarFerramenta(held, "remover");
                 break;
         }
+    }
+
+    // Padrão dos minigames (FeedbackManutencao): diz que falta uma ferramenta, ou que a da mão não serve, sem dizer qual.
+    private void AvisarFerramenta(ToolType naMao, string acao)
+    {
+        FeedbackManutencao.Mostrar(screen, naMao == ToolType.None
+            ? "É necessária uma ferramenta para " + acao + " os parafusos."
+            : "A ferramenta na mão não é adequada para esta ação.", TipoFeedback.Alerta);
     }
 
     private void HandleScrewRemoved(int index)

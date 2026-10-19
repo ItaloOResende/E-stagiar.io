@@ -272,3 +272,14 @@ Scripts, prefabs com scripts quebrados (`Gabinete`, `gaveteiro*`), cenas legadas
 ## Decoração das estações (2026-10-18) — original do projeto
 
 - `Art/Meshes/Decoracao/DEC_*.asset`, `Art/Textures/Decoracao/T_Decoracao_Atlas.png`, `Art/Materials/Decoracao/M_Decoracao.mat`, `Prefabs/Props/Decoracao/DEC_*.prefab`: gerados por código em `Assets/Editor/DecoracaoEscritorioSetup.cs` (malhas low-poly, paleta e texto dos post-its desenhados com fonte de pixels própria). Sem asset de terceiros; o material é cópia do `M_Character_Tex1_1` (Toon/Toon) do Matheus com a textura do atlas.
+
+## Recursos do Matheus recuperados dos commits `ede1c27`/`147f9a6` (integrados em 2026-10-19) — ORIGEM A CONFIRMAR
+
+Vieram dos commits do Matheus (revertidos em `1fea6fe`) e foram reintegrados seletivamente. **Origem/licença não informadas no commit: confirmar com o Matheus antes da entrega (Regulamento 14.2).**
+
+- `Models/npc.fbx`, `npc3.fbx`, `npc4.fbx`, `npc 5.fbx`, `caixa3.fbx`, `gavetas.fbx`: modelos do Matheus (presumivelmente autoria dele).
+- `Fonts/VarelaRound-Regular.ttf` + `VarelaRound-Regular SDF.asset`: Varela Round (Google Fonts, normalmente SIL OFL; conferir).
+- `Sounds/click menu.mp3`, `notification.mp3`, `woosh.mp3`: **origem desconhecida**.
+- `Textures/Sprites/tablet.png`, `cursor.png`, `chavedefenda.png`, `pointinghand_100160.webp`: **origem desconhecida** (o `.webp` não é importado pela Unity).
+- `Materials/xadrez 8..11.mat`: materiais RealToon dos NPCs.
+- Alterados pelo Matheus: 12 materiais passaram para RealToon (`M_Character_*`, `M_Escritorio_Escuro`, `M_PC_Chapa`, `M_Plant`, `Placas/M_Placa_*`, `Resma/*`, `Toner/M_Toner_Corpo`) e as imagens `officepapers.png`, `PH_ui_mao.png`, `ui_cursor_chave_de_fenda.png`.

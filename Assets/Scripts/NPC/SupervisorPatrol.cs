@@ -76,6 +76,8 @@ public class SupervisorPatrol : MonoBehaviour
     [SerializeField] private float bobHeight = 0.025f;
     [SerializeField] private float bobFrequency = 1.8f;
 
+    private bool AgentReady => agent != null && agent.enabled && agent.isOnNavMesh;
+    private readonly RaycastHit[] sightHits = new RaycastHit[64];
     private NavMeshAgent agent;
     private PatrolState state = PatrolState.Walking;
     private PatrolState resumeState;
@@ -133,7 +135,8 @@ public class SupervisorPatrol : MonoBehaviour
 
     private void Update()
     {
-        if (agent == null || !agent.isOnNavMesh || PointCount == 0) return;
+        if (state == PatrolState.Reacting) { UpdateReaction(); Bob(); return; }
+        if (!AgentReady || PointCount == 0) { Bob(); return; }
         NpcSeparacao.Aplicar(agent);   // não atravessar outros NPCs
 
         if (state != PatrolState.Watching && state != PatrolState.Reacting) CheckPlayer();
@@ -141,6 +144,8 @@ public class SupervisorPatrol : MonoBehaviour
         switch (state)
         {
             case PatrolState.Walking:
+                if (!agent.pathPending && (!agent.hasPath || agent.pathStatus != NavMeshPathStatus.PathComplete))
+                { stuckTimer += Time.deltaTime; if (stuckTimer >= stuckTime) { SkippedPoints++; GoToNext(); } break; }
                 if (UpdateYield()) break;
                 if (!agent.pathPending && agent.remainingDistance > arriveDistance && agent.velocity.sqrMagnitude < 0.0025f)
                 {
@@ -192,7 +197,7 @@ public class SupervisorPatrol : MonoBehaviour
         yielding = false;
         if (blocking) yieldIgnoreUntil = Time.time + 2f;           // o jogador ficou: contorna pelo caminho recalculado
         agent.isStopped = false;
-        if (index >= 0) agent.SetDestination(route.GetChild(index).position);
+        if (index >= 0 && index < PointCount && !agent.SetDestination(route.GetChild(index).position)) stuckTimer = stuckTime;
         return false;
     }
 
@@ -222,10 +227,10 @@ public class SupervisorPatrol : MonoBehaviour
         else index = (index + 1) % n;
         state = PatrolState.Walking;
         agent.updateRotation = true;
-        if (agent.isOnNavMesh)
+        if (AgentReady)
         {
             agent.isStopped = false;
-            agent.SetDestination(route.GetChild(index).position);
+            if (!agent.SetDestination(route.GetChild(index).position)) stuckTimer = stuckTime;
         }
     }
 
@@ -248,8 +253,11 @@ public class SupervisorPatrol : MonoBehaviour
         if (!requireLineOfSight) return true;
         Vector3 eye = transform.position + Vector3.up * eyeHeight;
         Vector3 target = player.position + Vector3.up * 0.2f;
-        foreach (RaycastHit h in Physics.RaycastAll(eye, (target - eye).normalized, Vector3.Distance(eye, target), ~0, QueryTriggerInteraction.Ignore))
+        int count = Physics.RaycastNonAlloc(eye, (target - eye).normalized, sightHits, Vector3.Distance(eye, target), ~0, QueryTriggerInteraction.Ignore);
+        if (count == sightHits.Length) return false;
+        for (int i = 0; i < count; i++)
         {
+            RaycastHit h = sightHits[i];
             if (h.collider.transform.IsChildOf(transform) || h.collider.transform.IsChildOf(player)) continue;
             if (h.collider.attachedRigidbody != null && !h.collider.attachedRigidbody.isKinematic) continue;  // itens soltos
             return false;
@@ -280,6 +288,7 @@ public class SupervisorPatrol : MonoBehaviour
     // Volta ao que fazia (andando: segue o caminho; na pausa: termina a pausa, ou uma curta se já tinha acabado).
     private void Resume()
     {
+        if (!AgentReady) return;
         if (state == PatrolState.Walking) agent.isStopped = false;
         else if (waitTimer <= 0f) waitTimer = Random.Range(waitRange.x * 0.5f, Mathf.Max(waitRange.x, waitRange.y) * 0.5f);
         agent.updateRotation = state == PatrolState.Walking || scanTarget == null;
@@ -299,9 +308,8 @@ public class SupervisorPatrol : MonoBehaviour
         reactStart = Time.time;
         reactShakeStarted = false;
         ReactionCount++;
-        agent.isStopped = true;
-        agent.velocity = Vector3.zero;
-        agent.updateRotation = false;
+        yielding = false;
+        if (AgentReady) { agent.isStopped = true; agent.velocity = Vector3.zero; agent.updateRotation = false; }
         Reacted?.Invoke(point);
     }
 
@@ -353,10 +361,10 @@ public class SupervisorPatrol : MonoBehaviour
 
     private void Bob()
     {
-        if (visual == null || bobHeight <= 0f) return;
-        float speed = agent.velocity.magnitude;
+        if (visual == null) return;
+        float speed = AgentReady ? agent.velocity.magnitude : 0f;
         if (speed > 0.05f) bobPhase += Time.deltaTime * bobFrequency * Mathf.PI * 2f;
-        else bobPhase = Mathf.MoveTowards(bobPhase, Mathf.Round(bobPhase / Mathf.PI) * Mathf.PI, Time.deltaTime * 4f);
-        visual.localPosition = visualRest + Vector3.up * Mathf.Abs(Mathf.Sin(bobPhase)) * bobHeight;
+        float height = speed > 0.05f ? Mathf.Abs(Mathf.Sin(bobPhase)) * bobHeight : 0f;
+        visual.localPosition = Vector3.Lerp(visual.localPosition, visualRest + Vector3.up * height, 1f - Mathf.Exp(-12f * Time.deltaTime));
     }
 }

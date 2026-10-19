@@ -3558,7 +3558,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TicketTabletPrototype
   ticketManager: {fileID: 1238468672}
   stageController: {fileID: 1238468671}
-  toggleKey: 17
+  toggleKey: 34
   interactionDetector: {fileID: 1638108197}
   disableWhileTabletOpen:
   - {fileID: 1638108196}

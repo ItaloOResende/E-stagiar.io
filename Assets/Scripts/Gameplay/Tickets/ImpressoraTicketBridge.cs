@@ -25,8 +25,13 @@ public class ImpressoraTicketBridge : TicketDeviceBridge
     [SerializeField] private GameObject tonerPrefab;
     [Tooltip("Prefab da resma de papel (Pickup_ResmaPapel) usado no estado funcional.")]
     [SerializeField] private GameObject papelPrefab;
-    [Tooltip("IP já configurado no estado funcional (qualquer IPv4 válido serve para o painel).")]
+    [Tooltip("IP do estado funcional quando a cena não sorteia o IP da rodada (sem StageController). Com fase, a " +
+             "impressora usa o IP da rodada (ImpressoraRede), o mesmo do cartaz da sala de TI.")]
     [SerializeField] private string ipInicial = "192.168.0.20";
+    [Tooltip("Sorteia o IP da rodada (ImpressoraRede) no início de cada fase e a cada chamado que apaga o IP.")]
+    [SerializeField] private bool sortearIpDaRodada = true;
+
+    private StageController fase;
 
     private ImpressoraEstacao estacao;
     private int testesNoInicio;
@@ -41,7 +46,23 @@ public class ImpressoraTicketBridge : TicketDeviceBridge
 
     private void Start()
     {
-        if (comecarFuncional) estacao.DefinirEstado(Criar(tonerPrefab), Criar(papelPrefab), ipInicial);
+        fase = sortearIpDaRodada ? FindAnyObjectByType<StageController>() : null;
+        if (fase != null) fase.StageStarted += NovaRodada;
+        string ip = fase != null ? ImpressoraRede.Garantir() : ipInicial;
+        if (comecarFuncional) estacao.DefinirEstado(Criar(tonerPrefab), Criar(papelPrefab), ip);
+    }
+
+    private void OnDestroy()
+    {
+        if (fase != null) fase.StageStarted -= NovaRodada;
+    }
+
+    // Fase nova: IP novo (nunca o da rodada anterior). Impressora funcional e sem chamado passa a usar o IP novo.
+    private void NovaRodada()
+    {
+        ImpressoraRede.Sortear();
+        ImpressoraSession s = estacao.Sessao;
+        if ((Current == null || Current.IsClosed) && s.TemIp) estacao.DefinirEstado(estacao.TonerGuardado, estacao.PapelGuardado, ImpressoraRede.IpDaRodada);
     }
 
     private GameObject Criar(GameObject prefab)
@@ -63,11 +84,17 @@ public class ImpressoraTicketBridge : TicketDeviceBridge
         {
             case SemPapel: estacao.DefinirEstado(toner, null, ip); break;
             case SemToner: estacao.DefinirEstado(null, papel, ip); break;
-            case SemIp: estacao.DefinirEstado(toner, papel, ""); break;          // sem IP
-            case SemImpressao: estacao.DefinirEstado(null, null, ""); break;
+            case SemIp: NovoIpDoChamado(); estacao.DefinirEstado(toner, papel, ""); break;          // sem IP
+            case SemImpressao: NovoIpDoChamado(); estacao.DefinirEstado(null, null, ""); break;
             default: return;
         }
         Debug.Log($"[Impressora] {DeviceLabel}: defeito '{ticketId}' aplicado.", this);
+    }
+
+    // O chamado apagou o IP: a rede pede um IP novo (o cartaz da sala de TI mostra qual) durante todo o chamado.
+    private void NovoIpDoChamado()
+    {
+        if (fase != null) ImpressoraRede.Sortear();
     }
 
     protected override bool Knows(string id) =>
@@ -83,7 +110,7 @@ public class ImpressoraTicketBridge : TicketDeviceBridge
             case "corrigir-impressora": return s.TemToner && s.TemPapel;
             case "repor-papel": return s.TemPapel;
             case "trocar-toner": return s.TemToner;
-            // um IP válido confirmado no painel
+            // o IP da rodada (cartaz da sala de TI) confirmado no painel
             case "configurar-ip": return s.RedeConfigurada;
             // teste-impressao: pronta E uma página de teste saiu DEPOIS de assumir o chamado (tela "Teste de impressão")
             default: return s.Pronta && estacao.TestesOk > testesNoInicio;

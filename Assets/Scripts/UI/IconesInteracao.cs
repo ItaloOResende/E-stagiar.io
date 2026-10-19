@@ -6,7 +6,7 @@ using UnityEngine;
 /// <c>PH_ui_mao</c>), como o cursor das telas. O ícone depende da AÇÃO e do EQUIPAMENTO mirado, não só do clique:
 ///  - esquerdo: pegar/usar (mãozinha), abrir (gaveta/porta), crimpar (alicate, caixa de cabo com o alicate na mão),
 ///    rack, testador (a impressora não tem clique esquerdo: o componente dele está desligado no prefab);
-///  - direito: manutenção do gabinete = chave de fenda; notebook = notebook com chave; impressora = impressora;
+///  - direito: manutenção do gabinete e do notebook = chave de fenda; impressora = impressora;
 ///    caixa de cabo = alicate;
 ///    monitor = monitor; testador = testador.
 /// Sem regra para o alvo, vale o <see cref="Interactable.promptIcon"/> dele (o campo continua servindo para objetos
@@ -18,7 +18,7 @@ public static class IconesInteracao
 
     private static Sprite Carregar(string nome) => Resources.Load<Sprite>(Pasta + nome);
 
-    private static Sprite mao, abrir, chave, crimpador, impressora, notebook, monitor, rack, testador, bloqueado;
+    private static Sprite mao, abrir, chave, crimpador, impressora, monitor, rack, testador, bloqueado;
     public static Sprite Pegar => mao != null ? mao : mao = Carregar("mao_pixel");
     public static Sprite Usar => Pegar;
     public static Sprite Bloqueado => bloqueado != null ? bloqueado : bloqueado = Carregar("icone_bloqueado");
@@ -26,7 +26,6 @@ public static class IconesInteracao
     private static Sprite ChaveDeFenda => chave != null ? chave : chave = Carregar("icone_chave_fenda");
     private static Sprite Crimpador => crimpador != null ? crimpador : crimpador = Carregar("icone_crimpador");
     private static Sprite Impressora => impressora != null ? impressora : impressora = Carregar("icone_impressora");
-    private static Sprite Notebook => notebook != null ? notebook : notebook = Carregar("icone_notebook");
     private static Sprite Monitor => monitor != null ? monitor : monitor = Carregar("icone_monitor");
     private static Sprite Rack => rack != null ? rack : rack = Carregar("icone_rack");
     private static Sprite Testador => testador != null ? testador : testador = Carregar("icone_testador");
@@ -66,11 +65,13 @@ public static class IconesInteracao
         }
         // UIScreenInteractable e outros: pelo equipamento ao qual pertencem
         if (alvo.GetComponentInParent<ComputerCase>() != null) return ChaveDeFenda;
+        // notebook: a manutenção é com a chave de fenda (parafusos da tampa de baixo). Vem ANTES da caixa de cabo: o
+        // prefab do notebook tem um RedeEstacaoInteractable DESLIGADO no mesmo objeto, que fazia aparecer o alicate.
+        if (alvo.GetComponentInParent<NotebookEstacao>() != null) return ChaveDeFenda;
         // caixa de cabo de rede: o clique direito abre a crimpagem (o esquerdo pega a caixa, ou crimpa com o alicate)
         RedeEstacaoInteractable caixa = alvo.GetComponent<RedeEstacaoInteractable>();
-        if (caixa != null && alvo.GetComponentInParent<ImpressoraEstacao>() == null
+        if (caixa != null && caixa.enabled && alvo.GetComponentInParent<ImpressoraEstacao>() == null
             && (caixa.screen == null || caixa.screen.GetComponentInChildren<RedeRackScreen>(true) == null)) return Crimpador;
-        if (alvo.GetComponentInParent<NotebookEstacao>() != null) return Notebook;
         if (alvo.GetComponentInParent<ImpressoraEstacao>() != null) return Impressora;
         if (alvo.GetComponentInParent<MonitorDisplay>() != null) return Monitor;
         return null;

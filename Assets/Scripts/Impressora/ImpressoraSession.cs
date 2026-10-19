@@ -51,8 +51,13 @@ public class ImpressoraSession
 
     /// <summary>Há um IP confirmado.</summary>
     public bool TemIp => IpSalvo.Length > 0;
-    /// <summary>A rede da impressora está configurada: um IP válido confirmado.</summary>
-    public bool RedeConfigurada => TemIp && IpEhValido(IpSalvo);
+    /// <summary>A rede da impressora está configurada: o IP confirmado é o exigido na rodada
+    /// (<see cref="ImpressoraRede"/>; sem regra, qualquer IP válido).</summary>
+    public bool RedeConfigurada => TemIp && ImpressoraRede.Confere(IpSalvo);
+
+    /// <summary>Por que o último <see cref="ConfirmarIp"/> foi recusado.</summary>
+    public enum RecusaIp { Nenhuma, Incompleto, NaoConfere }
+    public RecusaIp UltimaRecusa { get; private set; }
     /// <summary>A impressora está configurada e pronta para imprimir.</summary>
     public bool Pronta => TemToner && TemPapel && RedeConfigurada;
 
@@ -150,10 +155,15 @@ public class ImpressoraSession
         grupos.AddRange(IpSalvo.Split('.'));
     }
 
-    /// <summary>Confirma o IP digitado. Devolve false (e nada muda) se não forem 4 grupos de 0 a 255.</summary>
+    /// <summary>
+    /// Confirma o IP digitado. Devolve false (e nada muda) se não forem 4 grupos de 0 a 255
+    /// (<see cref="RecusaIp.Incompleto"/>) ou se não for o IP exigido na rodada (<see cref="RecusaIp.NaoConfere"/>).
+    /// </summary>
     public bool ConfirmarIp()
     {
-        if (!IpEhValido(IpDigitado)) return false;
+        UltimaRecusa = RecusaIp.Nenhuma;
+        if (!IpEhValido(IpDigitado)) { UltimaRecusa = RecusaIp.Incompleto; return false; }
+        if (!ImpressoraRede.Confere(IpDigitado)) { UltimaRecusa = RecusaIp.NaoConfere; return false; }
         IpSalvo = Normalizar(IpDigitado);
         Limpar();
         return true;

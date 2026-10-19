@@ -114,12 +114,18 @@ public class MainMenuScreen : MonoBehaviour
         Label(card.rectTransform, "Estagiário de suporte de TI", 30, FontStyle.Normal, Muted,
               new Vector2(1100f, 50f), new Vector2(0f, 210f));
 
+        // configurações = a mesma tela do pause (PauseMenu), sem pausar; só aparece se a cena tiver o pause
+        PauseMenu pause = FindAnyObjectByType<PauseMenu>();
+        bool comConfig = pause != null;
         ModeButton(card.rectTransform, "EXPEDIENTE", "A fase de sempre: atenda os chamados até o fim do expediente.",
-                   Blue, new Vector2(0f, 70f), () => Choose(GameMode.Normal));
+                   Blue, new Vector2(0f, comConfig ? 100f : 70f), () => Choose(GameMode.Normal));
+        if (comConfig)
+            ModeButton(card.rectTransform, "CONFIGURAÇÕES", "Volume geral e sensibilidade do mouse.",
+                       Muted, new Vector2(0f, -60f), () => { InteractionSounds.Raise(InteractionSound.PowerButton); pause.AbrirConfiguracoesAvulsas(); });
         ModeButton(card.rectTransform, "SAIR DO JOGO", "Fecha o jogo.",
-                   Orange, new Vector2(0f, -110f), SairDoJogo);
-        Label(card.rectTransform, "Celular: C (ou Alt + clique no aparelho)  ·  Esc fecha as telas", 22, FontStyle.Italic, Muted,
-              new Vector2(1100f, 40f), new Vector2(0f, -300f));
+                   Orange, new Vector2(0f, comConfig ? -220f : -110f), SairDoJogo);
+        Label(card.rectTransform, "Celular: T (ou Alt + clique no aparelho)  ·  Esc fecha as telas e pausa", 22, FontStyle.Italic, Muted,
+              new Vector2(1100f, 40f), new Vector2(0f, comConfig ? -330f : -300f));
     }
 
     private void ModeButton(RectTransform parent, string text, string desc, Color color, Vector2 pos, UnityEngine.Events.UnityAction action)
