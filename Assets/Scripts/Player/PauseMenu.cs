@@ -288,11 +288,14 @@ public class PauseMenu : MonoBehaviour
         if (estado != Estado.Fechado || !PodeAbrir()) return;
         if (dono != null && dono != this) return; dono = this;
         RecarregarPreferenciasCompartilhadas();
+        // O tablet fecha ANTES de a pausa valer e de os controles serem guardados: fechando já em pausa ele não devolvia
+        // os controles que tinha desligado (a pausa conta como "tela por cima"), a pausa guardava esse "desligado" e ao
+        // continuar o jogador ficava sem andar/interagir até sair do Play Mode.
+        tabletHabilitado = tablet != null && tablet.enabled; tabletEstavaAberto = tabletHabilitado && tablet.IsOpen;
+        if (tabletHabilitado) { tablet.Fechar(); tablet.enabled = false; }
         estado = Estado.Capturando; IsPaused = true;
         escalaTempoAnterior = Time.timeScale; audioPausadoAntes = AudioListener.pause;
         cursorLockAnterior = Cursor.lockState; cursorVisivelAnterior = Cursor.visible;
-        tabletHabilitado = tablet != null && tablet.enabled; tabletEstavaAberto = tabletHabilitado && tablet.IsOpen;
-        if (tabletHabilitado) { tablet.Fechar(); tablet.enabled = false; }
         controles.Clear(); GuardarControle(controleOlhar);
         if (desativarDurantePause != null) foreach (var c in desativarDurantePause) GuardarControle(c);
         // o que lê input ou anda sozinho: achado na hora (só ao pausar, não por quadro)
@@ -712,8 +715,15 @@ public class PauseMenu : MonoBehaviour
             if (fonte != null) t.font = fonte;
             t.color = t == mensagemUI ? new Color(1, .65f, .4f) : corTexto;
             t.fontSize = t == tituloMenuUI || t == tituloConfigUI ? tamanhoTitulo : t == mensagemUI ? 18 : tamanhoTexto;
+            AplicarMaterialTexto(t);
+        }
+    }
+    // Contorno e sombra do texto (cópia local do material da fonte; o asset da fonte nunca muda).
+    private void AplicarMaterialTexto(TMP_Text t)
+    {
+        {
             Material origem = t.fontSharedMaterial;
-            if (origem == null) continue;
+            if (origem == null) return;
             if (!materiais.TryGetValue(origem, out Material material))
             {
                 material = new Material(origem) { name = "Pause_Texto", hideFlags = HideFlags.HideAndDontSave }; materiais.Add(origem, material);
@@ -729,6 +739,37 @@ public class PauseMenu : MonoBehaviour
             t.fontSharedMaterial = material; t.extraPadding = true; t.UpdateMeshPadding();
         }
     }
+    // ================================================================== estilo dos botões para outras telas
+    /// <summary>
+    /// Dá a <paramref name="b"/> (de OUTRA tela, ex.: o relatório final) o MESMO visual dos botões da pausa e do menu:
+    /// gradiente com brilho interno, brilho externo, cantos e o texto com a fonte, a cor, o contorno e a sombra
+    /// configurados aqui. Os sprites ficam com quem chamou (não são limpos quando a pausa refaz o layout).
+    /// </summary>
+    public TMP_Text EstilizarBotaoExterno(Button b, string label, float tamanhoFonte = 0f)
+    {
+        if (b == null) return null;
+        Canvas.ForceUpdateCanvases();
+        var size = ((RectTransform)b.transform).rect.size;
+        Sprite[] sprites = CriarEstiloBotao(Mathf.Clamp(Mathf.RoundToInt(size.x), 2, 2048), Mathf.Clamp(Mathf.RoundToInt(size.y), 2, 1024));
+        b.image.sprite = sprites[0]; b.image.type = Image.Type.Simple; b.image.color = Color.white;
+        AplicarBordaESombra(b.image, efeitosBotoes);
+        Image glow = Imagem("OuterGlow", b.transform, Color.white);
+        glow.transform.SetAsFirstSibling(); float margemGlow = Mathf.Ceil(Mathf.Max(0, larguraOuterGlow)) + 2;
+        Stretch(glow.rectTransform, -Vector2.one * margemGlow, Vector2.one * margemGlow);
+        glow.sprite = sprites[1]; glow.type = Image.Type.Simple; glow.raycastTarget = false;
+        var texto = Texto(b.transform, "Texto", label, tamanhoFonte > 0f ? tamanhoFonte : tamanhoTexto);
+        Stretch(texto.rectTransform, new Vector2(12, 5), new Vector2(-12, -5));
+        texto.enableAutoSizing = true; texto.fontSizeMin = 14; texto.fontSizeMax = texto.fontSize;
+        AplicarMaterialTexto(texto);
+        texto.extraPadding = true; texto.UpdateMeshPadding();
+        ColorBlock cb = b.colors; cb.highlightedColor = Color.white; cb.pressedColor = new Color(.85f, .85f, .85f); b.colors = cb;
+        return texto;
+    }
+    /// <summary>Escala do hover dos botões da pausa (para outras telas imitarem).</summary>
+    public float EscalaHoverBotoes => escalaHover;
+    public void TocarCliqueBotao() => Tocar(somClique);
+    public void TocarHoverBotao() => Tocar(somHover);
+
     private Sprite CriarArredondado(int raio)
     {
         int n = raio * 2 + 6; var pixels = new Color[n * n];

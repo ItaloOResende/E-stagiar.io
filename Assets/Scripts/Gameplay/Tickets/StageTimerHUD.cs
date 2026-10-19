@@ -5,11 +5,12 @@ using UnityEngine;
 ///  - uma FAIXA horizontal no topo, da largura toda da tela, que encolhe com o tempo restante (verde → amarelo →
 ///    vermelho, em degradê contínuo), fixa durante a partida e proporcional à resolução;
 ///  - o cronômetro (mm:ss) num selo no alto da DIREITA, logo abaixo da faixa (fora dela). Sem o nome da fase.
+///    Selo = cartão do <see cref="HudEstilo"/> (o mesmo da pontuação): rótulo "TEMPO" + mm:ss grande na fonte do jogo
+///    (<see cref="Fonte"/>, Varela Round); no último minuto fica vermelho e nos últimos segundos pulsa.
 /// Nao cria um segundo temporizador nem modifica os minigames.
 /// O tempo de CADA chamado é outro: veja <see cref="TicketManager"/> e a barra da lista do celular.
 /// <para>
-/// O RETANGULO ESCURO E DO TAMANHO DO TEXTO (mais <see cref="paddingX"/>/<see cref="paddingY"/> de respiro):
-/// nada de barra atravessando o topo. O selo fica À ESQUERDA do botão de fechar das telas 2D (todos eles ficam
+/// O selo tem o tamanho do texto (nada de barra atravessando o topo). O selo fica À ESQUERDA do botão de fechar das telas 2D (todos eles ficam
 /// nos 88 px do canto superior direito: 24 de margem + 64x64), por isso <see cref="rightMargin"/> começa em 100:
 /// o selo para 12 px antes do botão e não atrapalha nem o botão nem o conteúdo do meio das telas.
 /// </para>
@@ -20,24 +21,14 @@ public class StageTimerHUD : MonoBehaviour
     [SerializeField] private StageController stageController;
     [SerializeField] private TicketManager ticketManager;
     [Header("Visual (pixels da referência 1920 x 1080)")]
-    [Tooltip("Tamanho da LETRA do selo. O retangulo de fundo cresce junto, sempre colado no texto.")]
-    [SerializeField, Min(10f)] private int fontSize = 28;
-    [Tooltip("Respiro entre o texto e a borda do retangulo (horizontal).")]
-    [SerializeField, Min(0f)] private float paddingX = 14f;
-    [Tooltip("Respiro entre o texto e a borda do retangulo (vertical).")]
-    [SerializeField, Min(0f)] private float paddingY = 8f;
-    [SerializeField, Min(0f)] private float topMargin = 16f;
+    [Tooltip("Fonte do selo e da pontuação (ScoreHUD). Vazio = fonte padrão.")]
+    [SerializeField] private Font fonte;
+    [SerializeField] private string rotulo = "TEMPO";
     [Tooltip("Distancia da borda DIREITA da tela. O padrao (100) deixa o selo FORA do botao de fechar das telas.")]
     [SerializeField, Min(0f)] private float rightMargin = 100f;
-    [Tooltip("Altura da faixa de tempo no topo da tela (pixels da referência 1080p).")]
-    [SerializeField, Min(2f)] private float barHeight = 10f;
 
-    /// <summary>Resolução de referência das telas 2D do jogo (o selo acompanha a mesma escala).</summary>
-    private const float RefLargura = 1920f;
-    private const float RefAltura = 1080f;
-
-    private static readonly Color Backdrop = new Color(0.08f, 0.10f, 0.14f, 0.78f);
-    private static readonly Color Urgente = new Color(0.86f, 0.16f, 0.14f, 0.92f);
+    /// <summary>Fonte do HUD de jogo (também usada pelo <see cref="ScoreHUD"/> no mesmo objeto).</summary>
+    public Font Fonte => fonte;
 
     [Header("Tensão no fim da fase")]
     [Tooltip("Com este tempo restante (s) o selo fica vermelho e começa o som de suspense.")]
@@ -55,8 +46,6 @@ public class StageTimerHUD : MonoBehaviour
 
     /// <summary>O selo está desenhado (some no fim da fase e com o relatório final na frente).</summary>
     public bool Visible { get; private set; }
-
-    private GUIStyle labelStyle;
 
     private void Awake()
     {
@@ -134,32 +123,34 @@ public class StageTimerHUD : MonoBehaviour
         string text = $"{seconds / 60:00}:{seconds % 60:00}";   // só o tempo (sem o nome da fase)
 
         // A escala acompanha o CanvasScaler das telas do jogo (referência 1920x1080), então o selo fica do
-        // MESMO tamanho relativo em qualquer resolução — como o celular do jogador.
-        float e = Escala;
+        // MESMO tamanho relativo em qualquer resolução — como o tablet do jogador.
+        float e = HudEstilo.Escala;
 
         // faixa do topo: largura toda, encolhe da direita para a esquerda conforme o tempo acaba
         float fracao = remaining / duration;
-        float hb = Mathf.Max(2f, Mathf.Round(barHeight * e));
+        float hb = Mathf.Max(2f, Mathf.Round(HudEstilo.AlturaFaixa * e));
         DrawRect(new Rect(0f, 0f, Screen.width, hb), new Color(0.05f, 0.07f, 0.09f, 0.75f));
         DrawRect(new Rect(0f, 0f, Screen.width * fracao, hb), CorDaFaixa(fracao));
 
         // último minuto: vermelho; últimos segundos: pulsa (só o tamanho do selo, o texto continua legível)
         bool urgente = remaining <= warningSeconds;
         bool final = remaining <= finalSeconds;
-        if (final) e *= 1f + 0.08f * (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * Mathf.PI * 2f * 1.6f));
-        GarantirEstilo(e);
+        float pulso = final ? 1f + 0.06f * (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * Mathf.PI * 2f * 1.6f)) : 1f;
         Visible = true;
 
-        // O retangulo e medido PELO TEXTO: o fundo e sempre um selo colado na letra.
-        Vector2 medida = labelStyle.CalcSize(new GUIContent(text));
-        float w = Mathf.Ceil(medida.x + 2f * paddingX * e);
-        float h = Mathf.Ceil(medida.y + 2f * paddingY * e);
+        // largura fixa pelo maior texto possível ("00:00"): o selo não "dança" quando os dígitos mudam
+        float w = Mathf.Max(HudEstilo.Largura(rotulo, "00:00", e, fonte), 130f * e);
+        float h = HudEstilo.AlturaSelo * e;
         float x = Screen.width - w - rightMargin * e;   // alto da DIREITA, à esquerda do botão de fechar
-        float y = hb + topMargin * e;   // abaixo da faixa, sem ficar comprimido nela
-
-        DrawRect(new Rect(x, y, w, h), urgente ? Urgente : Backdrop);
-        GUI.Label(new Rect(x + paddingX * e, y + paddingY * e, w - 2f * paddingX * e, h - 2f * paddingY * e),
-            text, labelStyle);
+        float y = hb + HudEstilo.MargemTopo * e;   // abaixo da faixa, alinhado com o selo da pontuação
+        Rect r = new Rect(x, y, w, h);
+        if (pulso > 1f)
+        {
+            Vector2 c = r.center;
+            r.size *= pulso;
+            r.center = c;
+        }
+        HudEstilo.Selo(r, rotulo, text, e * pulso, fonte, urgente);
     }
 
     /// <summary>Verde no início, amarelo na metade, vermelho no fim (degradê contínuo).</summary>
@@ -168,26 +159,6 @@ public class StageTimerHUD : MonoBehaviour
         Color verde = new Color(0.2f, 0.8f, 0.35f), amarelo = new Color(0.98f, 0.82f, 0.18f), vermelho = new Color(0.9f, 0.18f, 0.15f);
         fracao = Mathf.Clamp01(fracao);
         return fracao > 0.5f ? Color.Lerp(amarelo, verde, (fracao - 0.5f) * 2f) : Color.Lerp(vermelho, amarelo, fracao * 2f);
-    }
-
-    /// <summary>A mesma escala que o CanvasScaler das telas do jogo usa (referência 1920 x 1080).</summary>
-    private static float Escala => Mathf.Sqrt((Screen.width / RefLargura) * (Screen.height / RefAltura));
-
-    /// <summary>Monta o estilo uma vez por escala de tela (mudar o tamanho da fonte a cada quadro é caro).</summary>
-    private void GarantirEstilo(float escala)
-    {
-        int tamanho = Mathf.Max(9, Mathf.RoundToInt(fontSize * escala));
-        if (labelStyle != null && labelStyle.fontSize == tamanho) return;
-
-        labelStyle = new GUIStyle(GUI.skin.label)
-        {
-            alignment = TextAnchor.MiddleCenter,
-            fontSize = tamanho,
-            fontStyle = FontStyle.Bold,
-            wordWrap = false,
-            clipping = TextClipping.Clip
-        };
-        labelStyle.normal.textColor = Color.white;
     }
 
     private static void DrawRect(Rect rect, Color color)

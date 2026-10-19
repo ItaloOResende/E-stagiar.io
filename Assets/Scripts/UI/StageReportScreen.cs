@@ -27,16 +27,67 @@ public class StageReportScreen : MonoBehaviour
     [Tooltip("Mostrar automaticamente quando a fase terminar.")]
     [SerializeField] private bool showOnStageEnd = true;
 
-    private static readonly Color Ink = new Color(0.13f, 0.11f, 0.16f);
-    private static readonly Color Cream = new Color(1f, 0.97f, 0.9f);
-    private static readonly Color Paper = new Color(1f, 1f, 1f);
-    private static readonly Color Blue = new Color(0.16f, 0.45f, 0.86f);
-    private static readonly Color Gold = new Color(1f, 0.79f, 0.16f);
-    private static readonly Color StarOff = new Color(0.78f, 0.76f, 0.74f);
-    private static readonly Color Good = new Color(0.16f, 0.62f, 0.33f);
-    private static readonly Color Warn = new Color(0.93f, 0.55f, 0.1f);
-    private static readonly Color Bad = new Color(0.86f, 0.2f, 0.18f);
-    private static readonly Color Muted = new Color(0.42f, 0.39f, 0.44f);
+    /// <summary>Visual do relatório. Só muda cores, fonte e bordas: dados, layout das informações e botões são os mesmos.</summary>
+    public enum EstiloRelatorio { Classico, Tablet }
+    [Tooltip("Clássico = o relatório cartunizado original (creme). Tablet = a versão nova, com a identidade do tablet, " +
+             "do menu inicial e da pausa. Com o relatório aberto, F9 alterna entre os dois para comparar.")]
+    [SerializeField] private EstiloRelatorio estilo = EstiloRelatorio.Tablet;
+    [Tooltip("Tecla que alterna Clássico/Tablet com o relatório aberto (comparação). None = desliga.")]
+    [SerializeField] private UnityEngine.InputSystem.Key teclaComparar = UnityEngine.InputSystem.Key.F9;
+
+    public EstiloRelatorio Estilo { get => estilo; set => estilo = value; }
+
+    // Paleta do estilo atual (AplicarEstilo). Ink = texto; Contorno = contorno escuro dos textos e das formas.
+    private Color Ink, Cream, Paper, Blue, Gold, StarOff, Good, Warn, Bad, Muted, Contorno, Destaque, Borda;
+
+    private void AplicarEstilo()
+    {
+        if (estilo == EstiloRelatorio.Tablet)
+        {
+            Ink = new Color(0.94f, 0.97f, 1f);           // texto claro do tablet
+            Cream = new Color(0.08f, 0.12f, 0.18f, 0.98f); // fundo do aparelho
+            Paper = new Color(0.13f, 0.19f, 0.26f);      // cards
+            Blue = new Color(0.16f, 0.62f, 0.58f);       // destaque verde-água (faixa, botões, seções)
+            Gold = new Color(1f, 0.79f, 0.16f);
+            StarOff = new Color(0.24f, 0.30f, 0.38f);
+            Good = new Color(0.33f, 0.80f, 0.46f);
+            Warn = new Color(0.98f, 0.66f, 0.24f);
+            Bad = new Color(1f, 0.42f, 0.38f);
+            Muted = new Color(0.62f, 0.70f, 0.78f);
+            Contorno = new Color(0.02f, 0.035f, 0.06f);
+            Destaque = new Color(0.17f, 0.25f, 0.34f);   // cartão "por que N estrelas"
+            Borda = new Color(0.25f, 0.85f, 0.77f);      // borda verde-água dos painéis
+            AplicarFonteDoJogo();
+        }
+        else
+        {
+            Ink = new Color(0.13f, 0.11f, 0.16f);
+            Cream = new Color(1f, 0.97f, 0.9f);
+            Paper = new Color(1f, 1f, 1f);
+            Blue = new Color(0.16f, 0.45f, 0.86f);
+            Gold = new Color(1f, 0.79f, 0.16f);
+            StarOff = new Color(0.78f, 0.76f, 0.74f);
+            Good = new Color(0.16f, 0.62f, 0.33f);
+            Warn = new Color(0.93f, 0.55f, 0.1f);
+            Bad = new Color(0.86f, 0.2f, 0.18f);
+            Muted = new Color(0.42f, 0.39f, 0.44f);
+            Contorno = Ink;
+            Destaque = new Color(1f, 0.91f, 0.68f);
+            Borda = new Color(0.18f, 0.16f, 0.22f);
+            font = fonteOriginal;
+        }
+    }
+
+    private Font fonteOriginal;
+    private bool fonteGuardada;
+
+    // Tablet: a fonte do HUD do jogo (Varela Round, no StageTimerHUD do mesmo objeto), como o ScoreHUD.
+    private void AplicarFonteDoJogo()
+    {
+        if (!fonteGuardada) { fonteOriginal = font; fonteGuardada = true; }
+        var timer = GetComponent<StageTimerHUD>();
+        if (timer != null && timer.Fonte != null) font = timer.Fonte;
+    }
 
     /// <summary>Algum relatório está aberto (o cursor fica livre).</summary>
     public static bool Showing { get; private set; }
@@ -86,6 +137,7 @@ public class StageReportScreen : MonoBehaviour
         if (keeper == null) return;
         if (canvas != null) Destroy(canvas.gameObject);
         stars.Clear();
+        botoesPausa.Clear();
         Build();
         openedAt = Time.unscaledTime;
         Showing = true;
@@ -94,6 +146,18 @@ public class StageReportScreen : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
         InteractionSounds.Raise(InteractionSound.DrawerOpened);
+    }
+
+    /// <summary>Remonta a tela aberta (ex.: depois de trocar o <see cref="Estilo"/>), sem mexer nos controles do jogador.</summary>
+    public void Remontar()
+    {
+        if (!IsOpen) return;
+        if (detail != null) { Destroy(detail.gameObject); detail = null; }
+        Destroy(canvas.gameObject);
+        stars.Clear();
+        botoesPausa.Clear();
+        Build();
+        openedAt = Time.unscaledTime;
     }
 
     public void Close()
@@ -356,16 +420,57 @@ public class StageReportScreen : MonoBehaviour
     private void Update()
     {
         if (!IsOpen) return;
+        var teclado = UnityEngine.InputSystem.Keyboard.current;
+        if (teclaComparar != UnityEngine.InputSystem.Key.None && teclado != null && teclado[teclaComparar].wasPressedThisFrame)
+        {
+            estilo = estilo == EstiloRelatorio.Tablet ? EstiloRelatorio.Classico : EstiloRelatorio.Tablet;
+            Remontar();
+            return;
+        }
         AnimateDetail();
         float t = Time.unscaledTime - openedAt;
         float k = Mathf.Clamp01(t / 0.35f);
-        panel.localScale = Vector3.one * Mathf.LerpUnclamped(0.85f, 1f, BackOut(k));
+        panel.localScale = Vector3.one * Mathf.LerpUnclamped(0.85f, 1f, BackOut(k)) * EscalaQueCabe();
+        AnimarBotoes();
         for (int i = 0; i < stars.Count; i++)
         {
             // as estrelas ganhas "pulam" uma depois da outra
             float s = Mathf.Clamp01((t - 0.35f - i * 0.22f) / 0.3f);
             stars[i].localScale = Vector3.one * (i < earnedStars ? Mathf.LerpUnclamped(0f, 1f, BackOut(s)) : Mathf.Max(s, 0.001f));
             stars[i].localRotation = Quaternion.Euler(0f, 0f, (i - (stars.Count - 1) * 0.5f) * -8f);
+        }
+    }
+
+    /// <summary>Card um pouco menor que o desenho original (1500 x 920).</summary>
+    private const float EscalaDoCard = 0.92f;
+    private const float MargemDaTela = 40f;
+
+    // Escala que mantém o card INTEIRO no enquadramento (bordas e cantos), em qualquer resolução ou proporção de janela:
+    // nunca maior que EscalaDoCard e encolhe se a área do canvas for menor que o card + margem.
+    private float EscalaQueCabe()
+    {
+        var area = ((RectTransform)canvas.transform).rect.size;
+        if (area.x < 1f || area.y < 1f) return EscalaDoCard;
+        Vector2 card = panel.rect.size;
+        float cabe = Mathf.Min((area.x - 2f * MargemDaTela) / card.x, (area.y - 2f * MargemDaTela) / card.y);
+        return Mathf.Clamp(Mathf.Min(EscalaDoCard, cabe), 0.3f, EscalaDoCard);
+    }
+
+    private void AnimarBotoes()
+    {
+        if (botoesPausa.Count == 0) return;
+        PauseMenu pausa = pausaDosBotoes;
+        float alvoHover = pausa != null ? pausa.EscalaHoverBotoes : 1.04f;
+        Vector2 mouse = UnityEngine.InputSystem.Mouse.current != null ? UnityEngine.InputSystem.Mouse.current.position.ReadValue() : new Vector2(-9999f, -9999f);
+        for (int i = 0; i < botoesPausa.Count; i++)
+        {
+            var (b, escala, sobre) = botoesPausa[i];
+            if (b == null) continue;
+            bool agora = RectTransformUtility.RectangleContainsScreenPoint((RectTransform)b.transform, mouse, null);
+            if (agora && !sobre && pausa != null) pausa.TocarHoverBotao();
+            escala = Mathf.Lerp(escala, agora ? alvoHover : 1f, 1f - Mathf.Exp(-16f * Time.unscaledDeltaTime));
+            b.transform.localScale = Vector3.one * escala;
+            botoesPausa[i] = (b, escala, agora);
         }
     }
 
@@ -472,9 +577,10 @@ public class StageReportScreen : MonoBehaviour
 
     private void Build()
     {
+        AplicarEstilo();
         if (font == null) font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        rounded = RoundedSprite(22, 6);
-        roundedThin = RoundedSprite(16, 3);
+        rounded = RoundedSprite(22, 6, Borda);
+        roundedThin = RoundedSprite(16, 3, Borda);
         starSprite = Sprite.Create(StarTexture(), new Rect(0, 0, 128, 128), new Vector2(0.5f, 0.5f));
         circleSprite = Sprite.Create(CircleTexture(), new Rect(0, 0, 64, 64), new Vector2(0.5f, 0.5f));
         Data d = Collect();
@@ -509,7 +615,7 @@ public class StageReportScreen : MonoBehaviour
         Image ribbon = Box(panel, "Faixa", Blue, rounded);
         Place(ribbon.rectTransform, new Vector2(0.5f, 1f), new Vector2(760f, 96f), new Vector2(0f, 0f));
         Text title = Label(ribbon.rectTransform, "FIM DO EXPEDIENTE", 50, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
-        Outline(title, Ink, 3f);
+        Outline(title, Contorno, 3f);
 
         // estrelas
         RectTransform starRow = New("Estrelas", panel);
@@ -522,7 +628,7 @@ public class StageReportScreen : MonoBehaviour
             holder.anchorMin = holder.anchorMax = new Vector2((i + 0.5f) / max, 0.5f);
             holder.sizeDelta = new Vector2(size, size);
             holder.anchoredPosition = new Vector2(0f, size > 130f ? 10f : -6f);
-            Image outline = Box(holder, "Contorno", Ink, starSprite);
+            Image outline = Box(holder, "Contorno", Contorno, starSprite);
             Stretch(outline.rectTransform);
             Image fill = Box(holder, "Preenchimento", i < d.stars ? Gold : StarOff, starSprite);
             Stretch(fill.rectTransform, 9f);
@@ -556,14 +662,14 @@ public class StageReportScreen : MonoBehaviour
 
         // por que estas estrelas
         // cartão-botão: resumo curto; o clique abre a explicação completa (DetalheEstrelas)
-        Image why = Box(panel, "PorQue", new Color(1f, 0.91f, 0.68f), roundedThin);
+        Image why = Box(panel, "PorQue", Destaque, roundedThin);
         Place(why.rectTransform, new Vector2(0.5f, 0f), new Vector2(1400f, 120f), new Vector2(0f, 172f));
         Clicavel(why, () => OpenDetail(d, true));
         Text whyTitle = Label(Area(why.rectTransform, new Vector2(0f, 1f), new Vector2(520f, 34f), new Vector2(286f, -24f)),
             $"POR QUE {d.stars} ESTRELA{(d.stars == 1 ? "" : "S")}?", 24, FontStyle.Bold, Ink, TextAnchor.MiddleLeft);
         Image ver = Box(why.rectTransform, "VerDetalhes", Blue, rounded);
         Place(ver.rectTransform, new Vector2(1f, 0.5f), new Vector2(250f, 56f), new Vector2(-150f, 0f));
-        Outline(Label(ver.rectTransform, "Ver detalhes \u25B8", 22, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter), Ink, 1.5f);
+        Outline(Label(ver.rectTransform, "Ver detalhes \u25B8", 22, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter), Contorno, 1.5f);
         whyTitle.name = "PorQueTitulo";
         Text whyText = Label(Area(why.rectTransform, new Vector2(0f, 0.5f), new Vector2(1080f, 56f), new Vector2(570f, -18f)),
             ShortSummary(d),
@@ -653,12 +759,20 @@ public class StageReportScreen : MonoBehaviour
         cell.offsetMin = new Vector2(i == 0 ? 0f : 6f, 0f); cell.offsetMax = new Vector2(i == n - 1 ? 0f : -6f, 0f);
         Image bg = Box(cell, "Fundo", color, roundedThin);
         Stretch(bg.rectTransform);
-        Text v = Label(Area(cell, new Vector2(0.5f, 1f), new Vector2(200f, 56f), new Vector2(0f, -32f)),
-            value, 46, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
-        Outline(v, Ink, 2.5f);
-        Text c = Label(Area(cell, new Vector2(0.5f, 0f), new Vector2(200f, 36f), new Vector2(0f, 20f)),
-            caption, 18, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
-        c.resizeTextForBestFit = true; c.resizeTextMinSize = 12; c.resizeTextMaxSize = 18;
+        // número em cima e legenda embaixo, as duas na LARGURA do card (com margem): a legenda quebra em até duas
+        // linhas e diminui se precisar, sem sair do card (antes era uma faixa fixa de 200 x 36 px)
+        RectTransform num = New("Valor", cell);
+        num.anchorMin = new Vector2(0f, 1f); num.anchorMax = new Vector2(1f, 1f); num.pivot = new Vector2(0.5f, 1f);
+        num.offsetMin = new Vector2(8f, -54f); num.offsetMax = new Vector2(-8f, -4f);
+        Text v = Label(num, value, 42, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+        v.resizeTextForBestFit = true; v.resizeTextMinSize = 24; v.resizeTextMaxSize = 42;
+        Outline(v, Contorno, 2.5f);
+        RectTransform leg = New("Legenda", cell);
+        leg.anchorMin = new Vector2(0f, 0f); leg.anchorMax = new Vector2(1f, 0f); leg.pivot = new Vector2(0.5f, 0f);
+        leg.offsetMin = new Vector2(10f, 4f); leg.offsetMax = new Vector2(-10f, 48f);
+        Text c = Label(leg, caption, 17, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+        c.resizeTextForBestFit = true; c.resizeTextMinSize = 11; c.resizeTextMaxSize = 17;
+        c.lineSpacing = 0.9f;
     }
 
     private RectTransform list;
@@ -700,8 +814,28 @@ public class StageReportScreen : MonoBehaviour
         return rt;
     }
 
+    // Botões com hover no estilo da pausa (versão Tablet): escala suave e som ao passar o mouse.
+    private PauseMenu pausaDosBotoes;
+    private readonly List<(UnityEngine.UI.Button botao, float escala, bool sobre)> botoesPausa = new List<(UnityEngine.UI.Button, float, bool)>();
+
     private void Button(RectTransform parent, string text, Vector2 pos, Color color, UnityEngine.Events.UnityAction action)
     {
+        // Tablet: o MESMO botão da pausa e do menu (gradiente, brilhos, fonte TMP, contorno), gerado pelo PauseMenu
+        PauseMenu pausa = estilo == EstiloRelatorio.Tablet ? FindAnyObjectByType<PauseMenu>(FindObjectsInactive.Include) : null;
+        if (pausa != null)
+        {
+            pausaDosBotoes = pausa;
+            Image fundo = Box(parent, "Botao_" + text, Color.white, null);
+            Place(fundo.rectTransform, new Vector2(0.5f, 0f), new Vector2(320f, 70f), pos);
+            fundo.raycastTarget = true;
+            var bp = fundo.gameObject.AddComponent<UnityEngine.UI.Button>();
+            bp.targetGraphic = fundo;
+            bp.navigation = new Navigation { mode = Navigation.Mode.None };
+            bp.onClick.AddListener(() => { pausa.TocarCliqueBotao(); action(); });
+            pausa.EstilizarBotaoExterno(bp, text, 26f);
+            botoesPausa.Add((bp, 1f, false));
+            return;
+        }
         Image bg = Box(parent, "Botao_" + text, color, rounded);
         Place(bg.rectTransform, new Vector2(0.5f, 0f), new Vector2(300f, 72f), pos);
         bg.raycastTarget = true;
@@ -712,7 +846,7 @@ public class StageReportScreen : MonoBehaviour
         b.colors = cb;
         b.onClick.AddListener(action);
         Text t = Label(bg.rectTransform, text, 28, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
-        Outline(t, Ink, 2f);
+        Outline(t, Contorno, 2f);
     }
 
     private static string FormatTime(float s)
@@ -772,14 +906,22 @@ public class StageReportScreen : MonoBehaviour
         RectTransform rt = New("Texto", parent);
         Stretch(rt);
         var t = rt.gameObject.AddComponent<Text>();
+        // Tablet: a Varela Round não tem negrito — o Bold da UI é um negrito FALSO (traço engrossado), que deixava o
+        // texto pesado e "estourando". A hierarquia fica no tamanho e na cor; itálico vira normal pelo mesmo motivo.
+        if (estilo == EstiloRelatorio.Tablet) style = FontStyle.Normal;
         t.font = font; t.text = text; t.fontSize = size; t.fontStyle = style; t.color = color; t.alignment = anchor;
         t.horizontalOverflow = HorizontalWrapMode.Wrap; t.verticalOverflow = VerticalWrapMode.Truncate;
+        // nenhum texto sai da caixa: quebra a linha e, se ainda não couber, diminui até 60% (quem já define o próprio
+        // ajuste depois de criar o texto sobrescreve estes valores)
+        t.resizeTextForBestFit = true; t.resizeTextMinSize = Mathf.Max(10, Mathf.RoundToInt(size * 0.6f)); t.resizeTextMaxSize = size;
         t.raycastTarget = false;
         return t;
     }
 
-    private static void Outline(Text t, Color c, float d)
+    private void Outline(Text t, Color c, float d)
     {
+        // Tablet: contorno fino e translúcido (o grosso, somado ao texto claro, pesava demais)
+        if (estilo == EstiloRelatorio.Tablet) { c.a *= 0.45f; d = Mathf.Min(d, 1f); }
         var o = t.gameObject.AddComponent<UnityEngine.UI.Outline>();
         o.effectColor = c; o.effectDistance = new Vector2(d, -d);
     }
@@ -788,7 +930,7 @@ public class StageReportScreen : MonoBehaviour
 
     // Retângulo arredondado branco com borda escura (9-slice). A cor do Image multiplica tudo: o miolo fica na cor
     // pedida e a borda continua escura (contorno cartunizado) em qualquer cor.
-    private static Sprite RoundedSprite(int r, int bw)
+    private static Sprite RoundedSprite(int r, int bw, Color borda)
     {
         int n = r * 2 + 8;
         var t = new Texture2D(n, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
@@ -799,7 +941,7 @@ public class StageReportScreen : MonoBehaviour
                 float dd = Vector2.Distance(new Vector2(x, y), new Vector2(cx, cy));
                 float a = Mathf.Clamp01(r - dd + 0.5f);
                 float edge = Mathf.Clamp01(dd - (r - bw) + 0.5f);
-                Color c = Color.Lerp(Color.white, new Color(0.18f, 0.16f, 0.22f), edge);
+                Color c = Color.Lerp(Color.white, borda, edge);
                 c.a = a;
                 t.SetPixel(x, y, c);
             }

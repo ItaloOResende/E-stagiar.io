@@ -135,7 +135,8 @@ public class TicketTabletPrototype : MonoBehaviour
     public static bool CursorLiberado { get; private set; }
     public bool IsOpen => aberto;
     public void Abrir() { if (Application.isPlaying && !Oculto) SetAberto(true); }
-    public void Fechar() { if (Application.isPlaying) SetAberto(false); }
+    // Fechar também devolve controles retidos sem o tablet aberto (Alt solta o cursor), p.ex. quando a pausa fecha o tablet.
+    public void Fechar() { if (!Application.isPlaying) return; SetAberto(false); RestaurarControles(false); }
 
     private bool aberto, controlesRetidos, cursorNosso, iniciou, capturaNoMundo;
     private int aba;
@@ -242,11 +243,13 @@ public class TicketTabletPrototype : MonoBehaviour
         AtualizarConteudo();
         AtualizarCards();
         selo.text = ticketManager != null && ticketManager.OpenCount > 0 ? ticketManager.OpenCount.ToString() : "";
-        proximo.text = ticketManager != null && ticketManager.SecondsUntilNextArrival >= 0
-            ? "Próximo chamado em " + Mathf.CeilToInt(ticketManager.SecondsUntilNextArrival) + "s" : "";
+        // a chegada dos chamados é surpresa: o agendamento (TicketManager.SecondsUntilNextArrival) continua, só não aparece
+        if (proximo != null && proximo.gameObject.activeSelf) { proximo.text = ""; proximo.gameObject.SetActive(false); }
+        EstilizarAviso();
         if (Time.unscaledTime >= avisoAte && avisos.Count > 0)
         { aviso.text = avisos.Dequeue(); avisoAte = Time.unscaledTime + avisoSegundos; Tocar(somNovoChamado); }
-        aviso.transform.parent.gameObject.SetActive(Time.unscaledTime < avisoAte);
+        // com o tablet aberto o chamado já está na lista: a notificação não fica por cima da arte do aparelho
+        aviso.transform.parent.gameObject.SetActive(Time.unscaledTime < avisoAte && !aberto);
         Vector2 mouse = Mouse.current != null ? Mouse.current.position.ReadValue() : new Vector2(-10000, -10000);
         PonteiroSobreOAparelho = aberto ? Dentro(painel, mouse) : ((!NoMundo3D() || alt) && Dentro((RectTransform)atalho.transform, mouse));
         AtualizarHover(mouse);
@@ -335,8 +338,13 @@ public class TicketTabletPrototype : MonoBehaviour
         // Uma tela externa assume os controles ao fechar o tablet nesse contexto.
         if (!forcar && (!NoMundo3D() || Oculto))
         { controlesAnteriores.Clear(); controlesRetidos = false; return; }
-        foreach (var par in controlesAnteriores) if (par.Key != null) par.Key.enabled = par.Value;
+        // Só RELIGA o que estava ligado quando o tablet o desligou: nunca desliga de volta. Um controle memorizado como
+        // desligado tinha outro dono (a tela 2D); "restaurar" esse valor deixava o jogador travado sem andar, interagir
+        // ou soltar o item até sair do Play Mode.
+        foreach (var par in controlesAnteriores) if (par.Key != null && par.Value) par.Key.enabled = true;
         controlesAnteriores.Clear(); controlesRetidos = false;
+        // A tela 2D fechada com o tablet aberto deixou os controles para o tablet devolver (UIScreenManager).
+        if (UIScreenManager.Active != null) UIScreenManager.Active.DevolverControlesDoJogador();
     }
     private void AplicarCursorDoJogo()
     {
@@ -374,8 +382,20 @@ public class TicketTabletPrototype : MonoBehaviour
             painel.gameObject.SetActive(mostrarPrevia); grupo.alpha = 1;
             atalho.gameObject.SetActive(!mostrarPrevia); bloqueio.gameObject.SetActive(false);
         }
-        ((RectTransform)atalho.transform).sizeDelta = tamanhoAtalho;
-        ((RectTransform)atalho.transform).anchoredPosition = new Vector2(-margem, margem);
+        // Botão no canto inferior direito, dentro da área reservada a ele (RedeUi): as setas "►" das telas de
+        // manutenção (PC, notebook, impressora) ficam à esquerda dessa área, lado a lado, sem sobreposição.
+        var rtAtalho = (RectTransform)atalho.transform;
+        rtAtalho.anchorMin = rtAtalho.anchorMax = rtAtalho.pivot = new Vector2(1, 0);
+        rtAtalho.sizeDelta = Vector2.Min(tamanhoAtalho, new Vector2(RedeUi.CelularLargura, RedeUi.CelularAltura));
+        rtAtalho.anchoredPosition = new Vector2(-RedeUi.CelularMargem, RedeUi.CelularMargem);
+        // Notificação de chamado novo: alinhada à esquerda com a pontuação e logo ABAIXO dela. Os selos do HUD
+        // (HudEstilo) são IMGUI e ficam por cima de qualquer Canvas, então a notificação não pode dividir a área deles.
+        if (aviso != null)
+        {
+            var toast = (RectTransform)aviso.transform.parent;
+            toast.anchorMin = toast.anchorMax = toast.pivot = new Vector2(0, 1);
+            toast.anchoredPosition = new Vector2(margem, -(HudEstilo.BaseDosSelos + 14f));
+        }
         bloqueio.GetComponent<Image>().color = new Color(0, 0, 0, escurecerFundo);
         if (!Application.isPlaying) { AtualizarEstilosBotoes(); AtualizarVisuais(); }
     }
@@ -407,8 +427,50 @@ public class TicketTabletPrototype : MonoBehaviour
         if (lista.Count == 0) { conhecidos.Clear(); avisos.Clear(); avisoAte = 0; return; }
         foreach (var c in lista)
             if (c != null && conhecidos.Add(c.Number) && !c.IsClosed && avisarChamadoNovo)
-                avisos.Enqueue("NOVO CHAMADO  #" + c.Number + "\n" + (c.Definition != null ? c.Definition.title : "") + "\nAbrir tablet: " + toggleKey);
+                avisos.Enqueue(TextoDoAviso(c));
     }
+    // Notificação de chamado novo: rótulo pequeno na cor de destaque do tablet, número do chamado em evidência e o
+    // título em negrito. Sem "Abrir tablet: T" (o botão do tablet já mostra a tecla).
+    private string TextoDoAviso(TicketInstance c)
+    {
+        // um só destaque: o verde do selo de pontuação (HudEstilo.Rotulo); o título em branco
+        string verde = ColorUtility.ToHtmlStringRGB(HudEstilo.Rotulo);
+        string titulo = c.Definition != null ? c.Definition.title : "";
+        return $"<size=68%><color=#{verde}><b>NOVO CHAMADO   #{c.Number}</b></color></size>\n<color=#FFFFFF>{titulo}</color>";
+    }
+
+    // Visual da notificação (uma vez, depois que a interface existe): fundo escuro do tablet com borda/sombra dos cards,
+    // barra de destaque à esquerda e texto alinhado à esquerda. Mesmo lugar de antes (abaixo dos selos do HUD).
+    private bool avisoEstilizado;
+    private void EstilizarAviso()
+    {
+        if (avisoEstilizado || aviso == null) return;
+        avisoEstilizado = true;
+        var toast = (RectTransform)aviso.transform.parent;
+        toast.sizeDelta = new Vector2(400f, 100f);
+        var fundo = toast.GetComponent<Image>();
+        if (fundo != null)
+        {
+            Color c = corFundo; c.a = 0.96f;
+            fundo.color = c;
+            AplicarBordaESombra(fundo, efeitosCards);
+        }
+        var barra = toast.Find("Destaque") as RectTransform;
+        if (barra == null)
+        {
+            barra = new GameObject("Destaque", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+            barra.SetParent(toast, false);
+        }
+        barra.anchorMin = new Vector2(0f, 0f); barra.anchorMax = new Vector2(0f, 1f); barra.pivot = new Vector2(0f, 0.5f);
+        barra.offsetMin = new Vector2(10f, 14f); barra.offsetMax = new Vector2(16f, -14f);
+        var img = barra.GetComponent<Image>(); img.color = HudEstilo.Borda; img.raycastTarget = false;
+        aviso.rectTransform.offsetMin = new Vector2(30f, 12f); aviso.rectTransform.offsetMax = new Vector2(-16f, -12f);
+        aviso.alignment = TextAlignmentOptions.Left;
+        aviso.enableAutoSizing = true; aviso.fontSizeMin = 16f; aviso.fontSizeMax = 24f;
+        aviso.color = corTexto; aviso.richText = true; aviso.lineSpacing = 4f;
+        if (fonte != null) aviso.font = fonte;
+    }
+
     private void AtualizarConteudo()
     {
         if (!aberto) return;

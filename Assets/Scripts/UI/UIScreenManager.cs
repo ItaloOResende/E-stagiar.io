@@ -163,6 +163,15 @@ public class UIScreenManager : MonoBehaviour
         if (!IsOpen && !TicketTabletPrototype.CelularAberto && !StageReportScreen.Showing) SetPlayerControl(true);
     }
 
+    /// <summary>
+    /// Devolve os controles do jogador que esta tela deixou desligados ao fechar com o tablet aberto ("quem os devolve
+    /// é o celular"). Chamado pelo tablet ao fechar no mundo 3D. Não faz nada com uma tela 2D aberta ou o relatório.
+    /// </summary>
+    public void DevolverControlesDoJogador()
+    {
+        if (!IsOpen && !StageReportScreen.Showing) SetPlayerControl(true);
+    }
+
     private void SetPlayerControl(bool enabled)
     {
         if (disableWhileOpen == null) return;

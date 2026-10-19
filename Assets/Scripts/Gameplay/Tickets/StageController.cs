@@ -82,6 +82,29 @@ public class StageController : MonoBehaviour
         TimeChanged?.Invoke(SecondsRemaining);
     }
 
+    /// <summary>
+    /// TESTE (ver o relatório final de uma vez): conclui TODOS os chamados que já chegaram — aceita, cumpre as etapas e
+    /// entrega pelo fluxo normal (TryFinishTicket: a pontuação é a do próprio jogo) — e encerra a fase. Chamado cuja
+    /// entrega o jogo recusar (equipamento aberto etc.) fica aberto e aparece como não concluído. Só pelo menu de contexto.
+    /// </summary>
+    [ContextMenu("TESTE: Concluir chamados e encerrar (ver relatório)")]
+    public void TesteConcluirTudoEEncerrar()
+    {
+        if (!IsRunning || ticketManager == null) return;
+        int concluidos = 0;
+        foreach (TicketInstance t in new System.Collections.Generic.List<TicketInstance>(ticketManager.Tickets))
+        {
+            if (t == null || t.IsClosed || t.Definition == null) continue;
+            if (t.Status == TicketStatus.Pending) ticketManager.StartTicket(t.Number);
+            foreach (TicketStepDefinition step in t.Definition.steps)
+                if (step != null && !t.HasCompleted(step.id)) ticketManager.CompleteStep(t.Number, step.id);
+            if (!t.IsClosed && ticketManager.TryFinishTicket(t.Number)) concluidos++;
+            else if (t.IsClosed) concluidos++;
+        }
+        Debug.Log($"TESTE: {concluidos} chamado(s) concluído(s); encerrando a fase.", this);
+        EndStageNow();
+    }
+
     /// <summary>Encerra a fase agora (como se o tempo tivesse acabado): pontuação final e relatório.</summary>
     [ContextMenu("TESTE: Encerrar a fase agora")]
     public void EndStageNow()

@@ -11,26 +11,27 @@ public static class RedeUi
     private static Font fonte;
 
     /// <summary>
-    /// Largura do aparelho fechado do jogador (o celular), em pixels da referência 1920 x 1080.
-    /// Ele fica ancorado no canto inferior direito, a <see cref="CelularMargem"/> das bordas.
+    /// Largura do botão do tablet do jogador ("TABLET [T]", <see cref="TicketTabletPrototype"/>), em pixels da
+    /// referência 1920 x 1080. Ele fica ancorado no canto inferior direito, a <see cref="CelularMargem"/> das bordas.
+    /// É a ÚNICA fonte desse tamanho: o tablet limita o botão a ela e as setas das telas se afastam dela.
     /// </summary>
-    public const float CelularLargura = 96f;
+    public const float CelularLargura = 170f;
 
-    /// <summary>Altura do aparelho fechado do jogador (veja <see cref="TicketTabletPrototype"/>).</summary>
-    public const float CelularAltura = 150f;
+    /// <summary>Altura do botão do tablet.</summary>
+    public const float CelularAltura = 54f;
 
-    /// <summary>Distância do celular até as bordas direita e de baixo.</summary>
-    public const float CelularMargem = 16f;
+    /// <summary>Distância do botão do tablet até as bordas direita e de baixo.</summary>
+    public const float CelularMargem = 24f;
 
     /// <summary>Respiro entre a seta "►" e a lateral esquerda do celular.</summary>
     public const float FolgaDoCelular = 20f;
 
     /// <summary>
-    /// Distância da borda DIREITA em que a seta "►" fica: o celular ocupa os 112 px do canto inferior direito
-    /// (16 de margem + 96 do aparelho), então a seta vai para a ESQUERDA dele. É o mesmo valor gravado no
+    /// Distância da borda DIREITA em que a seta "►" fica: o botão do tablet ocupa os 194 px do canto inferior direito
+    /// (24 de margem + 170 do botão), então a seta vai para a ESQUERDA dele, lado a lado. É o mesmo valor gravado no
     /// RectTransform do BotaoAvancar do prefab <c>UI_Screen_Gabinete</c> — se um mudar, mude o outro.
     /// </summary>
-    public const float BordaSetaProxima = CelularMargem + CelularLargura + FolgaDoCelular;   // 132
+    public const float BordaSetaProxima = CelularMargem + CelularLargura + FolgaDoCelular;   // 214
 
     /// <summary>
     /// Setas de navegação das telas de vista (◄ ►), no padrão do canvas do PC (UI_Screen_Gabinete): os cantos de

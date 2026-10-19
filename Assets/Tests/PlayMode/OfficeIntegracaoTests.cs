@@ -115,7 +115,11 @@ public class OfficeIntegracaoTests
         MethodInfo escolher = typeof(OfficeIntegracaoTests).GetMethod(nameof(Escolher), BindingFlags.NonPublic | BindingFlags.Static).MakeGenericMethod(td);
         escolheId = id;
         tm.GetType().GetProperty("SelectionOverride").SetValue(tm, Delegate.CreateDelegate(funcT, escolher));
-        Call(sc, "StartStage");   // como o botão do menu
+        // pelo menu, como o jogador: o menu inicial aberto deixa o tempo parado (timeScale 0) e um StartStage direto
+        // o mantinha aberto — o WaitForSeconds abaixo nunca terminava
+        if ((bool)T("MainMenuScreen").GetProperty("Showing").GetValue(null))
+            Call(sc.GetComponent(T("MainMenuScreen")), "Choose", Enum.Parse(T("GameMode"), "Normal"));
+        else Call(sc, "StartStage");
         object ticket = ((IList)Get(tm, "Tickets"))[0];
         Assert.AreEqual(id, td.GetField("ticketId").GetValue(GetF(ticket, "Definition")), "chamado escolhido");
         Assert.IsTrue((bool)Call(tm, "StartTicket", (int)GetF(ticket, "Number")));
