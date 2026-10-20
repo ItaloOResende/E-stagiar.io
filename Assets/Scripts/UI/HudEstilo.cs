@@ -19,13 +19,26 @@ public static class HudEstilo
     public static readonly Color BordaUrgente = new Color(1f, 0.42f, 0.38f, 1f);
 
     /// <summary>Faixa de tempo no topo da tela (referência 1080p).</summary>
-    public const float AlturaFaixa = 10f;
+    public const float AlturaFaixa = 14f;
     /// <summary>Distância entre a faixa do tempo e o topo dos selos.</summary>
     public const float MargemTopo = 12f;
     /// <summary>Altura dos selos: rótulo (16) + valor (34) + respiros.</summary>
     public const float AlturaSelo = 70f;
     /// <summary>Onde os selos terminam (do topo da tela): o que vier abaixo deles começa depois disso.</summary>
     public const float BaseDosSelos = AlturaFaixa + MargemTopo + AlturaSelo;   // 92
+
+    /// <summary>Selo do tempo: colado na borda direita da tela, com largura fixa (o mm:ss não muda o tamanho).</summary>
+    public const float MargemDireita = 24f, LarguraSeloTempo = 150f;
+    /// <summary>Folga entre o botão X das telas 2D e o selo do tempo (o X fica à esquerda do selo).</summary>
+    public const float EspacoBotaoFechar = 14f;
+
+    /// <summary>
+    /// Canto superior DIREITO do botão X, em unidades da referência a partir do canto superior direito da tela:
+    /// à esquerda do selo do tempo e centralizado na altura dele.
+    /// </summary>
+    public static Vector2 PosicaoBotaoFechar(float alturaBotao) => new Vector2(
+        -(MargemDireita + LarguraSeloTempo + EspacoBotaoFechar),
+        -(AlturaFaixa + MargemTopo + (AlturaSelo - alturaBotao) * .5f));
 
     public const int TamanhoRotulo = 15;
     public const int TamanhoValor = 32;
@@ -57,9 +70,13 @@ public static class HudEstilo
         Retangulo(r, urgente ? BordaUrgente : Borda, Raio * e, Mathf.Max(1f, Espessura * e));
         float x = r.x + PaddingX * e, w = r.width - 2f * PaddingX * e;
         rotulo.normal.textColor = urgente ? BordaUrgente : Rotulo;
+        // rótulo e valor centralizados no selo
+        rotulo.alignment = TextAnchor.UpperCenter;
         GUI.Label(new Rect(x, r.y + 8f * e, w, 18f * e), textoRotulo, rotulo);
         valor.normal.textColor = corValor ?? Valor;
+        valor.alignment = TextAnchor.MiddleCenter;
         GUI.Label(new Rect(x, r.y + 24f * e, w, r.height - 28f * e), textoValor, valor);
+        valor.alignment = TextAnchor.MiddleLeft;
     }
 
     /// <summary>Texto solto no estilo do valor (ex.: o +N/−N ao lado da pontuação).</summary>

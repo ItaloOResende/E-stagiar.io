@@ -442,6 +442,7 @@ public class PauseMenu : MonoBehaviour
         foreach (var c in controles) if (c.Key != null) c.Key.enabled = c.Value; controles.Clear();
         foreach (var go in visibilidade) if (go.Key != null) go.Key.SetActive(go.Value); visibilidade.Clear();
         if (tablet != null && tabletHabilitado) tablet.enabled = true;
+        UICursor.LimparSobreposicao();
         Cursor.lockState = cursorLockAnterior; Cursor.visible = cursorVisivelAnterior;
         // no 3D, o cursor volta ao estado do jogo (travado), não a um estado solto antigo
         if (reabrir && !TicketTabletPrototype.CelularAberto && UIScreenManager.Active != null) UIScreenManager.Active.ApplyCursorForCurrentState();
@@ -453,9 +454,12 @@ public class PauseMenu : MonoBehaviour
     private void GarantirCursor()
     {
         if (estado == Estado.Fechado || raiz == null || !raiz.gameObject.activeInHierarchy) return;
-        Cursor.lockState = CursorLockMode.None; UICursor.LimparSobreposicao();
+        Cursor.lockState = CursorLockMode.None;
         bool sprite = spriteCursor != null && Mouse.current != null;
         Cursor.visible = !sprite; cursorUI.gameObject.SetActive(sprite);
+        // sem sprite próprio: a MESMA mãozinha das telas 2D, na camada de cima do UICursor (ao fechar, o cursor
+        // da tela de trás volta sozinho)
+        if (sprite) UICursor.LimparSobreposicao(); else UICursor.SobreporMao();
         if (sprite)
         {
             cursorUI.GetComponent<Image>().sprite = spriteCursor; cursorUI.sizeDelta = tamanhoCursor; cursorUI.pivot = pontaCursor;

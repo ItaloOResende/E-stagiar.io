@@ -11,9 +11,9 @@ using UnityEngine.UI;
 /// Nao cria um segundo temporizador nem modifica os minigames.
 /// O tempo de CADA chamado é outro: veja <see cref="TicketManager"/> e a barra da lista do celular.
 /// <para>
-/// O selo tem o tamanho do texto (nada de barra atravessando o topo). O selo fica À ESQUERDA do botão de fechar das telas 2D (todos eles ficam
-/// nos 88 px do canto superior direito: 24 de margem + 64x64), por isso <see cref="rightMargin"/> começa em 100:
-/// o selo para 12 px antes do botão e não atrapalha nem o botão nem o conteúdo do meio das telas.
+/// O selo fica colado no canto superior DIREITO (<see cref="HudEstilo.MargemDireita"/>), com largura fixa
+/// (<see cref="HudEstilo.LarguraSeloTempo"/>). O botão X das telas 2D fica à esquerda dele: o <see cref="UIScreen"/>
+/// o reposiciona enquanto o selo está na tela (<see cref="SeloNaTela"/>).
 /// </para>
 /// <para>
 /// Desenhado em uGUI num Canvas próprio de <see cref="sortingOrder"/> BAIXO (fica abaixo das telas 2D e do tablet, e
@@ -30,8 +30,6 @@ public class StageTimerHUD : MonoBehaviour
     [Tooltip("Fonte do selo e da pontuação (ScoreHUD). Vazio = fonte padrão.")]
     [SerializeField] private Font fonte;
     [SerializeField] private string rotulo = "TEMPO";
-    [Tooltip("Distancia da borda DIREITA da tela. O padrao (100) deixa o selo FORA do botao de fechar das telas.")]
-    [SerializeField, Min(0f)] private float rightMargin = 800f;
 
     /// <summary>Fonte do HUD de jogo (também usada pelo <see cref="ScoreHUD"/> no mesmo objeto).</summary>
     public Font Fonte => fonte;
@@ -52,6 +50,8 @@ public class StageTimerHUD : MonoBehaviour
 
     /// <summary>O selo está desenhado (some no fim da fase e com o relatório final na frente).</summary>
     public bool Visible { get; private set; }
+    /// <summary>Algum selo do tempo está na tela: as telas 2D põem o botão X à esquerda dele (<see cref="UIScreen"/>).</summary>
+    public static bool SeloNaTela { get; private set; }
 
     private void Awake()
     {
@@ -113,17 +113,25 @@ public class StageTimerHUD : MonoBehaviour
         raiz = (RectTransform)go.transform;
 
         // faixa do topo: fundo escuro fixo + preenchimento que encolhe da direita para a esquerda
+        // retângulos retos (sem o sprite arredondado, que deixava as pontas da faixa cortadas/irregulares)
         fundoFaixa = NovaImagem("FundoFaixa", new Color(0.05f, 0.07f, 0.09f, 0.75f), out faixa, Image.Type.Simple);
+        fundoFaixa.sprite = null;
         faixa.anchorMin = new Vector2(0f, 1f); faixa.anchorMax = new Vector2(1f, 1f); faixa.pivot = new Vector2(0f, 1f);
         preenchimentoFaixa = NovaImagem("Preenchimento", Color.green, out faixaPreenchida, Image.Type.Simple);
-        faixaPreenchida.anchorMin = new Vector2(0f, 1f); faixaPreenchida.anchorMax = new Vector2(0f, 1f); faixaPreenchida.pivot = new Vector2(0f, 1f);
+        preenchimentoFaixa.sprite = null;
+        faixaPreenchida.SetParent(faixa, false);
+        faixaPreenchida.anchorMin = Vector2.zero; faixaPreenchida.pivot = new Vector2(0f, 1f);
+        faixaPreenchida.offsetMin = faixaPreenchida.offsetMax = Vector2.zero;
 
         // selo: cartão arredondado (fundo + borda via Outline) com rótulo e valor
         seloFundo = NovaImagem("SeloFundo", HudEstilo.Fundo, out selo);
         bordaSelo = seloFundo.gameObject.AddComponent<Outline>();
         bordaSelo.effectColor = HudEstilo.Borda; bordaSelo.effectDistance = new Vector2(2f, -2f); bordaSelo.useGraphicAlpha = false;
-        rotuloTexto = NovaTexto("Rotulo", rotulo, 15, TextAnchor.UpperLeft); rotuloTexto.color = HudEstilo.Rotulo;
-        valorTexto = NovaTexto("Valor", "", 32, TextAnchor.MiddleLeft); valorTexto.color = HudEstilo.Valor;
+        rotuloTexto = NovaTexto("Rotulo", rotulo, HudEstilo.TamanhoRotulo, TextAnchor.UpperCenter); rotuloTexto.color = HudEstilo.Rotulo;
+        valorTexto = NovaTexto("Valor", "", HudEstilo.TamanhoValor, TextAnchor.MiddleCenter); valorTexto.color = HudEstilo.Valor;
+        // A fonte é dinâmica e a pontuação (IMGUI) também a usa: quando o atlas é refeito, o rótulo (que não muda)
+        // ficaria com as letras antigas, borradas. Refaz a malha dos textos nesse momento.
+        Font.textureRebuilt += AoRefazerAtlas;
     }
 
     private Image NovaImagem(string nome, Color cor, out RectTransform rt, Image.Type tipo = Image.Type.Sliced)
@@ -170,14 +178,20 @@ public class StageTimerHUD : MonoBehaviour
         return spriteArredondado;
     }
 
+    private void AoRefazerAtlas(Font f)
+    {
+        if (rotuloTexto != null && f == rotuloTexto.font) { rotuloTexto.SetAllDirty(); valorTexto.SetAllDirty(); }
+    }
+
     private void OnDestroy()
     {
+        Font.textureRebuilt -= AoRefazerAtlas;
         if (spriteArredondado != null) { Destroy(spriteArredondado.texture); Destroy(spriteArredondado); }
     }
 
     private void Desenhar()
     {
-        Visible = false;
+        Visible = false; SeloNaTela = false;
         if (stageController == null || ticketManager == null) return;
         int stage = ticketManager.StageNumber;
         if (stage == 0) { if (canvas != null) canvas.enabled = false; return; } // Tutorial sem cronometro.
@@ -193,32 +207,27 @@ public class StageTimerHUD : MonoBehaviour
         valorTexto.text = $"{seconds / 60:00}:{seconds % 60:00}";   // só o tempo (sem o nome da fase)
         rotuloTexto.text = rotulo;
 
-        float e = HudEstilo.Escala;
-
+        // Tudo em unidades do Canvas (referência 1920 x 1080; o CanvasScaler cuida da resolução e da proporção).
         // faixa do topo: largura toda, encolhe da direita para a esquerda conforme o tempo acaba
-        float fracao = remaining / duration;
-        float hb = Mathf.Max(2f, Mathf.Round(HudEstilo.AlturaFaixa * e));
-        fundoFaixa.rectTransform.sizeDelta = new Vector2(0f, hb);
-        preenchimentoFaixa.rectTransform.sizeDelta = new Vector2(Screen.width, hb);
-        preenchimentoFaixa.rectTransform.pivot = new Vector2(0f, 1f);
-        preenchimentoFaixa.rectTransform.anchoredPosition = Vector2.zero;
-        preenchimentoFaixa.rectTransform.localScale = new Vector3(Mathf.Clamp01(fracao), 1f, 1f);
+        float fracao = Mathf.Clamp01(remaining / duration);
+        float hb = HudEstilo.AlturaFaixa;
+        faixa.sizeDelta = new Vector2(0f, hb); faixa.anchoredPosition = Vector2.zero;
+        faixaPreenchida.anchorMax = new Vector2(fracao, 1f);
+        faixaPreenchida.offsetMin = faixaPreenchida.offsetMax = Vector2.zero;
         preenchimentoFaixa.color = CorDaFaixa(fracao);
 
         // último minuto: vermelho; últimos segundos: pulsa (só o tamanho do selo, o texto continua legível)
         bool urgente = remaining <= warningSeconds;
         bool final = remaining <= finalSeconds;
         float pulso = final ? 1f + 0.06f * (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * Mathf.PI * 2f * 1.6f)) : 1f;
-        Visible = true;
+        Visible = true; SeloNaTela = true;
 
-        // largura fixa pelo maior texto possível ("00:00"): o selo não "dança" quando os dígitos mudam
-        float w = Mathf.Max(HudEstilo.Largura(rotulo, "00:00", e, fonte), 130f * e);
-        float h = HudEstilo.AlturaSelo * e;
-        float x = Screen.width - w - rightMargin * e;   // alto da DIREITA, mais à direita para não cobrir o botão de fechar
-        float y = -hb - HudEstilo.MargemTopo * e;       // abaixo da faixa (eixo Y do uGUI cresce para cima)
+        // selo no canto superior DIREITO, abaixo da faixa; largura fixa: o selo não "dança" quando os dígitos mudam.
+        // O X das telas 2D fica à esquerda dele (UIScreen + HudEstilo.PosicaoBotaoFechar).
+        float w = HudEstilo.LarguraSeloTempo, h = HudEstilo.AlturaSelo;
         selo.anchorMin = selo.anchorMax = new Vector2(1f, 1f); selo.pivot = new Vector2(1f, 1f);
         selo.sizeDelta = new Vector2(w, h);
-        selo.anchoredPosition = new Vector2(-(Screen.width - x), y);
+        selo.anchoredPosition = new Vector2(-HudEstilo.MargemDireita, -hb - HudEstilo.MargemTopo);
         selo.localScale = Vector3.one * pulso;
 
         seloFundo.color = urgente ? HudEstilo.FundoUrgente : HudEstilo.Fundo;
@@ -226,12 +235,14 @@ public class StageTimerHUD : MonoBehaviour
         rotuloTexto.color = urgente ? HudEstilo.BordaUrgente : HudEstilo.Rotulo;
         valorTexto.color = HudEstilo.Valor;
 
-        // posiciona rótulo e valor dentro do selo (mesmas folgas do HudEstilo.Selo)
-        float px = HudEstilo.PaddingX * e, pw = w - 2f * px;
-        DefinirFilho(rotuloTexto.rectTransform, px, -8f * e, pw, 18f * e);
-        DefinirFilho(valorTexto.rectTransform, px, -24f * e, pw, h - 28f * e);
-        rotuloTexto.fontSize = Mathf.Max(8, Mathf.RoundToInt(HudEstilo.TamanhoRotulo * e));
-        valorTexto.fontSize = Mathf.Max(10, Mathf.RoundToInt(HudEstilo.TamanhoValor * e));
+        // rótulo e valor centralizados no selo (mesmas alturas do HudEstilo.Selo)
+        float px = HudEstilo.PaddingX, pw = w - 2f * px;
+        DefinirFilho(rotuloTexto.rectTransform, px, -8f, pw, 18f);
+        DefinirFilho(valorTexto.rectTransform, px, -24f, pw, h - 28f);
+        rotuloTexto.alignment = TextAnchor.UpperCenter; valorTexto.alignment = TextAnchor.MiddleCenter;
+        rotuloTexto.fontSize = HudEstilo.TamanhoRotulo;
+        rotuloTexto.SetVerticesDirty();   // a pontuação (IMGUI) refaz o atlas da mesma fonte: o rótulo fixo ficaria borrado
+        valorTexto.fontSize = HudEstilo.TamanhoValor;
     }
 
     private static void DefinirFilho(RectTransform r, float x, float y, float w, float h)
@@ -242,6 +253,7 @@ public class StageTimerHUD : MonoBehaviour
 
     private void OnDisable()
     {
+        SeloNaTela = false;
         if (canvas != null) canvas.enabled = false;
         if (suspense != null) suspense.Stop();
         tensao = Tensao.Normal;
@@ -295,13 +307,21 @@ public static class TicketTimeBar
     private static readonly Color Amarelo = new Color(0.95f, 0.80f, 0.15f);
     private static readonly Color Laranja = new Color(1f, 0.50f, 0.10f);
     private static readonly Color Vermelho = new Color(0.85f, 0.18f, 0.18f);
-    private static readonly Color Fundo = new Color(0.05f, 0.07f, 0.09f, 0.95f);
+    public static readonly Color Fundo = new Color(0.05f, 0.07f, 0.09f, 0.95f);
 
     /// <summary>Verde no começo, vermelho no fim.</summary>
     public static Color Cor(float fracao) =>
         fracao > 0.65f ? Verde : fracao > 0.40f ? Amarelo : fracao > 0.20f ? Laranja : Vermelho;
 
     private static readonly Color Preto = new Color(0.02f, 0.02f, 0.02f);
+
+    /// <summary>Cor e fração preenchida da barra de um chamado (as mesmas regras de <see cref="Desenhar(Rect, TicketInstance)"/>, para uGUI).</summary>
+    public static Color CorDoChamado(TicketInstance chamado, out float fracao)
+    {
+        if (chamado.IsOverdue) { fracao = 1f; return Color.Lerp(Vermelho, Preto, chamado.OverdueFraction); }
+        fracao = Mathf.Clamp01(chamado.TimeFraction);
+        return Cor(fracao);
+    }
 
     /// <summary>
     /// Barra de um chamado: dentro do prazo encolhe (verde → amarelo → laranja → vermelho); depois do prazo fica

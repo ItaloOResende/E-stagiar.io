@@ -58,6 +58,18 @@ public static class UICursor
         Aplicar();
     }
 
+    /// <summary>
+    /// Põe por cima a mãozinha das telas 2D (<see cref="UIScreenManager.CursorMao"/>), usada pelo menu inicial e pela
+    /// pausa. Chamada a cada quadro: só reaplica se outra coisa tiver trocado o cursor de cima.
+    /// </summary>
+    public static void SobreporMao()
+    {
+        UIScreenManager m = UIScreenManager.Active;
+        if (m == null || m.CursorMao == null) return;
+        if (texturaDeCima == m.CursorMao && pontaDeCima == m.CursorMaoPonta && alturaDeCima == m.CursorMaoAltura) return;
+        Sobrepor(m.CursorMao, m.CursorMaoPonta, m.CursorMaoAltura);
+    }
+
     /// <summary>Tira o cursor de cima (sem sobreposição posta, não muda nada).</summary>
     public static void LimparSobreposicao()
     {

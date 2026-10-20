@@ -634,24 +634,26 @@ public class TicketTabletPrototype : MonoBehaviour
             else if (rejeitado && c.Status == TicketStatus.InProgress) v.recusa.text = "Ainda há etapas pendentes neste atendimento.";
             else { rejeitado = false; recusaNumero = recusaNumero == c.Number ? -1 : recusaNumero; }
             v.recusa.gameObject.SetActive(rejeitado);
+            AtualizarBarraPrazo(v);
         }
     }
-    // Mantém o desenho original do prazo sem presumir campos novos de TicketInstance.
-    // Toda a interface restante é uGUI/TMP; a barra só desenha no Repaint e respeita o viewport.
-    private void OnGUI()
+    // Barra do prazo (SLA) em uGUI, dentro do próprio cartão: segue o scroll e a máscara do viewport e fica ABAIXO
+    // do cursor do tablet (a versão IMGUI era desenhada por cima de tudo, inclusive da mãozinha).
+    private static void AtualizarBarraPrazo(Card v)
     {
-        if (!Application.isPlaying || !aberto || Oculto || animacao < .99f || aba >= 3 || Event.current.type != EventType.Repaint) return;
-        Rect clip = TelaRect(scroll.viewport);
-        GUI.BeginGroup(clip);
-        Color anterior = GUI.color; GUI.color = Color.white;
-        foreach (var v in cards) if (!v.ticket.IsClosed && v.barra != null)
-        { Rect r = TelaRect(v.barra); r.position -= clip.position; TicketTimeBar.Desenhar(r, v.ticket); }
-        GUI.color = anterior; GUI.EndGroup();
-    }
-    private static Rect TelaRect(RectTransform rt)
-    {
-        Vector3[] pontos = new Vector3[4]; rt.GetWorldCorners(pontos);
-        return new Rect(pontos[0].x, Screen.height - pontos[1].y, pontos[2].x - pontos[0].x, pontos[1].y - pontos[0].y);
+        if (v.barra == null || v.ticket.IsClosed) return;
+        var fundo = v.barra.GetComponent<Image>();
+        if (fundo != null) { fundo.color = TicketTimeBar.Fundo; fundo.sprite = null; fundo.type = Image.Type.Simple; }
+        var cheio = v.barra.Find("Preenchimento") as RectTransform;
+        if (cheio == null)
+        {
+            cheio = new GameObject("Preenchimento", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+            cheio.SetParent(v.barra, false); cheio.anchorMin = Vector2.zero; cheio.pivot = new Vector2(0f, .5f);
+            cheio.GetComponent<Image>().raycastTarget = false;
+        }
+        Color cor = TicketTimeBar.CorDoChamado(v.ticket, out float fracao);
+        cheio.anchorMax = new Vector2(fracao, 1f); cheio.offsetMin = cheio.offsetMax = Vector2.zero;
+        var img = cheio.GetComponent<Image>(); img.color = cor; img.enabled = fracao > 0f;
     }
     private void ConstruirCores()
     {
