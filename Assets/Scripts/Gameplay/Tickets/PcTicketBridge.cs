@@ -191,6 +191,14 @@ public class PcTicketBridge : TicketDeviceBridge
                     if (RemoveCable(link, n, kit)) n++;
                 MoveKitToItRoom(kit);
                 break;
+            case "tutorial-montagem":
+                // tutorial (cena Tutorial_Montagem): a bancada da sala de TI JÁ é a estação. Gabinete sem peças e cabos
+                // soltos das duas pontas, deixados ali mesmo (sem ponto de retirada): o jogador monta e liga tudo.
+                pcCase.SetComponents(PcComponent.None, false);
+                int m = 0;
+                foreach (PcLink link in new[] { PcLink.Power, PcLink.MonitorPower, PcLink.Vga, PcLink.Hdmi, PcLink.Network })
+                    if (RemoveCable(link, m)) m++;
+                break;
         }
     }
 

@@ -125,6 +125,8 @@ public class StageReportScreen : MonoBehaviour
 
     private void OnStageScored(int score, int stars)
     {
+        // no tutorial o fim é a tela do próprio tutorial (TutorialMontagem), não o relatório do expediente
+        if (GameSession.NoTutorial) return;
         if (showOnStageEnd) Show();
     }
 

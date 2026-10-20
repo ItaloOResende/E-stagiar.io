@@ -56,6 +56,8 @@ public class StageController : MonoBehaviour
 
     private void Start()
     {
+        // "Começar o expediente" (fim do tutorial): começa direto, sem o menu inicial
+        if (GameSession.ConsumeStartRequest()) { GameSession.ConsumeMenuRequest(); StartStageWithMode(GameMode.Normal); return; }
         // pedido do relatório ("Ir para o menu inicial") ou cena configurada para abrir no menu
         if (GameSession.ConsumeMenuRequest() || showStartMenu) { MainMenuScreen.Open(this); return; }
         if (startAutomatically) StartStage();

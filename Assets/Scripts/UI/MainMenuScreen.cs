@@ -12,8 +12,8 @@ using UnityEngine.UI;
 
 /// <summary>Menu inicial integrado ao StageController; estilo e animações reaproveitados do pause (do Matheus).
 /// Configurações (volume e sensibilidade) gravadas no mesmo prefixo do PauseMenu ("Estagiario.Pause"): o que muda
-/// aqui vale na pausa e vice-versa. O botão de Speed Run fica ESCONDIDO: o modo não existe no jogo (removido em
-/// 18/10) e o botão não fazia nada.</summary>
+/// aqui vale na pausa e vice-versa. Botões: Iniciar jogo (expediente), Tutorial (cena Tutorial_Montagem, opcional),
+/// Configurações e Sair.</summary>
 [DefaultExecutionOrder(-9000)]
 [DisallowMultipleComponent]
 public class MainMenuScreen : MonoBehaviour
@@ -40,10 +40,11 @@ public class MainMenuScreen : MonoBehaviour
     [SerializeField] private Sprite logo;
     [SerializeField] private Vector2 tamanhoLogo = new Vector2(420, 100);
     [SerializeField] private Vector2 posicaoLogo = new Vector2(0, -85);
-    [SerializeField] private string textoSpeedrun = "MODO SPEEDRUN";
+    [Tooltip("Botão do tutorial (segunda linha do menu): carrega a cena Tutorial_Montagem. Opcional para o jogador.")]
+    [SerializeField] private string textoTutorial = "TUTORIAL";
     [SerializeField] private UnityEvent aoIniciar = new UnityEvent();
     private Image fundoUI, logoUI;
-    [SerializeField, HideInInspector] private Button speedrunUI;
+    [SerializeField, HideInInspector] private Button tutorialUI;
 
     [Header("Volume")]
     [SerializeField] private AudioMixer mixer;
@@ -310,7 +311,17 @@ public class MainMenuScreen : MonoBehaviour
     // Pode ser conectado ao evento de saída do PauseMenu no Inspector.
     public void VoltarAoMenuInicial() { GameSession.GoToMainMenu(); }
     public void IniciarJogo() { Choose(GameMode.Normal); }
-    public void IniciarSpeedrun() { /* Placeholder: nenhuma ação. */ }
+    /// <summary>Menu → tutorial (cena Tutorial_Montagem). O expediente continua no "Iniciar jogo", sem obrigação.</summary>
+    public void IniciarTutorial()
+    {
+        if (estado != Estado.Aberto || carregandoCena) return;
+        carregandoCena = true; StartCoroutine(TutorialAnimado());
+    }
+    private IEnumerator TutorialAnimado()
+    {
+        yield return FecharAnimado(false);
+        GameSession.StartTutorial();
+    }
     public void Choose(GameMode mode)
     {
         if (estado != Estado.Aberto || carregandoCena) return;
@@ -360,6 +371,7 @@ public class MainMenuScreen : MonoBehaviour
         controles.Clear();
         foreach (var item in visibilidade) if (item.Key != null) item.Key.SetActive(item.Value);
         visibilidade.Clear();
+        UICursor.LimparSobreposicao();
         Cursor.lockState = iniciar ? CursorLockMode.Locked : cursorLockAnterior;
         Cursor.visible = iniciar ? false : cursorVisivelAnterior;
         estado = Estado.Fechado; Showing = false;
@@ -367,9 +379,12 @@ public class MainMenuScreen : MonoBehaviour
     private void GarantirCursor()
     {
         if (estado == Estado.Fechado || raiz == null || !raiz.gameObject.activeInHierarchy) return;
-        Cursor.lockState = CursorLockMode.None; UICursor.LimparSobreposicao();
+        Cursor.lockState = CursorLockMode.None;
         bool sprite = spriteCursor != null && Mouse.current != null;
         Cursor.visible = !sprite; cursorUI.gameObject.SetActive(sprite);
+        // sem sprite próprio: a MESMA mãozinha das telas 2D, na camada de cima do UICursor (ao fechar, o cursor
+        // da tela de trás volta sozinho)
+        if (sprite) UICursor.LimparSobreposicao(); else UICursor.SobreporMao();
         if (sprite)
         {
             cursorUI.GetComponent<Image>().sprite = spriteCursor; cursorUI.sizeDelta = tamanhoCursor; cursorUI.pivot = pontaCursor;
@@ -441,7 +456,7 @@ public class MainMenuScreen : MonoBehaviour
         tituloConfigUI = Texto(paginaConfig, "Titulo", tituloConfiguracoes, tamanhoTitulo);
         entradasMenu = new RectTransform[4];
         entradasMenu[0] = Holder("Iniciar", paginaMenu); iniciarUI = Botao(entradasMenu[0], textoIniciar);
-        entradasMenu[1] = Holder("Speedrun", paginaMenu); speedrunUI = Botao(entradasMenu[1], textoSpeedrun);
+        entradasMenu[1] = Holder("Tutorial", paginaMenu); tutorialUI = Botao(entradasMenu[1], textoTutorial);
         entradasMenu[2] = Holder("Configuracoes", paginaMenu); configuracoesUI = Botao(entradasMenu[2], textoConfiguracoes);
         entradasMenu[3] = Holder("Sair", paginaMenu); sairUI = Botao(entradasMenu[3], textoSair);
         logoUI = Imagem("Logo", paginaMenu, Color.white); logoUI.preserveAspect = true;
@@ -481,7 +496,7 @@ public class MainMenuScreen : MonoBehaviour
     private void VincularBotoes()
     {
         hovers.Clear();
-        Ligar(iniciarUI, IniciarJogo); // Speedrun permanece visual, sem listener de clique nem som de clique.
+        Ligar(iniciarUI, IniciarJogo); Ligar(tutorialUI, IniciarTutorial);
         Ligar(configuracoesUI, MostrarConfiguracoes); Ligar(sairUI, SairDoJogo); Ligar(voltarUI, Voltar);
         volumeUI.onValueChanged.AddListener(AplicarVolume); sensUI.onValueChanged.AddListener(AplicarSensibilidade);
         entradasBase = new Vector2[entradasMenu.Length]; entradasAlpha = new CanvasGroup[entradasMenu.Length];
@@ -500,8 +515,6 @@ public class MainMenuScreen : MonoBehaviour
         // O nome do jogo fica fora do card, acima dele (mesmo quando a interface veio de uma versão antiga).
         if (tituloMenuUI.transform.parent != raiz) { tituloMenuUI.transform.SetParent(raiz, false); tituloMenuUI.name = "TituloJogo"; }
         tituloMenuUI.transform.SetSiblingIndex(painel.GetSiblingIndex() + 1);
-        // o Speed Run (entrada 1) fica escondido e não ocupa lugar na coluna de botões
-        if (entradasMenu.Length > 1 && entradasMenu[1] != null) entradasMenu[1].gameObject.SetActive(false);
         int visiveis = 0;
         foreach (var e in entradasMenu) if (e != null && e.gameObject.activeSelf) visiveis++;
         // Cada página é uma coluna centralizada (eixo no centro do card); o card toma a altura da página aberta.
@@ -556,7 +569,7 @@ public class MainMenuScreen : MonoBehaviour
         if (logoUI != null) { logoUI.sprite = logo; logoUI.gameObject.SetActive(logo != null); Posicao(logoUI.rectTransform, posicaoLogo, tamanhoLogo); }
         tituloMenuUI.gameObject.SetActive(logo == null);
         if (logoUI != null && logo != null) { logoUI.transform.SetParent(raiz, false); Centro(logoUI.rectTransform, Vector2.zero, tamanhoLogo); }
-        speedrunUI.GetComponentInChildren<TMP_Text>().text = textoSpeedrun;
+        tutorialUI.GetComponentInChildren<TMP_Text>().text = textoTutorial;
         if (!Application.isPlaying)
         {
             raiz.gameObject.SetActive(previaNoEditor); grupo.alpha = 1;
