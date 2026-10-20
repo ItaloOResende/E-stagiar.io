@@ -55,6 +55,14 @@ public class TicketTabletPrototype : MonoBehaviour
     [SerializeField, Range(0, .8f)] private float escurecerFundo = .2f;
     [SerializeField, Range(1, 1.2f)] private float escalaHover = 1.04f;
     [SerializeField, Min(1)] private float velocidadeHover = 16;
+    [Tooltip("Folga lateral (px) da máscara da lista: o hover e o glow passam da borda da lista e sobrepõem a moldura, em vez de serem cortados.")]
+    [SerializeField, Min(0)] private float folgaHoverLista = 48;
+
+    [Header("Aplicativos")]
+    [Tooltip("Altura das tiles da grade de aplicativos (3 colunas). Reduzida para os seis caberem na lista sem rolagem.")]
+    [SerializeField, Min(80)] private float alturaTileApps = 196;
+    [Tooltip("Tamanho do ícone vetorial dentro da tile de aplicativo.")]
+    [SerializeField, Min(32)] private float tamanhoIconeApp = 96;
 
     [SerializeField, Range(0, 48)] private float raioPaineis = 16;
     [Header("Textos: outline e sombra projetada (TMP SDF)")]
@@ -167,7 +175,7 @@ public class TicketTabletPrototype : MonoBehaviour
     [SerializeField, Min(24f)] private float tamanhoFoto = 72f;
     [SerializeField] private Color corFoto = Color.white;
     private class Card { public Image foto; public TicketInstance ticket; public TMP_Text tempo, recusa; public Button acao; public RectTransform barra; }
-    private class Hover { public Button button; public Vector3 baseScale; public float valor = 1; }
+    private class Hover { public Button button; public Vector3 baseScale; public float valor = 1; public bool elevado; }
     private class Impacto { public RectTransform rect; public Image image; public float inicio; }
     private static bool Oculto => MainMenuScreen.Showing || StageReportScreen.Showing || PauseMenu.IsPaused;
     private static bool NoMundo3D() => UIScreenManager.Active == null || !UIScreenManager.Active.IsOpen;
@@ -442,6 +450,14 @@ public class TicketTabletPrototype : MonoBehaviour
         {
             var v = hovers[i]; if (v.button == null) { if (!ReferenceEquals(v.button, null)) tamanhosEstilizados.Remove(v.button); hovers.RemoveAt(i); continue; }
             bool sobre = v.button.IsInteractable() && Dentro((RectTransform)v.button.transform, mouse);
+            // Tiles de aplicativo sobem na ordem dos irmãos enquanto o mouse está em cima: a borda do hover
+            // passa a sobrepor as vizinhas. A grade é posicionada manualmente (sem layout group), então mudar
+            // a ordem de desenho não altera nenhuma posição (e, paradas, as tiles nem se sobrepõem).
+            if (v.button.name.StartsWith("AppCard"))
+            {
+                if (sobre && !v.elevado) { v.elevado = true; v.button.transform.SetAsLastSibling(); }
+                else if (!sobre) v.elevado = false;
+            }
             v.valor = Mathf.Lerp(v.valor, sobre ? escalaHover : 1, 1 - Mathf.Exp(-velocidadeHover * Time.unscaledDeltaTime));
             v.button.transform.localScale = v.baseScale * v.valor;
         }
@@ -668,39 +684,37 @@ public class TicketTabletPrototype : MonoBehaviour
 
     private static readonly AppDef[] Aplicativos = {
         new AppDef("Peças do computador", "pecas",
-            new AppEntrada("Gabinete", "gabinete", "Estrutura que recebe os componentes do PC.", "Estoque/ponto de retirada de equipamentos.", "Transporte o gabinete até a bancada do chamado; use a interação do gabinete para soltar os parafusos e abrir a tampa.", "Não tente instalar peças com a tampa fechada."),
-            new AppEntrada("Placa-mãe", "placa-mae", "Conecta os componentes do computador.", "Gaveta de componentes.", "Com o gabinete aberto, posicione a placa-mãe sobre os pontos de fixação do chassi. No minigame, escolha o encaixe da placa-mãe (a base grande onde serão ligados CPU, RAM, armazenamento e cabos); confirme a fixação antes das outras peças.", "Ela é a base para os demais componentes."),
-            new AppEntrada("Fonte de alimentação", "fonte", "Converte e fornece energia ao PC.", "Gaveta de componentes.", "Coloque a fonte no compartimento de alimentação do gabinete, normalmente na parte traseira inferior ou superior conforme o modelo exibido. Depois ligue os conectores de energia da fonte aos pontos indicados na placa-mãe; isso é diferente do cabo externo da tomada.", "Instalar a fonte não substitui ligar os cabos de energia."),
-            new AppEntrada("Memória RAM", "ram", "Memória temporária de trabalho.", "Gaveta de memória e armazenamento.", "Localize os slots longos de memória ao lado do processador na placa-mãe. Alinhe o recorte do módulo RAM com a guia do slot e encaixe-o na posição sinalizada pelo minigame. Não é um conector de cabo nem uma porta externa.", "Confira a orientação da peça antes de instalar."),
-            new AppEntrada("Armazenamento HD / SSD", "ssd", "Guarda arquivos e o sistema operacional.", "Gaveta de memória e armazenamento.", "Confira qual disco o chamado exige. Um SSD/HD SATA fica na baia de armazenamento do gabinete e precisa de dados SATA até a placa-mãe e energia da fonte, se o jogo oferecer essas conexões. Um SSD M.2 entra direto no slot M.2 da placa-mãe, sem cabo SATA. Siga o modelo realmente exibido no minigame.", "Sem armazenamento adequado, a instalação do sistema não fica completa."),
-            new AppEntrada("Cooler", "cooler", "Ajuda a resfriar o processador.", "Gaveta de componentes.", "O cooler do processador é fixado SOBRE o processador, na placa-mãe, usando o suporte indicado. Quando existir o conector CPU_FAN no minigame, ligue ali o cabo da ventoinha; não confunda com o cooler do gabinete.", "Verifique se a montagem permite fechar a tampa."),
-            new AppEntrada("Monitor", "monitor", "Mostra a imagem do computador.", "Ponto de retirada de equipamentos.", "Posicione o monitor na mesa correta. Conecte o cabo de vídeo entre a ENTRADA HDMI/VGA do monitor e a SAÍDA de vídeo do PC; conecte separadamente a energia do monitor. A tela não recebe vídeo apenas por estar ligada na tomada.", "Sem cabo de vídeo, o monitor não recebe imagem."),
-            new AppEntrada("Sistema operacional", "sistema", "Permite usar o computador após a montagem.", "Confira os dispositivos de instalação no estoque.", "Depois de montar e conectar o PC, use a interação de instalação de sistema oferecida pelo equipamento.", "Teste a inicialização até o sistema, não somente até a BIOS.")),
+            new AppEntrada("Gabinete", "gabinete", "Caixa (chassi) que abriga e protege as peças internas do computador: placa-mãe, memória RAM, HD, fonte e cooler. Na frente fica o botão Power; na traseira, as portas onde se ligam os cabos.", "Na mesa de cada estação, ao lado do monitor. Gabinetes de reserva ficam no armário da sala de TI.", "Clique direito abre a manutenção, com as vistas Frente, Traseira e Interior. Na Traseira ficam a entrada de energia da fonte, as saídas de vídeo VGA e HDMI, a porta de rede (RJ45) e as portas USB. Para chegar ao Interior, apoie o gabinete numa mesa ou bancada e retire os parafusos da tampa com a chave de fenda.", "Chamado entregue com o gabinete aberto é recusado: recoloque os parafusos antes de finalizar. Quedas fortes podem quebrar o gabinete."),
+            new AppEntrada("Placa-mãe", "placa-mae", "Placa de circuito principal do computador. Todas as outras peças se encaixam ou se ligam nela, e é por ela que se comunicam. No jogo, o processador já faz parte da placa.", "Gaveteiro de hardware da sala de TI, na mesma gaveta da RAM e do cooler.", "Com o gabinete aberto, vá ao Interior e, com a placa na mão, clique no encaixe da placa-mãe. Ela é a base da montagem: a RAM e o cooler só podem ser instalados depois dela e precisam sair antes que ela seja retirada.", "Sem placa-mãe o PC não liga. É frágil: quebra na primeira queda, e peça quebrada não pode ser instalada."),
+            new AppEntrada("Fonte de alimentação", "fonte", "Também chamada de PSU. Recebe a energia da tomada e a converte nas tensões que as peças do computador usam.", "Gaveteiro de hardware da sala de TI, na mesma gaveta do HD.", "Instale pelo encaixe da fonte, no Interior do gabinete aberto. O cabo de energia que vem da tomada é ligado na entrada da fonte, na vista Traseira.", "Sem fonte o PC não liga, mesmo com o cabo de energia conectado. Quebra na segunda queda."),
+            new AppEntrada("Memória RAM", "ram", "Memória de trabalho do computador: rápida e temporária, guarda os programas que estão em uso. O conteúdo dela se apaga quando o PC desliga; os arquivos ficam no HD.", "Gaveteiro de hardware da sala de TI, na mesma gaveta da placa-mãe e do cooler.", "No Interior do gabinete, com o pente na mão, clique no slot de memória da placa-mãe. A placa-mãe precisa estar instalada antes.", "Sem RAM o PC não liga. Não confunda com o pente do notebook, que é menor. É frágil: quebra na primeira queda."),
+            new AppEntrada("HD (armazenamento)", "ssd", "Disco rígido: armazenamento permanente do computador. Guarda o sistema operacional e os arquivos, que continuam lá mesmo com o PC desligado.", "Gaveteiro de hardware da sala de TI, na mesma gaveta da fonte.", "Instale pelo encaixe do HD no Interior do gabinete aberto. Com o HD instalado, mas sem sistema, o PC para na BIOS avisando que não há dispositivo de inicialização; nesse caso, instale o sistema (veja Pendrive bootável).", "Sem HD o PC chega à BIOS, mas não ao sistema. Quebra na segunda queda."),
+            new AppEntrada("Cooler", "cooler", "Cooler do processador: dissipador de metal com uma ventoinha que retira o calor do processador e evita o superaquecimento.", "Gaveteiro de hardware da sala de TI, na mesma gaveta da placa-mãe e da RAM.", "No Interior do gabinete, clique no encaixe do cooler, que fica sobre o processador da placa-mãe. A placa-mãe precisa estar instalada antes.", "Sem cooler o PC não liga (na vida real, o processador superaqueceria). Quebra na segunda queda."),
+            new AppEntrada("Monitor", "monitor", "Tela que exibe a imagem gerada pelo computador. O monitor só mostra a imagem: quem processa tudo é o gabinete.", "Na mesa de cada estação. Monitores de reserva ficam no estoque da sala de TI.", "Na traseira do monitor ficam a entrada de energia e as entradas de vídeo VGA e HDMI. Ligue o cabo de energia do monitor numa tomada e um cabo de vídeo entre o monitor e a saída do mesmo tipo no gabinete. O monitor precisa estar perto do gabinete para aparecer na tela de manutenção.", "O PC só liga com o monitor também recebendo energia. Ligado sem cabo de vídeo, o monitor mostra \"Sem sinal\". Quebra na primeira queda."),
+            new AppEntrada("Pendrive bootável", "sistema", "Pendrive preparado para dar boot: o computador consegue iniciar por ele em vez de pelo HD. Este guarda o instalador do sistema operacional, o programa principal (como Windows ou Linux) que controla o hardware e permite usar os demais programas. O sistema instalado fica gravado no HD (no notebook, no SSD).", "Gaveteiros de hardware e de suprimentos da sala de TI.", "Com o PC montado e um HD sem sistema, encaixe o pendrive numa USB da traseira do gabinete e ligue o PC. A BIOS inicia pelo pendrive e a instalação começa sozinha, avançando enquanto você olha para o monitor. No notebook, use a USB lateral.", "Ele só instala o sistema se houver um HD ou SSD sem sistema. Tirar o pendrive, o HD ou outra peça necessária durante a instalação a cancela.")),
         new AppDef("Cabos e conexões", "cabos",
-            new AppEntrada("Cabo de energia do PC", "energia", "Leva energia para o gabinete.", "Suprimentos e cabos.", "Uma ponta entra na tomada de alimentação da FONTE, atrás do gabinete; a outra vai à tomada/régua de energia da mesa. Esse cabo não entra na placa-mãe nem na porta de rede. Se houver etapa de ligação no minigame, conclua as duas extremidades.", "Confira as duas extremidades."),
-            new AppEntrada("Cabo de energia do monitor", "energia-monitor", "Alimenta a tela.", "Suprimentos e cabos.", "Conecte uma ponta na entrada de energia atrás do monitor e a outra na tomada/régua. Não confunda com HDMI/VGA: a energia faz o monitor ligar, mas não transmite imagem.", "Monitor desligado não significa necessariamente PC com defeito."),
-            new AppEntrada("Cabo HDMI", "hdmi", "Transporta imagem digital.", "Gaveteiro de cabos.", "Ligue uma ponta na porta HDMI de SAÍDA do computador (atrás do gabinete) e a outra na HDMI de ENTRADA do monitor. No minigame, selecione as duas portas compatíveis; HDMI transmite vídeo, não substitui a alimentação elétrica.", "Vídeo e energia são conexões distintas."),
-            new AppEntrada("Cabo VGA", "vga", "Transporta imagem para monitores compatíveis.", "Gaveteiro de cabos.", "Ligue o conector VGA (15 pinos) à saída VGA do computador e o outro à entrada VGA do monitor. Use somente quando ambos mostrarem portas VGA. Caso o jogo exija apertar travas/parafusos do conector, conclua essa etapa.", "Use HDMI ou VGA de acordo com as portas da estação."),
-            new AppEntrada("Cabo de rede RJ45", "rede", "Conecta a estação à rede.", "Gaveteiro de cabos.", "A primeira ponta RJ45 entra na porta Ethernet/LAN do PC, normalmente atrás do gabinete. A outra deve ir à tomada de rede da mesa ou à porta do switch/rack indicada no chamado. Se o cabo foi criado no minigame de crimpagem, finalize a crimpagem e o teste antes de conectá-lo. Não use uma porta USB nem HDMI.", "Uma rede sem conexão pode ser um problema de cabo ou de rack.")),
+            new AppEntrada("Cabo de energia do PC", "energia", "Leva a eletricidade da tomada até a fonte de alimentação do computador.", "Gaveteiro de cabos da sala de TI, na gaveta de energia.", "Com o cabo na mão, na vista Traseira, clique na entrada de energia da fonte e depois numa das tomadas do ponto elétrico. O ponto elétrico precisa estar perto do gabinete.", "As duas tomadas aceitam qualquer cabo de energia: o que define a ligação é a ponta no equipamento. Sem energia nas duas pontas, o PC não liga."),
+            new AppEntrada("Cabo de energia do monitor", "energia-monitor", "Alimenta o monitor com a eletricidade da tomada. É o mesmo tipo de cabo usado no PC; muda só o equipamento onde a ponta é ligada.", "Gaveteiro de cabos da sala de TI, na gaveta de energia.", "Na vista Traseira, ligue uma ponta na entrada de energia do monitor e a outra na tomada livre do ponto elétrico.", "Energia e vídeo são ligações diferentes: este cabo faz o monitor ligar, mas não leva imagem."),
+            new AppEntrada("Cabo HDMI", "hdmi", "Cabo de vídeo digital: leva a imagem do computador ao monitor (na vida real, também leva som). O conector é achatado, com um lado mais largo que o outro.", "Gaveteiro de cabos da sala de TI, na gaveta de vídeo (junto com o VGA).", "Na vista Traseira, ligue uma ponta na saída HDMI do gabinete e a outra na entrada HDMI do monitor.", "Basta um cabo de vídeo: HDMI ou VGA. Cada ponta só entra em porta do mesmo tipo."),
+            new AppEntrada("Cabo VGA", "vga", "Cabo de vídeo analógico, mais antigo que o HDMI. O conector tem formato de trapézio, 15 pinos e parafusos laterais.", "Gaveteiro de cabos da sala de TI, na gaveta de vídeo (junto com o HDMI).", "Na vista Traseira, ligue uma ponta na saída VGA do gabinete e a outra na entrada VGA do monitor.", "Basta um cabo de vídeo: VGA ou HDMI. Ele não leva energia ao monitor."),
+            new AppEntrada("Cabo de rede RJ45", "rede", "Cabo de par trançado com conectores RJ45 nas pontas. Liga o computador à rede do escritório e, por ela, à internet.", "Gaveteiro de cabos da sala de TI, na gaveta de rede.", "Na vista Traseira, ligue uma ponta na porta de rede (RJ45) do gabinete e a outra no ponto de rede da parede. O ponto da parede chega até o rack da sala de TI.", "Sem rede o PC liga normalmente, mas fica desconectado. Um cabo pode parecer bom e ter defeito: na dúvida, use o testador.")),
         new AppDef("Ferramentas", "ferramentas",
-            new AppEntrada("Chave de fenda", "chave", "Permite remover e prender parafusos.", "Área de ferramentas.", "Pegue a ferramenta, interaja com os parafusos do gabinete e abra/feche a tampa conforme a mecânica apresentada.", "Verifique todos os parafusos antes de forçar a tampa."),
-            new AppEntrada("Alicate de crimpar", "alicate", "Prende conectores de rede aos cabos.", "Gaveteiro de ferramentas.", "1) Pegue o cabo UTP e os conectores RJ45. 2) Abra o minigame de crimpagem. 3) Organize os oito fios na ordem solicitada (T568A ou T568B, conforme o jogo), insira no conector e crimpe. 4) Se houver testador, valide. 5) LEVE o cabo pronto e conecte-o entre a LAN do PC e o ponto de rede/switch solicitado: crimpar sozinho não instala a rede.", "Confira a ordem dos fios antes da crimpagem."),
-            new AppEntrada("Pendrive", "pendrive", "Dispositivo removível para tarefas de manutenção.", "Gaveteiro de suprimentos.", "Pegue o pendrive e use a interação disponível no computador ou notebook para a tarefa solicitada.", "Para instalar sistema, observe as opções do equipamento."),
-            new AppEntrada("Testador de cabo", "testador", "Verifica continuidade de um cabo de rede.", "Estação ou área de rede.", "Depois de crimpar, conecte as duas pontas RJ45 do cabo nas portas do testador (principal e remoto, se existirem). Rode o teste do minigame e confira o resultado. Se falhar, volte à crimpagem; só depois conecte o cabo no PC e no ponto de rede.", "Um cabo aparentemente inteiro pode falhar no teste.")),
+            new AppEntrada("Chave de fenda", "chave", "Ferramenta para apertar e soltar parafusos.", "Gaveteiro de hardware da sala de TI, na gaveta de ferramentas.", "Com a chave na mão, abra a manutenção do gabinete ou a vista de baixo do notebook: o cursor vira a chave e cada clique num parafuso o retira. Recolocar os parafusos fecha a tampa.", "Sem a chave aparece \"Falta ferramenta\". O gabinete só abre apoiado numa mesa ou bancada."),
+            new AppEntrada("Alicate de crimpar", "alicate", "Ferramenta que corta e descasca o cabo de rede e prensa o conector RJ45 na ponta, prendendo os contatos aos fios.", "Gaveteiro de hardware da sala de TI, na gaveta de ferramentas.", "Com o alicate na mão, clique direito na caixa de cabo de rede da sala de TI para abrir a crimpagem (veja Crimpagem RJ45, no app Rede e rack).", "Sem o alicate na mão, a crimpagem não começa (\"Falta ferramenta\").")),
         new AppDef("Impressora", "impressora",
-            new AppEntrada("Impressora", "impressora", "Imprime documentos do escritório.", "Estação de impressão.", "Interaja com o equipamento para abrir a tela do minigame de impressora e identificar o problema do chamado.", "Leia o painel antes de substituir qualquer item."),
-            new AppEntrada("Toner", "toner", "Suprimento de impressão.", "Gaveteiro de suprimentos.", "Abra o compartimento de consumíveis da impressora pelo minigame. Retire o cartucho antigo se a tarefa pedir e encaixe o toner no trilho/suporte próprio, nunca na bandeja de papel. Feche a tampa e teste a impressão.", "Nem toda falha de impressão é falta de toner."),
-            new AppEntrada("Resma de papel", "resma", "Papel para impressão.", "Gaveteiro de suprimentos.", "Abra a BANDEJA DE PAPEL da impressora, alinhe as folhas e reabasteça a bandeja na quantidade pedida. Não coloque papel no compartimento do toner. Depois, use a opção de teste se o minigame apresentar.", "Confira primeiro se há papel no equipamento."),
-            new AppEntrada("Configuração de rede", "impressora-rede", "Permite que a impressora seja acessada pela rede.", "Painel da impressora.", "Use a interface de diagnóstico/configuração do minigame e siga os indicadores disponíveis.", "Uma impressora ligada pode estar sem comunicação de rede.")),
+            new AppEntrada("Impressora", "impressora", "Equipamento que passa documentos digitais para o papel. A do escritório é de rede: os computadores a encontram pelo endereço IP.", "Área de impressoras do escritório.", "Clique direito no corpo ou no painel abre a tela da impressora. O painel mostra o que falta (toner, papel ou IP) ou \"PRONTA\". Depois de corrigir, faça o teste de impressão.", "O teste de impressão só sai com toner, papel e IP corretos. Leia o painel antes de trocar qualquer item."),
+            new AppEntrada("Toner", "toner", "Cartucho com o pó de tinta usado pelas impressoras a laser para formar o texto e as imagens no papel.", "Gaveteiro de suprimentos da sala de TI, na gaveta do toner.", "Com o toner na mão, abra a tela da impressora e clique no encaixe do toner.", "Nem toda falha de impressão é falta de toner: confira o painel primeiro."),
+            new AppEntrada("Resma de papel", "resma", "Pacote de folhas de papel para impressão (uma resma tem 500 folhas).", "Gaveteiro de suprimentos da sala de TI, na gaveta do papel.", "Com a resma na mão, abra a tela da impressora e clique na bandeja de papel.", "Toner e papel têm encaixes diferentes: cada item só entra no seu."),
+            new AppEntrada("Configuração de rede (IP)", "impressora-rede", "O endereço IP identifica a impressora na rede: são quatro números de 0 a 255 separados por pontos. Com o IP errado, os computadores não a encontram.", "O IP que vale está no cartaz da sala de TI.", "No painel da tela da impressora, digite só os números: os pontos entram sozinhos. Confirme e faça o teste de impressão.", "O IP muda a cada chamado que o apaga: consulte o cartaz sempre, em vez de repetir um IP antigo.")),
         new AppDef("Notebook", "notebook",
-            new AppEntrada("Notebook", "notebook", "Computador portátil com componentes internos próprios.", "Estação do chamado de notebook.", "Interaja com o notebook para abrir o minigame específico; suas peças não são instaladas como no gabinete de mesa.", "Observe o tipo de falha antes de desmontar."),
-            new AppEntrada("RAM do notebook", "ram-notebook", "Memória de trabalho do notebook.", "Suprimentos para notebook.", "Abra o minigame de manutenção do notebook; o módulo SO-DIMM encaixa no slot de memória da placa do notebook, geralmente acessível por tampa inferior. Alinhe a ranhura e trave no suporte indicado; ele não vai na porta USB.", "Não confunda o encaixe do notebook com o do PC."),
-            new AppEntrada("SSD do notebook", "ssd-notebook", "Armazenamento interno do notebook.", "Suprimentos para notebook.", "No minigame do notebook, procure a baia SATA de 2,5 polegadas OU o slot M.2, conforme a peça mostrada. Encaixe no alojamento correto e prenda pela fixação indicada antes de fechar a tampa e iniciar a instalação do sistema.", "Pode ser necessário instalar o sistema depois."),
-            new AppEntrada("Sistema do notebook", "sistema-notebook", "Software necessário para inicialização.", "Ferramentas e dispositivos de instalação.", "Use a opção de instalação do próprio minigame do notebook após preparar o armazenamento.", "Confira a inicialização completa no final.")),
+            new AppEntrada("Notebook", "notebook", "Computador portátil: tela, teclado e peças internas reunidos num só aparelho.", "Nas mesas dos funcionários que usam notebook.", "Clique direito abre a manutenção, com as vistas de baixo, interior, lateral e frente. A tampa de baixo sai com a chave de fenda e dá acesso à memória e ao SSD. A USB fica na lateral e o botão de energia, no teclado.", "As peças do notebook são diferentes das do PC de mesa. Recoloque a tampa de baixo antes de finalizar o chamado."),
+            new AppEntrada("RAM do notebook", "ram-notebook", "Memória RAM no formato SO-DIMM: um pente menor que o do PC de mesa, feito para notebooks.", "Gaveteiro de suprimentos da sala de TI, na gaveta com o SSD e o pendrive.", "Com a tampa de baixo aberta, vá ao interior e, com o pente na mão, clique no slot de memória.", "Não confunda com o pente do PC de mesa, que é maior."),
+            new AppEntrada("SSD do notebook", "ssd-notebook", "Armazenamento sem partes móveis, mais rápido que o HD. Este é um SSD M.2: uma placa fina encaixada direto na placa do notebook. Guarda o sistema e os arquivos.", "Gaveteiro de suprimentos da sala de TI, na gaveta com a RAM do notebook e o pendrive.", "Com a tampa de baixo aberta, vá ao interior e, com o SSD na mão, clique no slot do SSD.", "Um SSD sem sistema precisa receber a instalação depois (veja Pendrive bootável)."),
+            new AppEntrada("Pendrive bootável", "sistema-notebook", "Pendrive preparado para dar boot, com o instalador do sistema operacional. No notebook, ele grava o sistema no SSD; sem sistema, o notebook liga, mas não passa da BIOS.", "Gaveteiros de hardware e de suprimentos da sala de TI.", "Com o SSD instalado, encaixe o pendrive na USB lateral do notebook e ligue pelo botão do teclado. A BIOS inicia pelo pendrive e a instalação acontece como no PC.", "Se o notebook não inicia, descubra a causa antes: pode faltar memória, SSD ou apenas o sistema.")),
         new AppDef("Rede e rack", "rede",
-            new AppEntrada("Rack de rede", "rack", "Centraliza conexões da rede do escritório.", "Área de infraestrutura de rede.", "No rack, identifique o SWITCH (portas Ethernet ativas) e, se presente, o PATCH PANEL (portas ligadas às tomadas das mesas). Conecte o RJ45 à porta indicada pelo chamado. Um cabo de rede do PC pode terminar em uma tomada da mesa; a ligação desta tomada ao switch pode exigir um patch cord dentro do rack.", "Identifique o ponto solicitado antes de trocar cabos."),
-            new AppEntrada("Crimpagem RJ45", "crimpagem", "Preparação de um cabo de rede com conector.", "Estação de crimpagem.", "Prepare o cabo de rede no minigame: desencape a ponta, ordene os oito condutores no padrão mostrado, encaixe no plugue RJ45 e acione o alicate. Confira no testador, se disponível. Em seguida, use o cabo montado na porta LAN do computador e no ponto de rede/switch do chamado.", "Use o testador depois de montar o cabo."),
-            new AppEntrada("Teste de conectividade", "conectividade", "Confirma se o caminho da rede está funcional.", "Ponto de rede, rack ou testador.", "Confira as DUAS pontas do cabo (PC na porta LAN e outra ponta no ponto de rede/switch). Se o jogo oferecer testador ou minigame de conectividade, execute-o depois da instalação e observe o resultado. Apenas crimpar ou apenas conectar uma ponta não basta.", "Concluir a etapa exige verificar o resultado, não só encaixar um cabo."))
+            new AppEntrada("Rack de rede", "rack", "Armário que concentra os equipamentos de rede. Tem o patch panel (portas P, ligadas aos pontos de rede das mesas) e o switch (portas S, que distribuem a rede).", "Sala de TI.", "Clique direito no rack abre a tela. Com um cabo de rede na mão, ligue uma porta do patch panel a uma porta do switch. A rede de uma mesa só funciona se a porta do patch panel dela estiver ligada ao switch com um cabo bom.", "Descubra qual porta do patch panel atende a mesa do chamado antes de mexer nas ligações."),
+            new AppEntrada("Crimpagem RJ45", "crimpagem", "Montagem de um cabo de rede: o conector RJ45 é prensado na ponta do cabo, com os 8 fios na ordem certa.", "Caixa de cabo de rede da sala de TI, perto do rack.", "Com o alicate de crimpar na mão, clique direito na caixa. A sequência é: cortar o cabo, tirar a capa, organizar os 8 fios no padrão T568B, encaixar o RJ45 e crimpar. A aba CORES do tablet ajuda a conferir os fios.", "Fio fora de ordem gera um cabo com defeito, que não passa sinal. O chamado de cabeamento só aceita um cabo feito na crimpagem."),
+            new AppEntrada("Testador de cabo", "testador", "Aparelho com duas unidades que verifica, fio a fio, se um cabo de rede conduz sinal de uma ponta à outra.", "Sala de TI, perto do rack.", "Com o cabo de rede na mão, clique direito no testador, encaixe uma ponta em cada unidade e toque em TESTAR. Os LEDs de 1 a 8 acendem verde quando o fio está bom e vermelho quando falha.", "O teste é opcional, mas ajuda a encontrar o cabo com defeito e vale bônus. Ele não liga nada na rede; um cabo reprovado pode ser descartado."))
     };
 
     // Ícone vetorial do aplicativo (gerado uma vez e guardado) e imagem opcional do item (Resources/TutorialIcons/<id>).
@@ -777,35 +791,36 @@ public class TicketTabletPrototype : MonoBehaviour
         const int colunas = 3;
         for (int i = 0; i < Aplicativos.Length; i += colunas)
         {
-            var linha = Retangulo("LinhaApps", conteudo, Color.clear); Altura(linha, 236);
-            var grade = linha.gameObject.AddComponent<HorizontalLayoutGroup>();
-            grade.spacing = 16; grade.childAlignment = TextAnchor.UpperCenter;
-            grade.childControlWidth = grade.childControlHeight = true;
-            grade.childForceExpandWidth = grade.childForceExpandHeight = true;
-            for (int j = 0; j < colunas; j++)
-            {
-                if (i + j < Aplicativos.Length) CriarAtalhoApp(linha, i + j);
-                else Retangulo("Vazio", linha, Color.clear).gameObject.AddComponent<LayoutElement>().flexibleWidth = 1;
-            }
+            var linha = Retangulo("LinhaApps", conteudo, Color.clear); Altura(linha, alturaTileApps);
+            for (int j = 0; j < colunas && i + j < Aplicativos.Length; j++)
+                CriarAtalhoApp(linha, i + j, j, colunas);
         }
     }
-    private void CriarAtalhoApp(Transform pai, int indice)
+    private void CriarAtalhoApp(Transform pai, int indice, int coluna, int colunas)
     {
         AppDef app = Aplicativos[indice];
         var tile = Retangulo("AppCard_" + app.IconeId, pai, corCard, true);
+        // Posição manual (sem layout group) para o hover poder subir a tile na ordem de desenho sem
+        // arrastar as vizinhas junto. As colunas dividem a linha em três partes iguais; 8px de folga
+        // em cada lado viram 16px entre tiles (todas com a mesma largura).
+        var rt = (RectTransform)tile;
+        rt.anchorMin = new Vector2((float)coluna / colunas, 0f);
+        rt.anchorMax = new Vector2((float)(coluna + 1) / colunas, 1f);
+        rt.offsetMin = new Vector2(8f, 0f);
+        rt.offsetMax = new Vector2(-8f, 0f);
         var botao = tile.gameObject.AddComponent<Button>();
         botao.targetGraphic = tile.GetComponent<Image>(); botao.navigation = new Navigation { mode = Navigation.Mode.None };
         Ligar(botao, () => IrParaApp(indice));
         var icone = IconeDoApp(tile, app.IconeId);
         icone.anchorMin = icone.anchorMax = icone.pivot = new Vector2(.5f, 1);
-        icone.anchoredPosition = new Vector2(0, -14); icone.sizeDelta = Vector2.one * 128;
-        var nome = Texto(tile, "Nome", app.Nome, 22);
+        icone.anchoredPosition = new Vector2(0, -10); icone.sizeDelta = Vector2.one * tamanhoIconeApp;
+        var nome = Texto(tile, "Nome", app.Nome, 20);
         nome.alignment = TextAlignmentOptions.Center; nome.fontStyle = FontStyles.Bold;
-        nome.enableAutoSizing = true; nome.fontSizeMin = 15; nome.fontSizeMax = 22;
-        Faixa(nome.rectTransform, -146, 52);
-        var qtd = Texto(tile, "Quantidade", app.Entradas.Length + (app.Entradas.Length == 1 ? " item" : " itens"), 17);
+        nome.enableAutoSizing = true; nome.fontSizeMin = 13; nome.fontSizeMax = 20;
+        Faixa(nome.rectTransform, -108, 44);
+        var qtd = Texto(tile, "Quantidade", app.Entradas.Length + (app.Entradas.Length == 1 ? " item" : " itens"), 15);
         qtd.alignment = TextAlignmentOptions.Center; qtd.color = new Color(corTexto.r, corTexto.g, corTexto.b, .65f);
-        Faixa(qtd.rectTransform, -200, 26);
+        Faixa(qtd.rectTransform, -152, 24);
     }
     // Imagem do ícone vetorial do aplicativo (sem raycast: o clique fica com o botão do tile).
     private RectTransform IconeDoApp(Transform pai, string iconeId)
@@ -856,15 +871,30 @@ public class TicketTabletPrototype : MonoBehaviour
 
     private void ConstruirDetalheApp(AppDef app, AppEntrada item)
     {
-        var quadro = Retangulo("AppCard_Imagem", conteudo, corCard); Altura(quadro, 176);
-        var figura = Retangulo("ImagemItem", quadro, Color.white); figura.sizeDelta = Vector2.one * 144;
-        var img = figura.GetComponent<Image>(); img.type = Image.Type.Simple; img.preserveAspect = true; img.raycastTarget = false;
-        Sprite foto = FotoApp(item.ImagemId);
-        img.sprite = foto != null ? foto : IconeApp(app.IconeId);
-        SecaoApp("O QUE É", item.OQueE, corDestaque);
+        // Foto do próprio modelo do jogo (TabletFotosGerador). Se existir "<id>-traseira" (gabinete, monitor), as duas
+        // vistas aparecem lado a lado, com legenda, para mostrar onde ficam as conexões.
+        Sprite foto = FotoApp(item.ImagemId), traseira = FotoApp(item.ImagemId + "-traseira");
+        var quadro = Retangulo("AppCard_Imagem", conteudo, corCard); Altura(quadro, traseira != null ? 300 : 200);
+        if (traseira == null) FiguraApp(quadro, foto != null ? foto : IconeApp(app.IconeId), 0f, 1f, null);
+        else { FiguraApp(quadro, foto, 0f, .5f, "FRENTE"); FiguraApp(quadro, traseira, .5f, 1f, "TRASEIRA"); }
+        SecaoApp("O QUE É E PARA QUE SERVE", item.OQueE, corDestaque);
         SecaoApp("ONDE ENCONTRAR", item.Onde, corDestaque);
         SecaoApp("ONDE ENCAIXAR / COMO USAR", item.Como, corDestaque);
         SecaoApp("ATENÇÃO", item.Atencao, corAlerta);
+    }
+    // Uma imagem ocupando a faixa horizontal [x0, x1] do quadro; com legenda, ela fica embaixo.
+    private void FiguraApp(Transform quadro, Sprite sprite, float x0, float x1, string legenda)
+    {
+        var figura = Retangulo("ImagemItem", quadro, Color.white);
+        figura.anchorMin = new Vector2(x0, 0); figura.anchorMax = new Vector2(x1, 1);
+        figura.offsetMin = new Vector2(14, legenda != null ? 40 : 14); figura.offsetMax = new Vector2(-14, -14);
+        var img = figura.GetComponent<Image>(); img.type = Image.Type.Simple; img.preserveAspect = true; img.raycastTarget = false;
+        img.sprite = sprite; if (sprite == null) img.color = Color.clear;
+        if (legenda == null) return;
+        var t = Texto(quadro, "Legenda", legenda, 17); t.fontStyle = FontStyles.Bold; t.color = corDestaque;
+        t.alignment = TextAlignmentOptions.Center;
+        var r = t.rectTransform; r.anchorMin = new Vector2(x0, 0); r.anchorMax = new Vector2(x1, 0); r.pivot = new Vector2(.5f, 0);
+        r.anchoredPosition = new Vector2(0, 10); r.sizeDelta = new Vector2(0, 26);
     }
     private void SecaoApp(string cabecalho, string corpo, Color corCabecalho)
     {
@@ -927,8 +957,14 @@ public class TicketTabletPrototype : MonoBehaviour
         abaHistorico = Botao(tabs, "Historico", "HISTÓRICO"); abaCores = Botao(tabs, "Cores", "CORES"); abaAplicativos = Botao(tabs, "Aplicativos", "APLICATIVOS");
         var area = Retangulo("Lista", painel, Color.clear); Esticar(area, new Vector2(28, 62), new Vector2(-28, -148));
         scroll = area.gameObject.AddComponent<ScrollRect>(); scroll.horizontal = false; scroll.movementType = ScrollRect.MovementType.Clamped; scroll.scrollSensitivity = 36;
-        var viewport = Retangulo("Viewport", area, new Color(1, 1, 1, .001f), true); Esticar(viewport); viewport.gameObject.AddComponent<RectMask2D>(); scroll.viewport = viewport;
-        conteudo = Retangulo("Conteudo", viewport, Color.clear); conteudo.anchorMin = new Vector2(0, 1); conteudo.anchorMax = Vector2.one; conteudo.pivot = new Vector2(.5f, 1); conteudo.sizeDelta = Vector2.zero;
+        // A máscara da lista abre uma folga nas laterais: o hover cresce o botão (1,127 na cena) e o glow sai
+        // além da borda do card. Sem a folga, o RectMask2D cortava essas laterais. O conteúdo mantém a largura
+        // original (só o hover ocupa a folga), então cards e grades não mudam de tamanho nem de posição.
+        var viewport = Retangulo("Viewport", area, new Color(1, 1, 1, .001f), true); Esticar(viewport);
+        viewport.offsetMin = new Vector2(-folgaHoverLista, 0); viewport.offsetMax = new Vector2(folgaHoverLista, 0);
+        viewport.gameObject.AddComponent<RectMask2D>(); scroll.viewport = viewport;
+        conteudo = Retangulo("Conteudo", viewport, Color.clear); conteudo.anchorMin = new Vector2(0, 1); conteudo.anchorMax = Vector2.one; conteudo.pivot = new Vector2(.5f, 1);
+        conteudo.offsetMin = new Vector2(folgaHoverLista, 0); conteudo.offsetMax = new Vector2(-folgaHoverLista, 0);
         Vertical(conteudo, 14, 10); scroll.content = conteudo;
         proximo = Texto(painel, "Proximo", "", 18); Esticar(proximo.rectTransform, new Vector2(28, 14), new Vector2(-28, 50)); proximo.rectTransform.anchorMax = new Vector2(1, 0);
         atalho = Botao(raizUI, "AbrirTablet", "TABLET [" + toggleKey + "]"); Canto((RectTransform)atalho.transform, new Vector2(1, 0), new Vector2(-margem, margem + 20f), tamanhoAtalho); ((RectTransform)atalho.transform).pivot = new Vector2(1, 0);
