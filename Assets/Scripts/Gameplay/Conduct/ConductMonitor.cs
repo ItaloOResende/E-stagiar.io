@@ -39,6 +39,10 @@ public class ConductMonitor : MonoBehaviour
     private class FloorState { public float since = -1f; public Infraction flagged; }
     private readonly Dictionary<PickupInteractable, FloorState> floor = new Dictionary<PickupInteractable, FloorState>();
     private readonly List<PickupInteractable> scratch = new List<PickupInteractable>();
+    // Desempenho (WebGL): a varredura roda 4x por segundo sobre todos os itens; nada de alocar a cada passada.
+    private readonly List<PickupInteractable> gone = new List<PickupInteractable>();
+    private readonly Dictionary<PickupInteractable, bool> tracked = new Dictionary<PickupInteractable, bool>();
+    private static readonly RaycastHit[] hits = new RaycastHit[16];
     private float nextScan;
 
     public float AbandonDelay { get => abandonDelay; set => abandonDelay = Mathf.Max(0f, value); }
@@ -94,21 +98,26 @@ public class ConductMonitor : MonoBehaviour
             }
         }
         // itens desativados (instalados, guardados por Stow) ou destruídos
-        var gone = new List<PickupInteractable>();
+        gone.Clear();
         foreach (var kv in floor) if (kv.Key == null || !kv.Key.isActiveAndEnabled) gone.Add(kv.Key);
         foreach (PickupInteractable p in gone)
         {
             if (floor[p].flagged != null && !floor[p].flagged.Resolved) InfractionLog.MarkMissed(floor[p].flagged);
             floor.Remove(p);
+            tracked.Remove(p);
         }
     }
 
+    // Os componentes de um item não mudam: o resultado fica guardado por item.
     private bool Tracked(PickupInteractable item)
     {
+        if (tracked.TryGetValue(item, out bool t)) return t;
         GameObject g = item.gameObject;
-        return trackParts && g.GetComponent<ComputerPartItem>() != null || trackTools && g.GetComponent<ToolItem>() != null ||
-               trackCables && g.GetComponent<CableItem>() != null || trackPendrives && g.GetComponent<PendriveItem>() != null ||
-               trackMinigameParts && (g.GetComponent<NotebookPartItem>() != null || g.GetComponent<ImpressoraPartItem>() != null);
+        t = trackParts && g.TryGetComponent(out ComputerPartItem _) || trackTools && g.TryGetComponent(out ToolItem _) ||
+            trackCables && g.TryGetComponent(out CableItem _) || trackPendrives && g.TryGetComponent(out PendriveItem _) ||
+            trackMinigameParts && (g.TryGetComponent(out NotebookPartItem _) || g.TryGetComponent(out ImpressoraPartItem _));
+        tracked[item] = t;
+        return t;
     }
 
     /// <summary>O item está largado no chão agora (parado, base baixa, sem mesa/bancada embaixo, fora da mão e de gavetas).</summary>
@@ -120,8 +129,9 @@ public class ConductMonitor : MonoBehaviour
         if (body != null && !body.isKinematic && body.linearVelocity.magnitude > restSpeed) return false;
         Bounds b = item.WorldBounds;
         if (b.min.y > floorHeight) return false;
-        foreach (RaycastHit h in Physics.RaycastAll(b.center + Vector3.up * 0.05f, Vector3.down, b.extents.y + 0.3f, ~0, QueryTriggerInteraction.Ignore))
-            if (!h.collider.transform.IsChildOf(item.transform) && h.collider.GetComponentInParent<WorkSurface>() != null) return false;
+        int n = Physics.RaycastNonAlloc(b.center + Vector3.up * 0.05f, Vector3.down, hits, b.extents.y + 0.3f, ~0, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < n; i++)
+            if (!hits[i].collider.transform.IsChildOf(item.transform) && hits[i].collider.GetComponentInParent<WorkSurface>() != null) return false;
         return true;
     }
 
