@@ -133,3 +133,8 @@ InitTestScene*.unity*
 /[Aa]ssets/Art/_Backup/
 /[Aa]ssets/Art/_Backup.meta
 __pycache__/
+
+# Configuração pessoal de editor (VS Code / Visual Studio / Rider): não vai para o repositório
+/.vscode/
+/.vs/
+/.idea/
