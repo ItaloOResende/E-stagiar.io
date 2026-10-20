@@ -282,6 +282,9 @@ public class PlayerLook : MonoBehaviour
 
     private void OnDestroy()
     {
+        // Scene being unloaded (scene change/reload): everything goes away, nothing to restore. Reparenting here
+        // would log "Cannot set the parent ... while its new parent is being destroyed".
+        if (!gameObject.scene.isLoaded) return;
         // Restore the item anchor before destroying the hand pivot.
         if (itemRootReparented && heldItemRoot != null)
         {
