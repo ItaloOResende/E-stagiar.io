@@ -60,7 +60,20 @@ public class NpcCaminhada : MonoBehaviour
         agent.updateRotation = false;   // a rotação é feita aqui, pela velocidade real
         if (visual == null)
             foreach (Transform c in transform) if (c.GetComponentInChildren<Renderer>() != null) { visual = c; break; }
-        if (visual != null) visualRepouso = visual.localPosition;
+        if (visual != null) { CentrarVisual(); visualRepouso = visual.localPosition; }
+    }
+
+    // O modelo precisa ficar SOBRE o agente: deslocado para o lado, ele orbita o agente a cada curva e entra nas mesas e
+    // divisórias (o agente segue o NavMesh, o modelo não). Corrige a sobra horizontal sem mexer na altura nem no giro.
+    private void CentrarVisual()
+    {
+        Bounds b = default; bool tem = false;
+        foreach (Renderer r in visual.GetComponentsInChildren<Renderer>()) { if (!tem) { b = r.bounds; tem = true; } else b.Encapsulate(r.bounds); }
+        if (!tem) return;
+        Vector3 desvio = transform.position - b.center; desvio.y = 0f;
+        if (desvio.sqrMagnitude < 0.15f * 0.15f) return;
+        visual.position += desvio;
+        Debug.LogWarning($"[NPC] {name}: o modelo estava {desvio.magnitude:0.00} m fora do agente; centrado. Centre o modelo sob o root na cena.", this);
     }
 
     private void Start() => NavMeshSpawn.Garantir(agent);   // nasceu fora do NavMesh: vai ao ponto válido mais próximo
