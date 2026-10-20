@@ -66,6 +66,45 @@ public class PauseMenu : MonoBehaviour
     [Header("Layout e prévia")]
     [SerializeField] private bool previaNoEditor;
     [SerializeField] private bool previaConfiguracoes;
+    [SerializeField] private bool previaControles;
+
+    [Serializable]
+    public class EntradaControle
+    {
+        public string tecla;
+        [TextArea(1, 3)] public string acao;
+        public EntradaControle(string tecla, string acao) { this.tecla = tecla; this.acao = acao; }
+    }
+    [Header("Página de controles")]
+    [SerializeField] private string textoControles = "CONTROLES";
+    [SerializeField] private string tituloControles = "CONTROLES";
+    [SerializeField] private string dicaRolagem = "Role o mouse ou arraste a lista para ver mais";
+    [SerializeField, Min(160)] private float alturaListaControles = 350;
+    [SerializeField, Min(60)] private float alturaLinhaControle = 88;
+    [SerializeField, Range(.2f, .5f)] private float proporcaoColunaTeclas = .34f;
+    [Tooltip("Guia visual; editar aqui não altera as teclas da gameplay.")]
+    [SerializeField] private EntradaControle[] listaControles =
+    {
+        new EntradaControle("W A S D", "Mover o personagem"),
+        new EntradaControle("MOUSE", "Olhar ao redor"),
+        new EntradaControle("CLIQUE ESQUERDO", "Pegar / interagir. Com um item na mão, soltar o item."),
+        new EntradaControle("CLIQUE DIREITO", "Abrir a tela do equipamento / estação, inclusive com um item na mão."),
+        new EntradaControle("T", "Abrir / fechar o tablet"),
+        new EntradaControle("ALT ESQUERDO", "Segurar para liberar o cursor no mundo 3D, com o tablet fechado."),
+        new EntradaControle("ESC", "Fechar a tela ou tablet aberto. No mundo 3D, pausar. No pause, voltar / continuar."),
+        new EntradaControle("CLICAR / ARRASTAR", "Usar botões, peças, ferramentas e fios nas telas e minigames, conforme a tarefa."),
+        new EntradaControle("SETAS ESQ. / DIR.", "Trocar a vista do computador, notebook ou impressora."),
+        new EntradaControle("0–9  /  PONTO", "Digitar o endereço de rede no painel da impressora."),
+        new EntradaControle("TAB", "Alternar entre IP e máscara no painel da impressora."),
+        new EntradaControle("BACKSPACE", "Apagar um caractere no painel da impressora."),
+        new EntradaControle("DELETE", "Limpar o campo no painel da impressora."),
+        new EntradaControle("ENTER", "Confirmar no painel da impressora.")
+    };
+    [SerializeField, HideInInspector] private RectTransform paginaControles, listaControlesUI;
+    [SerializeField, HideInInspector] private ScrollRect rolagemControles;
+    [SerializeField, HideInInspector] private TMP_Text tituloControlesUI, dicaControlesUI;
+    [SerializeField, HideInInspector] private Button controlesUI, voltarControlesUI;
+    private float alturaPaginaControles = 690;
     [SerializeField] private Vector2 tamanhoPainel = new Vector2(780, 690);
     [SerializeField, Range(.4f, 1.6f)] private float escalaMenu = 1;
     [SerializeField] private Vector2 posicaoMenu;
@@ -258,7 +297,7 @@ public class PauseMenu : MonoBehaviour
                 else AbrirPause();
             }
             else if (estado == Estado.Aberto)
-            { if (soConfiguracoes || paginaAlvo <= .5f) Continuar(); else MostrarPagina(false); }
+            { if (soConfiguracoes || Mathf.Abs(paginaAlvo) < .5f) Continuar(); else MostrarPagina(false); }
         }
         if (estado != Estado.Aberto) return;
         if (Screen.width != larguraTela || Screen.height != alturaTela) { Canvas.ForceUpdateCanvases(); AtualizarLayout(); }
@@ -267,10 +306,13 @@ public class PauseMenu : MonoBehaviour
         float u = Mathf.Clamp01((Time.unscaledTime - paginaInicio) / Mathf.Max(.05f, duracaoPagina));
         pagina = Mathf.Lerp(paginaOrigem, paginaAlvo, u * u * (3 - 2 * u)); PosicionarPaginas();
         bool transitando = u < 1;
-        paginaMenu.GetComponent<CanvasGroup>().interactable = !transitando && paginaAlvo < .5f;
-        paginaMenu.GetComponent<CanvasGroup>().blocksRaycasts = !transitando && paginaAlvo < .5f;
+        paginaMenu.GetComponent<CanvasGroup>().interactable = !transitando && Mathf.Abs(paginaAlvo) < .5f;
+        paginaMenu.GetComponent<CanvasGroup>().blocksRaycasts = !transitando && Mathf.Abs(paginaAlvo) < .5f;
         paginaConfig.GetComponent<CanvasGroup>().interactable = !transitando && paginaAlvo > .5f;
         paginaConfig.GetComponent<CanvasGroup>().blocksRaycasts = !transitando && paginaAlvo > .5f;
+        var grupoControles = paginaControles.GetComponent<CanvasGroup>();
+        grupoControles.interactable = !transitando && paginaAlvo < -.5f;
+        grupoControles.blocksRaycasts = grupoControles.interactable;
         for (int i = 0; i < entradasMenu.Length; i++)
         {
             float t = Mathf.Clamp01((Time.unscaledTime - aberturaEm - i * intervaloBotoes) / Mathf.Max(.05f, duracaoBounce));
@@ -360,6 +402,13 @@ public class PauseMenu : MonoBehaviour
         if (estado != Estado.Aberto || carregandoCena) return;
         if (soConfiguracoes) { FecharConfiguracoesAvulsas(); return; }
         StartCoroutine(FecharAnimado(false));
+    }
+    public void MostrarControles()
+    {
+        if (estado != Estado.Aberto || soConfiguracoes) return;
+        paginaOrigem = pagina; paginaAlvo = -1; paginaInicio = Time.unscaledTime;
+        rolagemControles.StopMovement(); rolagemControles.verticalNormalizedPosition = 1;
+        if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
     }
     public void MostrarConfiguracoes() { if (estado == Estado.Aberto) MostrarPagina(true); }
     public void Voltar()
@@ -586,6 +635,88 @@ public class PauseMenu : MonoBehaviour
         AtualizarLayout(); AtualizarAparencia();
         if (!Application.isPlaying) raiz.gameObject.SetActive(previaNoEditor);
     }
+    // Acrescenta a página também às interfaces que já estavam salvas na cena.
+    private void GarantirPaginaControles()
+    {
+        if (controlesUI == null)
+        {
+            var holder = Holder("Controles", paginaMenu);
+            controlesUI = Botao(holder, textoControles);
+            var entradas = new List<RectTransform>(entradasMenu);
+            entradas.Insert(Mathf.Max(0, entradas.Count - 1), holder);
+            entradasMenu = entradas.ToArray();
+        }
+        if (paginaControles != null) return;
+        paginaControles = Rect("PaginaControles", painel); Stretch(paginaControles);
+        var cg = paginaControles.gameObject.AddComponent<CanvasGroup>();
+        cg.interactable = false; cg.blocksRaycasts = false;
+        tituloControlesUI = Texto(paginaControles, "Titulo", tituloControles, tamanhoTitulo);
+        var area = Rect("Rolagem", paginaControles);
+        rolagemControles = area.gameObject.AddComponent<ScrollRect>();
+        var viewport = Imagem("Viewport", area, new Color(0, 0, 0, 0), true).rectTransform;
+        Stretch(viewport); viewport.gameObject.AddComponent<RectMask2D>();
+        listaControlesUI = Rect("Lista", viewport);
+        listaControlesUI.anchorMin = new Vector2(0, 1); listaControlesUI.anchorMax = Vector2.one;
+        listaControlesUI.pivot = new Vector2(.5f, 1);
+        rolagemControles.viewport = viewport; rolagemControles.content = listaControlesUI;
+        rolagemControles.horizontal = false; rolagemControles.vertical = true;
+        rolagemControles.movementType = ScrollRect.MovementType.Clamped;
+        rolagemControles.scrollSensitivity = 35;
+        dicaControlesUI = Texto(paginaControles, "Dica", dicaRolagem, 16);
+        voltarControlesUI = Botao(Holder("Voltar", paginaControles), textoVoltar);
+        if (mensagemUI != null) mensagemUI.transform.SetAsLastSibling();
+    }
+    private void LayoutControles(float largura, float bloco, float titulo, float espaco, Vector2 botao, float k)
+    {
+        float y = bloco * .5f;
+        Centro(tituloControlesUI.rectTransform, new Vector2(0, y - titulo * .5f), new Vector2(largura - 50, titulo));
+        y -= titulo + espaco * 1.5f;
+        float altura = Mathf.Max(160, alturaListaControles) * k;
+        float w = largura - 90;
+        Centro((RectTransform)rolagemControles.transform, new Vector2(0, y - altura * .5f), new Vector2(w, altura));
+        y -= altura;
+        Centro(dicaControlesUI.rectTransform, new Vector2(0, y - 18 * k), new Vector2(w, 36 * k));
+        y -= 36 * k + espaco;
+        Centro((RectTransform)voltarControlesUI.transform.parent, new Vector2(0, y - botao.y * .5f), botao);
+        tituloControlesUI.text = tituloControles; dicaControlesUI.text = dicaRolagem;
+        controlesUI.GetComponentInChildren<TMP_Text>().text = textoControles;
+        voltarControlesUI.GetComponentInChildren<TMP_Text>().text = textoVoltar;
+        int count = listaControles == null ? 0 : listaControles.Length;
+        while (listaControlesUI.childCount > count)
+        {
+            var extra = listaControlesUI.GetChild(listaControlesUI.childCount - 1);
+            extra.SetParent(null); extra.gameObject.SetActive(false); Destruir(extra.gameObject);
+        }
+        float h = Mathf.Max(60, alturaLinhaControle) * k, gap = 10 * k;
+        float kw = (w - 32 * k) * proporcaoColunaTeclas;
+        for (int i = 0; i < count; i++)
+        {
+            RectTransform linha;
+            if (i < listaControlesUI.childCount) linha = (RectTransform)listaControlesUI.GetChild(i);
+            else
+            {
+                linha = Imagem("Controle", listaControlesUI, Color.white, true).rectTransform;
+                var badge = Imagem("Tecla", linha, Color.white).rectTransform;
+                var label = Texto(badge, "Texto", "", tamanhoTexto); Stretch(label.rectTransform, Vector2.one * 8, -Vector2.one * 8);
+                label.enableAutoSizing = true; label.fontSizeMin = 12; label.fontSizeMax = tamanhoTexto * k;
+                var acao = Texto(linha, "Acao", "", tamanhoTexto); acao.alignment = TextAlignmentOptions.MidlineLeft;
+                acao.enableAutoSizing = true; acao.fontSizeMin = 12; acao.fontSizeMax = tamanhoTexto * k;
+            }
+            linha.anchorMin = linha.anchorMax = new Vector2(.5f, 1); linha.pivot = new Vector2(.5f, 1);
+            linha.sizeDelta = new Vector2(w - 8 * k, h); linha.anchoredPosition = new Vector2(0, -i * (h + gap));
+            var tecla = (RectTransform)linha.Find("Tecla");
+            Centro(tecla, new Vector2(-linha.sizeDelta.x * .5f + 8 * k + kw * .5f, -h * .5f), new Vector2(kw, h - 16 * k));
+            // Filhos usam âncoras centrais: a origem fica no centro da linha.
+            tecla.anchoredPosition = new Vector2(tecla.anchoredPosition.x, 0);
+            var textoAcao = linha.Find("Acao").GetComponent<TMP_Text>();
+            float aw = linha.sizeDelta.x - kw - 32 * k;
+            Centro(textoAcao.rectTransform, new Vector2(kw * .5f + 8 * k, 0), new Vector2(aw, h - 12 * k));
+            tecla.GetComponentInChildren<TMP_Text>().text = listaControles[i]?.tecla ?? "";
+            textoAcao.text = listaControles[i]?.acao ?? "";
+            tecla.GetComponentInChildren<TMP_Text>().fontSizeMax = textoAcao.fontSizeMax = tamanhoTexto * k;
+        }
+        listaControlesUI.sizeDelta = new Vector2(0, Mathf.Max(altura, count * (h + gap) - gap));
+    }
     private RectTransform Holder(string nome, Transform pai)
     { var rt = Rect(nome, pai); rt.gameObject.AddComponent<CanvasGroup>(); return rt; }
     private Button Botao(Transform pai, string label)
@@ -612,6 +743,7 @@ public class PauseMenu : MonoBehaviour
     private void VincularBotoes()
     {
         hovers.Clear();
+        Ligar(controlesUI, MostrarControles); Ligar(voltarControlesUI, Voltar);
         Ligar(continuarUI, Continuar); Ligar(configuracoesUI, MostrarConfiguracoes); Ligar(sairUI, SairParaMenu); Ligar(voltarUI, Voltar);
         volumeUI.onValueChanged.AddListener(AplicarVolume); sensUI.onValueChanged.AddListener(AplicarSensibilidade);
         entradasBase = new Vector2[entradasMenu.Length]; entradasAlpha = new CanvasGroup[entradasMenu.Length];
@@ -626,6 +758,7 @@ public class PauseMenu : MonoBehaviour
             if (!Application.isPlaying && previaNoEditor) GerarInterface();
             if (raiz == null) return;
         }
+        GarantirPaginaControles();
         larguraTela = Screen.width; alturaTela = Screen.height;
         // Cada página é uma coluna centralizada (eixo no centro do card); o card toma a altura da página aberta.
         float k = escalaElementos;
@@ -636,7 +769,9 @@ public class PauseMenu : MonoBehaviour
         float grupoSlider = rotulo + 10 * k + slider.y;
         float blocoConfig = alturaTitulo + espaco * 1.5f + grupoSlider * 2 + espaco * 2 + espaco * 2 + botao.y;
         alturaPaginaMenu = blocoMenu + margemCard * 2; alturaPaginaConfig = blocoConfig + margemCard * 2;
-        float alturaMax = Mathf.Max(alturaPaginaMenu, alturaPaginaConfig);
+        float blocoControles = alturaTitulo + espaco * 1.5f + alturaListaControles * k + 36 * k + espaco + botao.y;
+        alturaPaginaControles = blocoControles + margemCard * 2;
+        float alturaMax = Mathf.Max(alturaPaginaMenu, alturaPaginaConfig, alturaPaginaControles);
         larguraPainel = largura;
         float scale = escalaMenu;
         if (Application.isPlaying)
@@ -663,6 +798,7 @@ public class PauseMenu : MonoBehaviour
             y -= grupoSlider + espaco * 2;
         }
         Centro((RectTransform)voltarUI.transform.parent, new Vector2(0, y - botao.y * .5f), botao);
+        LayoutControles(largura, blocoControles, alturaTitulo, espaco, botao, k);
         var msg = mensagemUI.rectTransform; msg.anchorMin = msg.anchorMax = new Vector2(.5f, 0);
         msg.sizeDelta = new Vector2(largura - 50, 50); msg.anchoredPosition = new Vector2(0, margemCard * .5f);
         tituloMenuUI.text = tituloPause; tituloConfigUI.text = tituloConfiguracoes;
@@ -673,7 +809,7 @@ public class PauseMenu : MonoBehaviour
         if (!Application.isPlaying)
         {
             raiz.gameObject.SetActive(previaNoEditor); grupo.alpha = 1;
-            pagina = previaConfiguracoes ? 1 : 0;
+            pagina = previaControles ? -1 : previaConfiguracoes ? 1 : 0;
             foreach (var entrada in entradasMenu) { entrada.localScale = Vector3.one; entrada.GetComponent<CanvasGroup>().alpha = 1; }
             imagemBlur.gameObject.SetActive(false);
         }
@@ -682,9 +818,10 @@ public class PauseMenu : MonoBehaviour
     private void PosicionarPaginas()
     {
         float distancia = larguraPainel + 60;
-        painel.sizeDelta = new Vector2(larguraPainel, Mathf.Lerp(alturaPaginaMenu, alturaPaginaConfig, pagina));
+        painel.sizeDelta = new Vector2(larguraPainel, Mathf.Lerp(alturaPaginaMenu, pagina < 0 ? alturaPaginaControles : alturaPaginaConfig, Mathf.Abs(pagina)));
         paginaMenu.anchoredPosition = new Vector2(-pagina * distancia, 0);
         paginaConfig.anchoredPosition = new Vector2((1 - pagina) * distancia, 0);
+        if (paginaControles != null) paginaControles.anchoredPosition = new Vector2((-1 - pagina) * distancia, 0);
     }
     [ContextMenu("Pause/Copiar estilo do tablet")]
     public void CopiarEstiloDoTablet()
@@ -742,10 +879,22 @@ public class PauseMenu : MonoBehaviour
         {
             if (fonte != null) t.font = fonte;
             t.color = t == mensagemUI ? new Color(1, .65f, .4f) : corTexto;
-            t.fontSize = (t == tituloMenuUI || t == tituloConfigUI ? tamanhoTitulo * 1.15f : t == mensagemUI ? 18 : tamanhoTexto) * escalaElementos;
+            t.fontSize = (t == tituloMenuUI || t == tituloConfigUI || t == tituloControlesUI ? tamanhoTitulo * 1.15f : t == mensagemUI ? 18 : tamanhoTexto) * escalaElementos;
             AplicarMaterialTexto(t);
         }
-        EstilizarTitulo(tituloMenuUI); EstilizarTitulo(tituloConfigUI);
+        EstilizarTitulo(tituloMenuUI); EstilizarTitulo(tituloConfigUI); EstilizarTitulo(tituloControlesUI);
+        if (listaControlesUI != null)
+        {
+            foreach (Transform linha in listaControlesUI)
+            {
+                var fundo = linha.GetComponent<Image>(); fundo.sprite = redondo; fundo.type = Image.Type.Sliced;
+                fundo.color = new Color(gradienteBase.r, gradienteBase.g, gradienteBase.b, .6f);
+                var tecla = linha.Find("Tecla").GetComponent<Image>(); tecla.sprite = redondo; tecla.type = Image.Type.Sliced;
+                tecla.color = gradienteTopo; AplicarBordaESombra(tecla, efeitosBotoes);
+                var texto = tecla.GetComponentInChildren<TMP_Text>(); texto.color = corDestaque; texto.fontStyle = FontStyles.Bold;
+            }
+            dicaControlesUI.fontSize = tamanhoTexto * escalaElementos * .7f;
+        }
     }
     // Título em destaque com o visual dos botões: gradiente verde (gradienteTopo → gradienteBase), contorno escuro
     // (o mesmo dos botões) e brilho externo na cor do glow dos botões (underlay sem deslocamento).

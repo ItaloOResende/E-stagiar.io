@@ -6911,11 +6911,15 @@ MonoBehaviour:
   abaAtivos: {fileID: 0}
   abaHistorico: {fileID: 0}
   abaCores: {fileID: 0}
+  abaAplicativos: {fileID: 0}
   selo: {fileID: 0}
   aviso: {fileID: 0}
   proximo: {fileID: 0}
   titulo: {fileID: 0}
   modeloCard: {fileID: 0}
+  mostrarFotos: 1
+  tamanhoFoto: 72
+  corFoto: {r: 1, g: 1, b: 1, a: 1}
   fundoVisual: {fileID: 0}
 --- !u!114 &1238468671
 MonoBehaviour:
@@ -6946,6 +6950,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2501c7d8f043f024f8b269393d5f7207, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TicketManager
+  fotosSolicitantes: []
+  fotoPadrao: {fileID: 0}
   catalog:
   - {fileID: 11400000, guid: 19abb5904e561d24380036f270c934c8, type: 2}
   tutorialTicket: {fileID: 11400000, guid: c9a880b820ec9224e982a939691a8b5a, type: 2}
@@ -6991,12 +6997,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::StageTimerHUD
   stageController: {fileID: 1238468671}
   ticketManager: {fileID: 1238468672}
-  fontSize: 28
-  paddingX: 14
-  paddingY: 8
-  topMargin: 12
+  fonte: {fileID: 0}
+  rotulo: TEMPO
   rightMargin: 100
-  barHeight: 16
   warningSeconds: 60
   finalSeconds: 10
   warningVolume: 0.4
@@ -8804,6 +8807,50 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.InputActionReference
   m_Asset: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_ActionId: 9caa3d8a-6b2f-4e8e-8bad-6ede561bd9be
+--- !u!1 &1556237134
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1556237136}
+  - component: {fileID: 1556237135}
+  m_Layer: 0
+  m_Name: TutorialKnowledgeBase
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1556237135
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1556237134}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6b7e59ad8bde8fa4e8d4a008669441a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TutorialKnowledgeBase
+--- !u!4 &1556237136
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1556237134}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 176.10048, y: 20.90903, z: 216.06561}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1638108189
 GameObject:
   m_ObjectHideFlags: 0
@@ -9004,7 +9051,7 @@ MonoBehaviour:
   sensitivity: 0.1
   verticalSensitivityMultiplier: 1
   invertY: 0
-  maxLookAngle: 90
+  maxLookAngle: 89.9
   lookEnabled: 1
   requireLockedCursor: 1
   lockCursorOnStart: 1
@@ -13244,3 +13291,4 @@ SceneRoots:
   - {fileID: 826010793176915006}
   - {fileID: 457234014083383919}
   - {fileID: 232681346}
+  - {fileID: 1556237136}
