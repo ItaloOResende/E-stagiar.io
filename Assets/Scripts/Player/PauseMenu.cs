@@ -85,6 +85,11 @@ public class PauseMenu : MonoBehaviour
     [SerializeField] private string textoSensibilidade = "SENSIBILIDADE";
     [SerializeField] private float tamanhoTitulo = 48;
     [SerializeField] private float tamanhoTexto = 24;
+    [Tooltip("Multiplica botões, sliders e textos. O conteúdo de cada página fica centralizado no card, e o card " +
+             "acompanha a altura da página aberta.")]
+    [SerializeField, Range(.8f, 1.5f)] private float escalaElementos = 1.15f;
+    [Tooltip("Folga vertical (em cima e embaixo) entre o conteúdo e a borda do card.")]
+    [SerializeField, Min(20)] private float margemCard = 64;
     [SerializeField] private string tituloPause = "PAUSADO";
     [SerializeField] private string tituloConfiguracoes = "CONFIGURAÇÕES";
     [SerializeField] private string textoContinuar = "CONTINUAR";
@@ -167,6 +172,7 @@ public class PauseMenu : MonoBehaviour
     private bool audioPausadoAntes, audioUIIgnoravaPause, configuracoesProntas, avisouMixer, soConfiguracoes;
     private StageController fase;
     private float escalaTempoAnterior, aberturaEm, volumeAtual, sensAtual, pagina, paginaOrigem, paginaAlvo, paginaInicio;
+    private float alturaPaginaMenu = 690, alturaPaginaConfig = 690, larguraPainel = 780;
     private CursorLockMode cursorLockAnterior;
     private bool cursorVisivelAnterior;
     private FieldInfo campoMouse;
@@ -617,27 +623,44 @@ public class PauseMenu : MonoBehaviour
             if (raiz == null) return;
         }
         larguraTela = Screen.width; alturaTela = Screen.height;
-        painel.sizeDelta = tamanhoPainel;
+        // Cada página é uma coluna centralizada (eixo no centro do card); o card toma a altura da página aberta.
+        float k = escalaElementos;
+        Vector2 botao = tamanhoBotao * k, slider = tamanhoSlider * k;
+        float espaco = espacoBotoes * k, alturaTitulo = tamanhoTitulo * k * 1.15f * 1.5f, rotulo = 42 * k;
+        float largura = Mathf.Max(tamanhoPainel.x, botao.x + 200, slider.x + 160);
+        float blocoMenu = alturaTitulo + espaco * 1.5f + entradasMenu.Length * botao.y + (entradasMenu.Length - 1) * espaco;
+        float grupoSlider = rotulo + 10 * k + slider.y;
+        float blocoConfig = alturaTitulo + espaco * 1.5f + grupoSlider * 2 + espaco * 2 + espaco * 2 + botao.y;
+        alturaPaginaMenu = blocoMenu + margemCard * 2; alturaPaginaConfig = blocoConfig + margemCard * 2;
+        float alturaMax = Mathf.Max(alturaPaginaMenu, alturaPaginaConfig);
+        larguraPainel = largura;
         float scale = escalaMenu;
         if (Application.isPlaying)
         {
             Vector2 disponivel = raiz.rect.size - new Vector2(Mathf.Abs(posicaoMenu.x), Mathf.Abs(posicaoMenu.y)) * 2 - Vector2.one * 40;
-            if (disponivel.x > 1 && disponivel.y > 1) scale = Mathf.Max(.05f, Mathf.Min(scale, disponivel.x / tamanhoPainel.x, disponivel.y / tamanhoPainel.y));
+            if (disponivel.x > 1 && disponivel.y > 1) scale = Mathf.Max(.05f, Mathf.Min(scale, disponivel.x / largura, disponivel.y / alturaMax));
         }
         painel.localScale = Vector3.one * scale; painel.anchoredPosition = posicaoMenu;
-        Posicao(tituloMenuUI.rectTransform, posicaoTitulo, new Vector2(tamanhoPainel.x - 50, 85));
-        Posicao(tituloConfigUI.rectTransform, posicaoTitulo, new Vector2(tamanhoPainel.x - 50, 85));
+        float y = blocoMenu * .5f;
+        Centro(tituloMenuUI.rectTransform, new Vector2(0, y - alturaTitulo * .5f), new Vector2(largura - 50, alturaTitulo));
+        y -= alturaTitulo + espaco * 1.5f;
         for (int i = 0; i < entradasMenu.Length; i++)
         {
-            Posicao(entradasMenu[i], new Vector2(0, -inicioBotoes - i * (tamanhoBotao.y + espacoBotoes)), tamanhoBotao);
+            Centro(entradasMenu[i], new Vector2(0, y - botao.y * .5f - i * (botao.y + espaco)), botao);
             if (entradasBase != null && i < entradasBase.Length) entradasBase[i] = entradasMenu[i].anchoredPosition;
         }
-        Posicao(valorVolumeUI.rectTransform, posicaoVolume + Vector2.up * distanciaLabelSlider, new Vector2(tamanhoSlider.x, 42));
-        Posicao((RectTransform)volumeUI.transform, posicaoVolume, tamanhoSlider);
-        Posicao(valorSensUI.rectTransform, posicaoSensibilidade + Vector2.up * distanciaLabelSlider, new Vector2(tamanhoSlider.x, 42));
-        Posicao((RectTransform)sensUI.transform, posicaoSensibilidade, tamanhoSlider);
-        Posicao((RectTransform)voltarUI.transform.parent, posicaoVoltar, tamanhoBotao);
-        Posicao(mensagemUI.rectTransform, new Vector2(0, -tamanhoPainel.y + 45), new Vector2(tamanhoPainel.x - 50, 70));
+        y = blocoConfig * .5f;
+        Centro(tituloConfigUI.rectTransform, new Vector2(0, y - alturaTitulo * .5f), new Vector2(largura - 50, alturaTitulo));
+        y -= alturaTitulo + espaco * 1.5f;
+        foreach (var par in new[] { (valorVolumeUI, volumeUI), (valorSensUI, sensUI) })
+        {
+            Centro(par.Item1.rectTransform, new Vector2(0, y - rotulo * .5f), new Vector2(slider.x, rotulo));
+            Centro((RectTransform)par.Item2.transform, new Vector2(0, y - rotulo - 10 * k - slider.y * .5f), slider);
+            y -= grupoSlider + espaco * 2;
+        }
+        Centro((RectTransform)voltarUI.transform.parent, new Vector2(0, y - botao.y * .5f), botao);
+        var msg = mensagemUI.rectTransform; msg.anchorMin = msg.anchorMax = new Vector2(.5f, 0);
+        msg.sizeDelta = new Vector2(largura - 50, 50); msg.anchoredPosition = new Vector2(0, margemCard * .5f);
         tituloMenuUI.text = tituloPause; tituloConfigUI.text = tituloConfiguracoes;
         continuarUI.GetComponentInChildren<TMP_Text>().text = textoContinuar; configuracoesUI.GetComponentInChildren<TMP_Text>().text = textoConfiguracoes;
         sairUI.GetComponentInChildren<TMP_Text>().text = textoSair; voltarUI.GetComponentInChildren<TMP_Text>().text = textoVoltar;
@@ -654,7 +677,8 @@ public class PauseMenu : MonoBehaviour
     }
     private void PosicionarPaginas()
     {
-        float distancia = tamanhoPainel.x + 60;
+        float distancia = larguraPainel + 60;
+        painel.sizeDelta = new Vector2(larguraPainel, Mathf.Lerp(alturaPaginaMenu, alturaPaginaConfig, pagina));
         paginaMenu.anchoredPosition = new Vector2(-pagina * distancia, 0);
         paginaConfig.anchoredPosition = new Vector2((1 - pagina) * distancia, 0);
     }
@@ -708,16 +732,43 @@ public class PauseMenu : MonoBehaviour
             slider.fillRect.GetComponent<Image>().color = corDestaque;
             slider.transform.Find("Trilho").GetComponent<Image>().color = corTrilhoSlider;
             slider.handleRect.GetComponent<Image>().color = corAlcaSlider;
-            slider.handleRect.sizeDelta = tamanhoAlcaSlider;
+            slider.handleRect.sizeDelta = tamanhoAlcaSlider * escalaElementos;
         }
         foreach (var t in raiz.GetComponentsInChildren<TMP_Text>(true))
         {
             if (fonte != null) t.font = fonte;
             t.color = t == mensagemUI ? new Color(1, .65f, .4f) : corTexto;
-            t.fontSize = t == tituloMenuUI || t == tituloConfigUI ? tamanhoTitulo : t == mensagemUI ? 18 : tamanhoTexto;
+            t.fontSize = (t == tituloMenuUI || t == tituloConfigUI ? tamanhoTitulo * 1.15f : t == mensagemUI ? 18 : tamanhoTexto) * escalaElementos;
             AplicarMaterialTexto(t);
         }
+        EstilizarTitulo(tituloMenuUI); EstilizarTitulo(tituloConfigUI);
     }
+    // Título em destaque com o visual dos botões: gradiente verde (gradienteTopo → gradienteBase), contorno escuro
+    // (o mesmo dos botões) e brilho externo na cor do glow dos botões (underlay sem deslocamento).
+    private void EstilizarTitulo(TMP_Text t)
+    {
+        if (t == null) return;
+        t.color = Color.white; t.fontStyle = FontStyles.Bold;
+        t.enableVertexGradient = true; t.colorGradient = new VertexGradient(gradienteTopo, gradienteTopo, gradienteBase, gradienteBase);
+        Material origem = t.font != null ? t.font.material : t.fontSharedMaterial;
+        if (origem == null) return;
+        var material = new Material(origem) { name = "Pause_Titulo", hideFlags = HideFlags.HideAndDontSave };
+        recursosVisuais.Add(material);
+        if (material.HasProperty("_OutlineWidth"))
+        {
+            Color contorno = efeitosBotoes != null && efeitosBotoes.outlineAtivo ? efeitosBotoes.corOutline : corOutlineTexto;
+            material.SetFloat("_OutlineWidth", Mathf.Max(.2f, larguraOutlineTexto)); material.SetColor("_OutlineColor", contorno); material.EnableKeyword("OUTLINE_ON");
+        }
+        if (material.HasProperty("_UnderlayColor"))
+        {
+            Color glow = corOuterGlow; glow.a = Mathf.Clamp01(glow.a * 1.3f);
+            material.DisableKeyword("UNDERLAY_INNER"); material.EnableKeyword("UNDERLAY_ON"); material.SetColor("_UnderlayColor", glow);
+            material.SetFloat("_UnderlayOffsetX", 0); material.SetFloat("_UnderlayOffsetY", 0);
+            material.SetFloat("_UnderlaySoftness", .35f); material.SetFloat("_UnderlayDilate", .2f);
+        }
+        t.fontSharedMaterial = material; t.extraPadding = true; t.UpdateMeshPadding();
+    }
+    private static void Centro(RectTransform r, Vector2 pos, Vector2 size) { r.anchorMin = r.anchorMax = r.pivot = Vector2.one * .5f; r.sizeDelta = size; r.anchoredPosition = pos; }
     // Contorno e sombra do texto (cópia local do material da fonte; o asset da fonte nunca muda).
     private void AplicarMaterialTexto(TMP_Text t)
     {
@@ -783,7 +834,10 @@ public class PauseMenu : MonoBehaviour
     private void LimparEstilos()
     {
         if (raiz != null) foreach (var t in raiz.GetComponentsInChildren<TMP_Text>(true))
+        {
             foreach (var par in materiais) if (t.fontSharedMaterial == par.Value) { t.fontSharedMaterial = par.Key; break; }
+            if (t.fontSharedMaterial != null && recursosVisuais.Contains(t.fontSharedMaterial) && t.font != null) t.fontSharedMaterial = t.font.material;
+        }
         foreach (var par in materiais) Destruir(par.Value); materiais.Clear();
         foreach (var recurso in recursosVisuais) Destruir(recurso); recursosVisuais.Clear();
     }

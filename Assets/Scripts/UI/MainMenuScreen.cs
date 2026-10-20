@@ -83,7 +83,15 @@ public class MainMenuScreen : MonoBehaviour
     [SerializeField] private string textoSensibilidade = "SENSIBILIDADE";
     [SerializeField] private float tamanhoTitulo = 48;
     [SerializeField] private float tamanhoTexto = 24;
-    [SerializeField] private string tituloMenu = "E-STAGIÁRIO";
+    [Tooltip("Multiplica botões, sliders e textos. O conteúdo de cada página fica centralizado no card, e o card " +
+             "acompanha a altura da página aberta.")]
+    [SerializeField, Range(.8f, 1.5f)] private float escalaElementos = 1.15f;
+    [Tooltip("Folga vertical (em cima e embaixo) entre o conteúdo e a borda do card.")]
+    [SerializeField, Min(20)] private float margemCard = 64;
+    [Tooltip("Tamanho do nome do jogo, que fica ACIMA do card (fora dele).")]
+    [SerializeField] private float tamanhoTituloJogo = 96;
+    [SerializeField, Min(0)] private float espacoTituloCard = 28;
+    [SerializeField] private string tituloMenu = "E-stagiar.io";
     [SerializeField] private string tituloConfiguracoes = "CONFIGURAÇÕES";
     [SerializeField] private string textoIniciar = "INICIAR JOGO";
     [SerializeField] private string textoConfiguracoes = "CONFIGURAÇÕES";
@@ -157,6 +165,7 @@ public class MainMenuScreen : MonoBehaviour
     private bool iniciou, carregandoCena, preferenciasSujas;
     private bool configuracoesProntas, avisouMixer;
     private float escalaTempoAnterior, aberturaEm, volumeAtual, sensAtual, pagina, paginaOrigem, paginaAlvo, paginaInicio;
+    private float alturaPaginaMenu = 740, alturaPaginaConfig = 740, larguraPainel = 780, escalaAtual = 1, alturaTituloJogo = 120;
     private CursorLockMode cursorLockAnterior;
     private bool cursorVisivelAnterior;
     private FieldInfo campoMouse;
@@ -428,7 +437,7 @@ public class MainMenuScreen : MonoBehaviour
         painel.gameObject.AddComponent<RectMask2D>();
         paginaMenu = Rect("PaginaPrincipal", painel); Stretch(paginaMenu); paginaMenu.gameObject.AddComponent<CanvasGroup>();
         paginaConfig = Rect("PaginaConfiguracoes", painel); Stretch(paginaConfig); paginaConfig.gameObject.AddComponent<CanvasGroup>();
-        tituloMenuUI = Texto(paginaMenu, "Titulo", tituloMenu, tamanhoTitulo);
+        tituloMenuUI = Texto(raiz, "TituloJogo", tituloMenu, tamanhoTituloJogo); // acima do card, fora da máscara
         tituloConfigUI = Texto(paginaConfig, "Titulo", tituloConfiguracoes, tamanhoTitulo);
         entradasMenu = new RectTransform[4];
         entradasMenu[0] = Holder("Iniciar", paginaMenu); iniciarUI = Botao(entradasMenu[0], textoIniciar);
@@ -488,30 +497,54 @@ public class MainMenuScreen : MonoBehaviour
             if (raiz == null) return;
         }
         larguraTela = Screen.width; alturaTela = Screen.height;
-        painel.sizeDelta = tamanhoPainel;
+        // O nome do jogo fica fora do card, acima dele (mesmo quando a interface veio de uma versão antiga).
+        if (tituloMenuUI.transform.parent != raiz) { tituloMenuUI.transform.SetParent(raiz, false); tituloMenuUI.name = "TituloJogo"; }
+        tituloMenuUI.transform.SetSiblingIndex(painel.GetSiblingIndex() + 1);
+        // o Speed Run (entrada 1) fica escondido e não ocupa lugar na coluna de botões
+        if (entradasMenu.Length > 1 && entradasMenu[1] != null) entradasMenu[1].gameObject.SetActive(false);
+        int visiveis = 0;
+        foreach (var e in entradasMenu) if (e != null && e.gameObject.activeSelf) visiveis++;
+        // Cada página é uma coluna centralizada (eixo no centro do card); o card toma a altura da página aberta.
+        float k = escalaElementos;
+        Vector2 botao = tamanhoBotao * k, slider = tamanhoSlider * k;
+        float espaco = espacoBotoes * k, alturaTitulo = tamanhoTitulo * k * 1.15f * 1.5f, rotulo = 42 * k;
+        alturaTituloJogo = tamanhoTituloJogo * k * 1.3f;
+        larguraPainel = Mathf.Max(tamanhoPainel.x * .85f, botao.x + 200, slider.x + 160);
+        float blocoMenu = visiveis * botao.y + Mathf.Max(0, visiveis - 1) * espaco;
+        float grupoSlider = rotulo + 10 * k + slider.y;
+        float blocoConfig = alturaTitulo + espaco * 1.5f + grupoSlider * 2 + espaco * 2 + espaco * 2 + botao.y;
+        alturaPaginaMenu = blocoMenu + margemCard * 2; alturaPaginaConfig = blocoConfig + margemCard * 2;
+        float alturaConjunto = Mathf.Max(alturaPaginaMenu + espacoTituloCard + alturaTituloJogo, alturaPaginaConfig);
+        float largura = Mathf.Max(larguraPainel, tamanhoTituloJogo * k * 6);
         float scale = escalaMenu;
         if (Application.isPlaying)
         {
             Vector2 disponivel = raiz.rect.size - new Vector2(Mathf.Abs(posicaoMenu.x), Mathf.Abs(posicaoMenu.y)) * 2 - Vector2.one * 40;
-            if (disponivel.x > 1 && disponivel.y > 1) scale = Mathf.Max(.05f, Mathf.Min(scale, disponivel.x / tamanhoPainel.x, disponivel.y / tamanhoPainel.y));
+            if (disponivel.x > 1 && disponivel.y > 1) scale = Mathf.Max(.05f, Mathf.Min(scale, disponivel.x / largura, disponivel.y / alturaConjunto));
         }
-        painel.localScale = Vector3.one * scale; painel.anchoredPosition = posicaoMenu;
-        Posicao(tituloMenuUI.rectTransform, posicaoTitulo, new Vector2(tamanhoPainel.x - 50, 85));
-        Posicao(tituloConfigUI.rectTransform, posicaoTitulo, new Vector2(tamanhoPainel.x - 50, 85));
-        // o Speed Run (entrada 1) fica escondido e não ocupa lugar na coluna de botões
-        if (entradasMenu.Length > 1 && entradasMenu[1] != null) entradasMenu[1].gameObject.SetActive(false);
-        for (int i = 0, linha = 0; i < entradasMenu.Length; i++)
+        escalaAtual = scale;
+        painel.localScale = Vector3.one * scale;
+        tituloMenuUI.rectTransform.localScale = Vector3.one * scale;
+        Centro(tituloMenuUI.rectTransform, Vector2.zero, new Vector2(largura, alturaTituloJogo));
+        float y = blocoMenu * .5f;
+        for (int i = 0; i < entradasMenu.Length; i++)
         {
             if (entradasMenu[i] == null || !entradasMenu[i].gameObject.activeSelf) continue;
-            Posicao(entradasMenu[i], new Vector2(0, -inicioBotoes - linha++ * (tamanhoBotao.y + espacoBotoes)), tamanhoBotao);
+            Centro(entradasMenu[i], new Vector2(0, y - botao.y * .5f), botao); y -= botao.y + espaco;
             if (entradasBase != null && i < entradasBase.Length) entradasBase[i] = entradasMenu[i].anchoredPosition;
         }
-        Posicao(valorVolumeUI.rectTransform, posicaoVolume + Vector2.up * distanciaLabelSlider, new Vector2(tamanhoSlider.x, 42));
-        Posicao((RectTransform)volumeUI.transform, posicaoVolume, tamanhoSlider);
-        Posicao(valorSensUI.rectTransform, posicaoSensibilidade + Vector2.up * distanciaLabelSlider, new Vector2(tamanhoSlider.x, 42));
-        Posicao((RectTransform)sensUI.transform, posicaoSensibilidade, tamanhoSlider);
-        Posicao((RectTransform)voltarUI.transform.parent, posicaoVoltar, tamanhoBotao);
-        Posicao(mensagemUI.rectTransform, new Vector2(0, -tamanhoPainel.y + 45), new Vector2(tamanhoPainel.x - 50, 70));
+        y = blocoConfig * .5f;
+        Centro(tituloConfigUI.rectTransform, new Vector2(0, y - alturaTitulo * .5f), new Vector2(larguraPainel - 50, alturaTitulo));
+        y -= alturaTitulo + espaco * 1.5f;
+        foreach (var par in new[] { (valorVolumeUI, volumeUI), (valorSensUI, sensUI) })
+        {
+            Centro(par.Item1.rectTransform, new Vector2(0, y - rotulo * .5f), new Vector2(slider.x, rotulo));
+            Centro((RectTransform)par.Item2.transform, new Vector2(0, y - rotulo - 10 * k - slider.y * .5f), slider);
+            y -= grupoSlider + espaco * 2;
+        }
+        Centro((RectTransform)voltarUI.transform.parent, new Vector2(0, y - botao.y * .5f), botao);
+        var msg = mensagemUI.rectTransform; msg.anchorMin = msg.anchorMax = new Vector2(.5f, 0);
+        msg.sizeDelta = new Vector2(larguraPainel - 50, 50); msg.anchoredPosition = new Vector2(0, margemCard * .5f);
         tituloMenuUI.text = tituloMenu; tituloConfigUI.text = tituloConfiguracoes;
         iniciarUI.GetComponentInChildren<TMP_Text>().text = textoIniciar; configuracoesUI.GetComponentInChildren<TMP_Text>().text = textoConfiguracoes;
         sairUI.GetComponentInChildren<TMP_Text>().text = textoSair; voltarUI.GetComponentInChildren<TMP_Text>().text = textoVoltar;
@@ -522,6 +555,7 @@ public class MainMenuScreen : MonoBehaviour
         if (fundoUI != null) { fundoUI.sprite = spriteFundo; fundoUI.color = corFundo; fundoUI.gameObject.SetActive(spriteFundo != null); }
         if (logoUI != null) { logoUI.sprite = logo; logoUI.gameObject.SetActive(logo != null); Posicao(logoUI.rectTransform, posicaoLogo, tamanhoLogo); }
         tituloMenuUI.gameObject.SetActive(logo == null);
+        if (logoUI != null && logo != null) { logoUI.transform.SetParent(raiz, false); Centro(logoUI.rectTransform, Vector2.zero, tamanhoLogo); }
         speedrunUI.GetComponentInChildren<TMP_Text>().text = textoSpeedrun;
         if (!Application.isPlaying)
         {
@@ -534,7 +568,15 @@ public class MainMenuScreen : MonoBehaviour
     }
     private void PosicionarPaginas()
     {
-        float distancia = tamanhoPainel.x + 60;
+        float distancia = larguraPainel + 60;
+        painel.sizeDelta = new Vector2(larguraPainel, Mathf.Lerp(alturaPaginaMenu, alturaPaginaConfig, pagina));
+        // Título + card centralizados juntos na tela; nas configurações (o card tem título próprio) o nome do jogo some.
+        float deslocamento = (alturaTituloJogo + espacoTituloCard) * .5f * escalaAtual;
+        painel.anchoredPosition = posicaoMenu + Vector2.down * deslocamento * (1 - pagina);
+        var topo = posicaoMenu + Vector2.up * ((alturaPaginaMenu * .5f + espacoTituloCard + alturaTituloJogo * .5f) * escalaAtual - deslocamento);
+        tituloMenuUI.rectTransform.anchoredPosition = topo;
+        if (logoUI != null) logoUI.rectTransform.anchoredPosition = topo;
+        tituloMenuUI.alpha = 1 - pagina; if (logoUI != null) { var c = logoUI.color; c.a = 1 - pagina; logoUI.color = c; }
         paginaMenu.anchoredPosition = new Vector2(-pagina * distancia, 0);
         paginaConfig.anchoredPosition = new Vector2((1 - pagina) * distancia, 0);
     }
@@ -603,13 +645,13 @@ public class MainMenuScreen : MonoBehaviour
             slider.fillRect.GetComponent<Image>().color = corDestaque;
             slider.transform.Find("Trilho").GetComponent<Image>().color = corTrilhoSlider;
             slider.handleRect.GetComponent<Image>().color = corAlcaSlider;
-            slider.handleRect.sizeDelta = tamanhoAlcaSlider;
+            slider.handleRect.sizeDelta = tamanhoAlcaSlider * escalaElementos;
         }
         foreach (var t in raiz.GetComponentsInChildren<TMP_Text>(true))
         {
             if (fonte != null) t.font = fonte;
             t.color = t == mensagemUI ? new Color(1, .65f, .4f) : corTexto;
-            t.fontSize = t == tituloMenuUI || t == tituloConfigUI ? tamanhoTitulo : t == mensagemUI ? 18 : tamanhoTexto;
+            t.fontSize = (t == tituloMenuUI ? tamanhoTituloJogo : t == tituloConfigUI ? tamanhoTitulo * 1.15f : t == mensagemUI ? 18 : tamanhoTexto) * escalaElementos;
             Material origem = t.fontSharedMaterial;
             if (origem == null) continue;
             if (!materiais.TryGetValue(origem, out Material material))
@@ -626,6 +668,32 @@ public class MainMenuScreen : MonoBehaviour
             }
             t.fontSharedMaterial = material; t.extraPadding = true; t.UpdateMeshPadding();
         }
+        EstilizarTitulo(tituloMenuUI, .55f); EstilizarTitulo(tituloConfigUI, .35f);
+    }
+    // Título em destaque com o visual dos botões: gradiente verde (gradienteTopo → gradienteBase), contorno escuro
+    // (o mesmo dos botões) e brilho externo na cor do glow dos botões (underlay sem deslocamento).
+    private void EstilizarTitulo(TMP_Text t, float brilho)
+    {
+        if (t == null) return;
+        t.color = Color.white; t.fontStyle = FontStyles.Bold;
+        t.enableVertexGradient = true; t.colorGradient = new VertexGradient(gradienteTopo, gradienteTopo, gradienteBase, gradienteBase);
+        Material origem = t.font != null ? t.font.material : t.fontSharedMaterial;
+        if (origem == null) return;
+        var material = new Material(origem) { name = "Menu_Titulo", hideFlags = HideFlags.HideAndDontSave };
+        recursosVisuais.Add(material);
+        if (material.HasProperty("_OutlineWidth"))
+        {
+            Color contorno = efeitosBotoes != null && efeitosBotoes.outlineAtivo ? efeitosBotoes.corOutline : corOutlineTexto;
+            material.SetFloat("_OutlineWidth", Mathf.Max(.2f, larguraOutlineTexto)); material.SetColor("_OutlineColor", contorno); material.EnableKeyword("OUTLINE_ON");
+        }
+        if (material.HasProperty("_UnderlayColor"))
+        {
+            Color glow = corOuterGlow; glow.a = Mathf.Clamp01(glow.a * 1.3f);
+            material.DisableKeyword("UNDERLAY_INNER"); material.EnableKeyword("UNDERLAY_ON"); material.SetColor("_UnderlayColor", glow);
+            material.SetFloat("_UnderlayOffsetX", 0); material.SetFloat("_UnderlayOffsetY", 0);
+            material.SetFloat("_UnderlaySoftness", brilho); material.SetFloat("_UnderlayDilate", brilho * .5f);
+        }
+        t.fontSharedMaterial = material; t.extraPadding = true; t.UpdateMeshPadding();
     }
     private Sprite CriarArredondado(int raio)
     {
@@ -640,7 +708,10 @@ public class MainMenuScreen : MonoBehaviour
     private void LimparEstilos()
     {
         if (raiz != null) foreach (var t in raiz.GetComponentsInChildren<TMP_Text>(true))
+        {
             foreach (var par in materiais) if (t.fontSharedMaterial == par.Value) { t.fontSharedMaterial = par.Key; break; }
+            if (t.fontSharedMaterial != null && recursosVisuais.Contains(t.fontSharedMaterial) && t.font != null) t.fontSharedMaterial = t.font.material;
+        }
         foreach (var par in materiais) Destruir(par.Value); materiais.Clear();
         foreach (var recurso in recursosVisuais) Destruir(recurso); recursosVisuais.Clear();
     }
@@ -660,6 +731,7 @@ public class MainMenuScreen : MonoBehaviour
     }
     private static void Stretch(RectTransform r) { Stretch(r, Vector2.zero, Vector2.zero); }
     private static void Stretch(RectTransform r, Vector2 min, Vector2 max) { r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one; r.offsetMin = min; r.offsetMax = max; }
+    private static void Centro(RectTransform r, Vector2 pos, Vector2 size) { r.anchorMin = r.anchorMax = r.pivot = Vector2.one * .5f; r.sizeDelta = size; r.anchoredPosition = pos; }
     private static void Posicao(RectTransform r, Vector2 pos, Vector2 size) { r.anchorMin = r.anchorMax = new Vector2(.5f, 1); r.sizeDelta = size; r.anchoredPosition = pos; }
 
     private Sprite[] CriarEstiloBotao(int largura, int altura)
