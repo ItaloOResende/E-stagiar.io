@@ -29,6 +29,14 @@ public static class FeedbackManutencao
         Aviso(tela).Mostrar(mensagem, Icone(tipo), Cor(tipo));
     }
 
+    /// <summary>Esconde o cartão do rodapé (quando a ação deu certo e não há recado nenhum a mostrar).</summary>
+    public static void Limpar(Component tela)
+    {
+        if (tela == null) return;
+        AvisoRodape aviso = tela.GetComponent<AvisoRodape>();
+        if (aviso != null) aviso.Esconder();
+    }
+
     /// <summary>
     /// Falta de ferramenta (ex.: clicar no parafuso com a mão vazia): o MESMO recado da caixa de cabo de rede —
     /// "Falta ferramenta" com o desenho da ferramenta que falta à esquerda. Sem desenho, cai no ícone de alerta.
@@ -37,6 +45,27 @@ public static class FeedbackManutencao
     {
         if (tela == null) return;
         Aviso(tela).Mostrar("Falta ferramenta", desenhoDaFerramenta != null ? desenhoDaFerramenta : Icone(TipoFeedback.Alerta));
+    }
+
+    /// <summary>
+    /// Mão ocupada: o encaixe/porta/gaveta só aceita com a mão livre. MESMO recado e som de erro em TODOS os
+    /// minigames (PC, notebook, impressora, crimpagem, rack, testador): som de erro + "Mão ocupada".
+    /// </summary>
+    public static void MaoOcupada(Component tela)
+    {
+        InteractionSounds.Raise(InteractionSound.Error);
+        Mostrar(tela, "Mão ocupada", TipoFeedback.Alerta);
+    }
+
+    /// <summary>Peça/item retirado com sucesso: "Removido: &lt;item&gt;." no cartão (verde), como no PC.</summary>
+    public static void Removido(Component tela, string nomeDoItem) =>
+        Mostrar(tela, "Removido: " + nomeDoItem + ".", TipoFeedback.Sucesso);
+
+    /// <summary>Item que não encaixa onde foi clicado. MESMO recado e som de erro em TODOS os minigames.</summary>
+    public static void Incompativel(Component tela)
+    {
+        InteractionSounds.Raise(InteractionSound.Error);
+        Mostrar(tela, "Item não compatível", TipoFeedback.Erro);
     }
 
     private static AvisoRodape Aviso(Component tela)

@@ -137,6 +137,7 @@ public class TestadorCaboScreen : MonoBehaviour
         botaoTestar = Alvo(palco, "Botao_Testar", Testar);
         botaoDescartar = RedeUi.Botao(painel, "BotaoDescartar", "DESCARTAR CABO", VermelhoBotao, Descartar, 26);
         RedeUi.Ancorar(botaoDescartar, new Vector2(0.5f, 0.07f), new Vector2(320f, 84f), new Vector2(0.5f, 0.5f));
+        botaoDescartar.gameObject.SetActive(false);   // removido a pedido
     }
 
     // Área clicável sobre uma entrada: invisível, com anel amarelo ao passar o mouse (como os encaixes do gabinete).
@@ -161,7 +162,8 @@ public class TestadorCaboScreen : MonoBehaviour
         b.colors = c;
         img.canvasRenderer.SetColor(c.normalColor);
         b.onClick.AddListener(acao);
-        string legenda = nome.EndsWith("Principal") ? "PRINCIPAL" : nome.EndsWith("Remota") ? "REMOTA" : "TESTAR";
+        // Sem as palavras "principal"/"remota" nas legendas: só o rótulo do botão de teste permanece.
+        string legenda = nome.EndsWith("Testar") ? "TESTAR" : "";
         Text rotulo = RedeUi.Texto(rt, "Rotulo", legenda, 20, TextAnchor.MiddleCenter, TextoFraco);
         rotulo.raycastTarget = false;
         rotulo.fontStyle = FontStyle.Bold;
@@ -321,8 +323,10 @@ public class TestadorCaboScreen : MonoBehaviour
         bool ligada = principal ? pontaA : pontaB;
         if (!ligada && CaboNaMao == null)
         {
-            Status("Segure um cabo de rede para testar.", LedAmbar);
-            InteractionSounds.Raise(InteractionSound.PickupBlocked);
+            // Mão ocupada com outra coisa (ou vazia): mesmo recado/som dos outros minigames.
+            if (Mao != null && Mao.Current != null) FeedbackManutencao.Incompativel(this);
+            else { InteractionSounds.Raise(InteractionSound.Error); FeedbackManutencao.Mostrar(this, "Segure um cabo de rede para testar.", TipoFeedback.Alerta); }
+            Status("", LedAmbar);
             return;
         }
         if (principal) pontaA = !pontaA; else pontaB = !pontaB;
@@ -359,8 +363,16 @@ public class TestadorCaboScreen : MonoBehaviour
         }
 
         bool aprovado = falhas.Count == 0;
-        if (aprovado) MostrarResultado("APROVADO  ·  8 de 8 pinos com continuidade", new Color(0.16f, 0.5f, 0.26f, 0.95f));
-        else MostrarResultado("FALHA  ·  pino(s) " + string.Join(", ", falhas) + " sem continuidade", new Color(0.62f, 0.18f, 0.16f, 0.95f));
+        if (aprovado)
+        {
+            MostrarResultado(null, Color.clear);
+            Status("", TextoClaro);
+        }
+        else
+        {
+            MostrarResultado(null, Color.clear);
+            Status("", TextoClaro);
+        }
         Status("", TextoClaro);
         InteractionSounds.Raise(aprovado ? InteractionSound.CablePlugged : InteractionSound.PickupBlocked);
         TestadorCabo.RegistrarTeste(alvo, aprovado);
@@ -395,7 +407,7 @@ public class TestadorCaboScreen : MonoBehaviour
         pontaA = pontaB = false;
         Apagar();
         MostrarResultado(null, Color.clear);
-        Status("Cabo descartado.", TextoFraco);
+        Status("", TextoFraco);
         Atualizar();
     }
 
@@ -407,10 +419,10 @@ public class TestadorCaboScreen : MonoBehaviour
         bool testando = teste != null;
         bool pronto = pontaA && pontaB && temCabo && !testando;
         botaoTestar.gameObject.SetActive(pronto);   // o botão do testador só responde com as duas pontas encaixadas
-        botaoDescartar.gameObject.SetActive(aprovado == false && temCabo);
+        if (botaoDescartar != null) botaoDescartar.gameObject.SetActive(false);   // botão descartar removido
         if (testando || faixaResultado.gameObject.activeSelf) return;
-        if (!temCabo && !pontaA && !pontaB) Status("Segure um cabo de rede e encaixe as pontas nas entradas.", TextoFraco);
-        else if (!pontaA || !pontaB) Status("Encaixe " + (pontaA || pontaB ? "a outra ponta" : "as duas pontas") + " do cabo nas entradas.", TextoClaro);
+        if (!temCabo && !pontaA && !pontaB) Status("", TextoFraco);
+        else if (!pontaA || !pontaB) Status("", TextoClaro);   // sem mensagens de instrução
         else Status("", TextoClaro);   // pontas encaixadas: o anel TESTAR pulsando no botão do testador já orienta
     }
 
@@ -423,17 +435,13 @@ public class TestadorCaboScreen : MonoBehaviour
 
     private void Status(string texto, Color cor)
     {
-        status.text = texto;
+        status.text = "";
         status.color = cor;
     }
 
     private void MostrarResultado(string texto, Color fundo)
     {
-        bool tem = !string.IsNullOrEmpty(texto);
-        faixaResultado.gameObject.SetActive(tem);
-        status.gameObject.SetActive(!tem);
-        if (!tem) return;
-        resultado.text = texto;
-        faixaFundo.color = fundo;
+        faixaResultado.gameObject.SetActive(false);
+        if (status != null) status.gameObject.SetActive(true);
     }
 }

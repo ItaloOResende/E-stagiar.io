@@ -333,7 +333,7 @@ public class RedeRackScreen : MonoBehaviour
         if (ponta == null)
         {
             if (ligacao != null) { PuxarPonta(p, ligacao); return; }
-            if (!temCabo) { Erro(p); return; }   // sem cabo na mão não dá pra encaixar em nada
+            if (!temCabo) { Erro(p, "Segure um cabo de rede para ligar nesta porta."); return; }   // sem cabo na mão
             ItemHolder mao = Mao();
             pontaItem = mao != null ? mao.Stow(transform.position) : null;
             ponta = p;
@@ -343,10 +343,10 @@ public class RedeRackScreen : MonoBehaviour
         }
 
         if (p.Equals(ponta.Value)) { SoltarPonta(); return; }
-        if (ligacao != null) { Erro(p); return; }   // porta ocupada: uma porta, um cabo
+        if (ligacao != null) { Erro(p, "Esta porta já está ocupada por outro cabo."); return; }   // uma porta, um cabo
 
         LigacaoRack nova = jogo.Ligar(ponta.Value, p, pontaItem);
-        if (nova == null) { Erro(p); return; }
+        if (nova == null) { Erro(p, "Este cabo não é compatível com esta porta."); return; }
         InteractionSounds.Raise(InteractionSound.CablePlugged);   // a outra ponta encaixou
         pontaItem = null;
         ponta = null;
@@ -388,7 +388,7 @@ public class RedeRackScreen : MonoBehaviour
         if (pontaItem != null)
         {
             ItemHolder mao = Mao();
-            if (mao == null || !mao.Retrieve(pontaItem.gameObject)) { Erro(ponta.Value); return; }
+            if (mao == null || !mao.Retrieve(pontaItem.gameObject)) { FeedbackManutencao.MaoOcupada(this); if (ponta != null) Erro(ponta.Value); return; }
             pontaItem = null;
         }
         ponta = null;
@@ -426,11 +426,13 @@ public class RedeRackScreen : MonoBehaviour
         if (atualizar) Atualizar();
     }
 
-    /// <summary>Aviso SEM texto: a porta clicada pisca vermelha quando o clique não vale.</summary>
-    private void Erro(PortaRack p)
+    /// <summary>Aviso: a porta clicada pisca vermelha quando o clique não vale. Com <paramref name="motivo"/> também
+    /// mostra o cartão do padrão dos minigames (mesma linguagem do PC/notebook/impressora).</summary>
+    private void Erro(PortaRack p, string motivo = null)
     {
         InteractionSounds.Raise(InteractionSound.Error);
         if (portas.TryGetValue(p, out PortaUi ui)) ui.Flash = 0.5f;
+        if (!string.IsNullOrEmpty(motivo)) FeedbackManutencao.Mostrar(this, motivo, TipoFeedback.Erro);
     }
 
     private ItemHolder Mao()

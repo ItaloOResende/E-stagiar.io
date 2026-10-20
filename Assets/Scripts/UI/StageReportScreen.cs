@@ -241,7 +241,8 @@ public class StageReportScreen : MonoBehaviour
         Label(Area(card.rectTransform, new Vector2(0.5f, 1f), new Vector2(1240f, 50f), new Vector2(0f, -46f)),
             estrelas ? $"POR QUE {d.stars} ESTRELA{(d.stars == 1 ? "" : "S")}?" : $"EXTRATO COMPLETO \u2022 {d.entries.Count} LANÇAMENTOS",
             32, FontStyle.Bold, Ink, TextAnchor.MiddleLeft);
-        Button(card.rectTransform, "Recolher \u25B4", new Vector2(0f, 46f), Muted, CloseDetail);
+        Image recolher = Button(card.rectTransform, "Recolher", new Vector2(0f, 46f), Muted, CloseDetail);
+        SetaParaCima(recolher != null ? recolher.rectTransform : card.rectTransform);
         if (estrelas) BuildStarsDetail(card.rectTransform, d); else BuildFullLedger(card.rectTransform, d);
         detailAt = Time.unscaledTime;
         detailClosing = false;
@@ -818,7 +819,7 @@ public class StageReportScreen : MonoBehaviour
     private PauseMenu pausaDosBotoes;
     private readonly List<(UnityEngine.UI.Button botao, float escala, bool sobre)> botoesPausa = new List<(UnityEngine.UI.Button, float, bool)>();
 
-    private void Button(RectTransform parent, string text, Vector2 pos, Color color, UnityEngine.Events.UnityAction action)
+    private Image Button(RectTransform parent, string text, Vector2 pos, Color color, UnityEngine.Events.UnityAction action)
     {
         // Tablet: o MESMO botão da pausa e do menu (gradiente, brilhos, fonte TMP, contorno), gerado pelo PauseMenu
         PauseMenu pausa = estilo == EstiloRelatorio.Tablet ? FindAnyObjectByType<PauseMenu>(FindObjectsInactive.Include) : null;
@@ -834,7 +835,7 @@ public class StageReportScreen : MonoBehaviour
             bp.onClick.AddListener(() => { pausa.TocarCliqueBotao(); action(); });
             pausa.EstilizarBotaoExterno(bp, text, 26f);
             botoesPausa.Add((bp, 1f, false));
-            return;
+            return fundo;
         }
         Image bg = Box(parent, "Botao_" + text, color, rounded);
         Place(bg.rectTransform, new Vector2(0.5f, 0f), new Vector2(300f, 72f), pos);
@@ -847,6 +848,46 @@ public class StageReportScreen : MonoBehaviour
         b.onClick.AddListener(action);
         Text t = Label(bg.rectTransform, text, 28, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
         Outline(t, Contorno, 2f);
+        return bg;
+    }
+
+    /// <summary>
+    /// Desenha uma SETINHA PARA CIMA no botão (um triângulo), à direita do texto. A fonte do jogo não tem o glifo
+    /// do triângulo pequeno (\u25B4), então ele saía como um quadrado/ícone estranho; agora é desenho, sempre visível.
+    /// </summary>
+    private static void SetaParaCima(RectTransform botao)
+    {
+        if (botao == null) return;
+        var rt = New("SetaCima", botao);
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(26f, 22f);
+        rt.anchoredPosition = new Vector2(78f, 2f);   // logo à direita do rótulo "Recolher"
+        var img = rt.gameObject.AddComponent<Image>();
+        img.sprite = TrianguloParaCima();
+        img.color = Color.white; img.raycastTarget = false; img.preserveAspect = true;
+    }
+
+    /// <summary>Sprite de triângulo apontando para cima (gerado uma vez e reaproveitado).</summary>
+    private static Sprite trianguloCima;
+    private static Sprite TrianguloParaCima()
+    {
+        if (trianguloCima != null) return trianguloCima;
+        const int lado = 64;
+        var tex = new Texture2D(lado, lado, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave, wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+        var pixels = new Color[lado * lado];
+        for (int y = 0; y < lado; y++) for (int x = 0; x < lado; x++)
+        {
+            // triângulo isósceles com vértice no topo: largura cresce de 0 (topo) até a base
+            float t = (lado - 1 - y) / (float)(lado - 1);       // 1 no topo, 0 na base
+            float meia = t * (lado * 0.5f - 1f);
+            float dx = Mathf.Abs(x + .5f - lado * .5f);
+            pixels[y * lado + x] = new Color(1, 1, 1, dx <= meia ? 1f : 0f);
+        }
+        tex.SetPixels(pixels); tex.Apply(false, true);
+        trianguloCima = Sprite.Create(tex, new Rect(0, 0, lado, lado), Vector2.one * .5f);
+        trianguloCima.hideFlags = HideFlags.HideAndDontSave;
+        return trianguloCima;
     }
 
     private static string FormatTime(float s)

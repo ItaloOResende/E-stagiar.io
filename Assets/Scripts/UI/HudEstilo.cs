@@ -29,7 +29,9 @@ public static class HudEstilo
 
     public const int TamanhoRotulo = 15;
     public const int TamanhoValor = 32;
-    private const float Raio = 14f, Espessura = 2f, PaddingX = 18f;
+    private const float Raio = 14f, Espessura = 2f;
+    /// <summary>Respiro horizontal interno do selo (também usado pela versão uGUI de <see cref="StageTimerHUD"/>).</summary>
+    public const float PaddingX = 18f;
 
     private static GUIStyle rotulo, valor;
     private static float escalaEstilo = -1f;

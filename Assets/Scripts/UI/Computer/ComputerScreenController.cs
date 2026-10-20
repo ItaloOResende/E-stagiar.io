@@ -130,10 +130,41 @@ public class ComputerScreenController : MonoBehaviour
     private bool InteriorLocked => boundCase != null && boundCase.State == CaseState.Closed && !boundCase.CanOpen;
 
     /// <summary>O monitor deste PC aparece na tela agora (perto do gabinete; a distância do jogador não importa).</summary>
-    // perto e não quebrado. Gabinete SEM monitor associado (ex.: os de reserva da sala de TI) não mostra monitor: antes
-    // a tela 2D desenhava um monitor que não existia (sem monitor, a distância "não vale"), mesmo com outro monitor do
-    // mundo ao lado, que não é o dele. O monitor aparece quando um se liga a ele (MonitorAvulso / Connect When Placed).
-    public bool MonitorVisible => boundPower == null || boundPower.Monitor != null && boundPower.MonitorAvailable;
+    // Mostra o monitor quando: (a) um monitor está LIGADO a este gabinete e perto/não quebrado; ou (b) existe um
+    // monitor do mundo FISICAMENTE perto do gabinete, mesmo ainda não ligado (ex.: o Monitor_Estoque ao lado da
+    // bancada). Gabinete sozinho, sem nenhum monitor por perto, não desenha monitor nenhum.
+    public bool MonitorVisible => boundPower == null
+        || (boundPower.Monitor != null && boundPower.MonitorAvailable)
+        || MonitorDoMundoPerto();
+
+    /// <summary>Existe um monitor do mundo (MonitorDisplay) dentro do alcance deste gabinete? Cobre o caso do monitor
+    /// colocado ao lado da bancada que ainda não foi ligado ao PC.</summary>
+    private bool MonitorDoMundoPerto()
+    {
+        if (boundPower == null) return false;
+        Transform origem = boundCase != null ? boundCase.transform : boundPower.transform;
+        float alcance = Mathf.Max(1.2f, boundPower.MonitorRange);
+        float melhor = alcance * alcance;
+        foreach (Collider c in Physics.OverlapSphere(origem.position, alcance + 1f, ~0, QueryTriggerInteraction.Ignore))
+        {
+            MonitorDisplay mon = c.GetComponentInParent<MonitorDisplay>();
+            if (mon == null) mon = c.GetComponent<MonitorDisplay>();
+            if (mon != null)
+            {
+                float d = (mon.transform.position - origem.position).sqrMagnitude;
+                if (d <= melhor) return true;
+            }
+            // Também considera monitores da mesa/bancada (MonitorScreenInteractable) mesmo sem MonitorDisplay
+            MonitorScreenInteractable msi = c.GetComponentInParent<MonitorScreenInteractable>();
+            if (msi == null) msi = c.GetComponent<MonitorScreenInteractable>();
+            if (msi != null)
+            {
+                float d = (msi.transform.position - origem.position).sqrMagnitude;
+                if (d <= melhor) return true;
+            }
+        }
+        return false;
+    }
 
     /// <summary>Vista de frente (pelo lado da tela do monitor): o gabinete está à esquerda do monitor no mundo.</summary>
     public bool CaseLeftOfMonitor
@@ -528,7 +559,7 @@ public class ComputerScreenController : MonoBehaviour
         else if (r == PowerButtonResult.TurnedOn)
         {
             if (boundPower.State == PcPowerState.OperatingSystem)
-                FeedbackManutencao.Mostrar(screen, "PC testado: o sistema iniciou.", TipoFeedback.Sucesso);
+                FeedbackManutencao.Limpar(screen);   // ligou com sistema: nenhum recado
             else if (boundPower.IsInstallingOperatingSystem)
                 FeedbackManutencao.Mostrar(screen, "Iniciando pelo pendrive...", TipoFeedback.Info);
             else FeedbackManutencao.Mostrar(screen, "Ligou, mas parou na BIOS.", TipoFeedback.Alerta);
@@ -598,9 +629,9 @@ public class ComputerScreenController : MonoBehaviour
         if (result == PortResult.OutOfReach) { RefreshHardware(); return; }   // interface antiga: esconde o que está longe
         if (result == PortResult.PluggedFromHand || result == PortResult.PluggedOtherEnd) InteractionSounds.Raise(InteractionSound.CablePlugged);
         else if (result == PortResult.Unplugged || result == PortResult.CableReturned) InteractionSounds.Raise(InteractionSound.CableUnplugged);
-        else if (result == PortResult.WrongCable || result == PortResult.NeedsCable
-              || result == PortResult.HandsFull || result == PortResult.Invalid)
-            InteractionSounds.Raise(InteractionSound.Error);   // cabo errado / clique que não vale: som de erro
+        else if (result == PortResult.HandsFull) FeedbackManutencao.MaoOcupada(screen);            // mão ocupada: som + recado
+        else if (result == PortResult.WrongCable || result == PortResult.NeedsCable) FeedbackManutencao.Incompativel(screen);
+        else if (result == PortResult.Invalid) InteractionSounds.Raise(InteractionSound.Error);   // clique que não vale
         // segue a ponta solta (cabo recém-ligado por uma ponta ou que acabou de soltar uma); tomada: o cabo que estava nela
         if (result == PortResult.PluggedFromHand || result == PortResult.Unplugged) carriedLink = boundPower.LastChangedLink;
         RefreshHardware(); // o UsePort já atualizou a tela; de novo, agora sabendo qual cabo segue o mouse
@@ -618,9 +649,9 @@ public class ComputerScreenController : MonoBehaviour
         PortResult result = boundPower.UseUsbPort(index, pendrive, held != null, out GameObject back);
         if (result == PortResult.PluggedFromHand) InteractionSounds.Raise(InteractionSound.PendrivePlugged);
         else if (result == PortResult.CableReturned) InteractionSounds.Raise(InteractionSound.PendriveUnplugged);
-        else if (result == PortResult.WrongCable || result == PortResult.NeedsCable
-              || result == PortResult.HandsFull || result == PortResult.Invalid)
-            InteractionSounds.Raise(InteractionSound.Error);   // não é pendrive / clique que não vale
+        else if (result == PortResult.HandsFull) FeedbackManutencao.MaoOcupada(screen);            // mão ocupada: som + recado
+        else if (result == PortResult.WrongCable || result == PortResult.NeedsCable) FeedbackManutencao.Incompativel(screen);
+        else if (result == PortResult.Invalid) InteractionSounds.Raise(InteractionSound.Error);   // clique que não vale
         if (result == PortResult.PluggedFromHand) holder.Stow(boundCase.transform.position);
         else if (result == PortResult.CableReturned && holder != null) holder.Retrieve(back);
         if (result == PortResult.PluggedFromHand && boundPower.IsInstallingOperatingSystem)
@@ -637,14 +668,14 @@ public class ComputerScreenController : MonoBehaviour
         PartSlotResult result = boundCase.UsePartSlot(slot, part, held != null, out GameObject back);
         if (result == PartSlotResult.Installed) InteractionSounds.Raise(InteractionSound.PartInstalled);
         else if (result == PartSlotResult.Removed) InteractionSounds.Raise(InteractionSound.PartRemoved);
-        else if (result == PartSlotResult.WrongPart || result == PartSlotResult.HandsFull)
-            InteractionSounds.Raise(InteractionSound.Error);   // peça no encaixe errado: som de erro
+        else if (result == PartSlotResult.HandsFull) FeedbackManutencao.MaoOcupada(screen);        // mão ocupada: som + recado
+        else if (result == PartSlotResult.WrongPart) FeedbackManutencao.Incompativel(screen);      // peça no encaixe errado
         if (result == PartSlotResult.Installed) holder.Stow(boundCase.transform.position);
         else if (result == PartSlotResult.Removed && holder != null) holder.Retrieve(back);
         if (result == PartSlotResult.Installed)
             FeedbackManutencao.Mostrar(screen, "Instalado: " + FeedbackManutencao.Nome(slot) + ".", TipoFeedback.Sucesso);
         else if (result == PartSlotResult.Removed)
-            FeedbackManutencao.Mostrar(screen, "Removido: " + FeedbackManutencao.Nome(slot) + ".", TipoFeedback.Info);
+            FeedbackManutencao.Removido(screen, FeedbackManutencao.Nome(slot));
     }
 
     private void OnScrewClicked(int index)

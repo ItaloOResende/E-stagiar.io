@@ -481,7 +481,7 @@ public class NotebookTela : MonoBehaviour
                     if (est.Sessao.TodosParafusosInstalados)
                     {
                         InteractionSounds.Raise(InteractionSound.CaseClosed);
-                        Mensagem("Tampa de baixo presa de novo — o notebook está montado para entregar.", Verde);
+                        Mensagem("", TextoFraco);   // tampa presa de novo: sem recado (o "pronto para entregar" saiu)
                     }
                     else Mensagem("Parafuso " + (indice + 1) + " de volta no lugar.", TextoFraco);
                     break;
@@ -549,17 +549,19 @@ public class NotebookTela : MonoBehaviour
             case NotebookEncaixeResultado.Removido:
                 if (mao != null && devolver != null) mao.Retrieve(devolver);
                 InteractionSounds.Raise(InteractionSound.PartRemoved);
-                Mensagem("Peça retirada.", TextoFraco);
+                FeedbackManutencao.Removido(this, encaixe == NotebookParte.Ram ? "Memória SO-DIMM" : "SSD");
+                if (msgTxt != null) msgTxt.text = "";
                 break;
             case NotebookEncaixeResultado.PrecisaPeca:
                 Mensagem("Encaixe vazio.", Amarelo);
                 break;
             case NotebookEncaixeResultado.PecaErrada:
-                InteractionSounds.Raise(InteractionSound.Error);   // peça no encaixe errado
-                Mensagem("Este item não é compatível com este encaixe.", Vermelho);
+                FeedbackManutencao.Incompativel(this);
+                if (msgTxt != null) msgTxt.text = "";
                 break;
             case NotebookEncaixeResultado.MaoCheia:
-                Mensagem("Com as mãos ocupadas não é possível retirar a peça.", Amarelo);
+                FeedbackManutencao.MaoOcupada(this);
+                if (msgTxt != null) msgTxt.text = "";
                 break;
             case NotebookEncaixeResultado.Fechado:
                 Mensagem("A tampa de baixo ainda está fechada.", Amarelo);
@@ -590,17 +592,19 @@ public class NotebookTela : MonoBehaviour
             case NotebookUsbResultado.Devolvido:
                 if (mao != null && devolver != null) mao.Retrieve(devolver);
                 InteractionSounds.Raise(InteractionSound.PendriveUnplugged);
-                Mensagem("Pendrive retirado.", TextoFraco);
+                FeedbackManutencao.Removido(this, "Pendrive");
+                if (msgTxt != null) msgTxt.text = "";
                 break;
             case NotebookUsbResultado.PrecisaPendrive:
                 Mensagem("A porta precisa de um dispositivo compatível.", Amarelo);
                 break;
             case NotebookUsbResultado.ItemErrado:
-                InteractionSounds.Raise(InteractionSound.Error);   // item errado na porta USB
-                Mensagem("Este item não é compatível com esta porta.", Vermelho);
+                FeedbackManutencao.Incompativel(this);
+                if (msgTxt != null) msgTxt.text = "";
                 break;
             case NotebookUsbResultado.MaoCheia:
-                Mensagem("Com as mãos ocupadas não é possível retirar o dispositivo.", Amarelo);
+                FeedbackManutencao.MaoOcupada(this);
+                if (msgTxt != null) msgTxt.text = "";
                 break;
         }
         Atualizar();
@@ -615,8 +619,7 @@ public class NotebookTela : MonoBehaviour
         InteractionSounds.Raise(InteractionSound.PowerButton);
         if (r == NotebookBotaoResultado.FaltamRequisitos)
         {
-            // sintoma, não diagnóstico: o LED pisca e nada acontece
-            Mensagem("O notebook não deu sinal de vida.", Amarelo);
+            // sintoma, não diagnóstico: o LED pisca e nada acontece (sem recado no rodapé)
             if (estado3D != null) estado3D.PiscarFalha();
             NotebookModeloEstado mundo = est.GetComponentInChildren<NotebookModeloEstado>();
             if (mundo != null) mundo.PiscarFalha();
@@ -626,9 +629,9 @@ public class NotebookTela : MonoBehaviour
         else if (est.Sessao.Instalando)
             Mensagem("Iniciando pelo pendrive...", Amarelo);
         else if (est.Sessao.TemSistema)
-            Mensagem("Notebook ligado.", Verde);
+            Mensagem("", TextoFraco);   // ligou com sistema: nenhum recado (o jogador vê a tela do sistema)
         else
-            Mensagem("O notebook ligou, mas não iniciou o sistema.", Amarelo);
+            Mensagem("", TextoFraco);   // ligou sem sistema: nenhum recado (o jogador vê a tela da BIOS)
         Atualizar();
     }
 

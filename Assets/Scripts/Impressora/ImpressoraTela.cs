@@ -616,7 +616,8 @@ public class ImpressoraTela : MonoBehaviour
             case ImpressoraEncaixeResultado.Removido:
                 if (mao != null && devolver != null) mao.Retrieve(devolver);
                 InteractionSounds.Raise(InteractionSound.PartRemoved);
-                Mensagem("Peça retirada.", TextoFraco);
+                FeedbackManutencao.Removido(this, encaixe == ImpressoraParte.Toner ? "Cartucho de toner" : "Papel");
+                if (msgTxt != null) msgTxt.text = "";
                 break;
             case ImpressoraEncaixeResultado.PrecisaPeca:
                 Mensagem(encaixe == ImpressoraParte.Toner
@@ -624,11 +625,12 @@ public class ImpressoraTela : MonoBehaviour
                     : "A bandeja precisa de um item compatível.", Amarelo);
                 break;
             case ImpressoraEncaixeResultado.PecaErrada:
-                InteractionSounds.Raise(InteractionSound.Error);   // peça no encaixe errado
-                Mensagem("Este item não é compatível com este encaixe.", Vermelho);
+                FeedbackManutencao.Incompativel(this);             // item no encaixe errado: som + recado
+                if (msgTxt != null) msgTxt.text = "";
                 break;
             case ImpressoraEncaixeResultado.MaoCheia:
-                Mensagem("Com as mãos ocupadas não é possível retirar a peça.", Amarelo);
+                FeedbackManutencao.MaoOcupada(this);               // mão ocupada: som + recado
+                if (msgTxt != null) msgTxt.text = "";
                 break;
             case ImpressoraEncaixeResultado.PecaQuebrada:
                 Mensagem("Este item está danificado e não pode ser instalado.", Vermelho);

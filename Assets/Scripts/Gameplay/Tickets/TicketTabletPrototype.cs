@@ -48,6 +48,8 @@ public class TicketTabletPrototype : MonoBehaviour
     [SerializeField] private Color corCard = new Color(.13f, .19f, .26f, 1);
     [SerializeField] private Color corBotao = new Color(.2f, .29f, .38f, 1);
     [SerializeField] private Color corDestaque = new Color(.25f, .85f, .77f, 1);
+    [Tooltip("Azul da bolinha atrás do número de chamados no botão do tablet.")]
+    [SerializeField] private Color corSeloFundo = new Color(.24f, .55f, .96f, 1);   // azul
     [SerializeField] private Color corTexto = new Color(.94f, .97f, 1, 1);
     [SerializeField] private Color corAlerta = new Color(1, .55f, .3f, 1);
     [SerializeField, Range(0, .8f)] private float escurecerFundo = .2f;
@@ -129,6 +131,7 @@ public class TicketTabletPrototype : MonoBehaviour
     [SerializeField] private ScrollRect scroll;
     [SerializeField] private Button atalho, fechar, abaPendentes, abaAtivos, abaHistorico, abaCores, abaAplicativos;
     [SerializeField] private TMP_Text selo, aviso, proximo, titulo;
+    [SerializeField] private RectTransform seloFundo;   // bolinha atrás do número de chamados
     [SerializeField] private RectTransform modeloCard;
 
     public static bool PonteiroSobreOAparelho { get; private set; }
@@ -158,6 +161,7 @@ public class TicketTabletPrototype : MonoBehaviour
     private int recusaNumero = -1;
     private Texture2D texturaCirculo;
     private Sprite circuloGerado;
+    private Sprite circuloCheioGerado;   // bolinha cheia atrás do número de chamados do tablet
     [Header("Foto do solicitante")]
     [SerializeField] private bool mostrarFotos = true;
     [SerializeField, Min(24f)] private float tamanhoFoto = 72f;
@@ -246,7 +250,9 @@ public class TicketTabletPrototype : MonoBehaviour
         VerificarNovos();
         AtualizarConteudo();
         AtualizarCards();
-        selo.text = ticketManager != null && ticketManager.OpenCount > 0 ? ticketManager.OpenCount.ToString() : "";
+        bool temSelo = ticketManager != null && ticketManager.OpenCount > 0;
+        selo.text = temSelo ? ticketManager.OpenCount.ToString() : "";
+        if (seloFundo != null && seloFundo.gameObject.activeSelf != temSelo) seloFundo.gameObject.SetActive(temSelo);
         // a chegada dos chamados é surpresa: o agendamento (TicketManager.SecondsUntilNextArrival) continua, só não aparece
         if (proximo != null && proximo.gameObject.activeSelf) { proximo.text = ""; proximo.gameObject.SetActive(false); }
         EstilizarAviso();
@@ -338,13 +344,20 @@ public class TicketTabletPrototype : MonoBehaviour
     private void RestaurarControles(bool forcar)
     {
         if (!controlesRetidos) return;
-        // Uma tela externa assume os controles ao fechar o tablet nesse contexto.
+        // Uma tela externa assume os controles ao fechar o tablet nesse contexto. Mesmo aqui o DETECTOR de interação
+        // precisa voltar: ele é desligado só pelo tablet e nenhuma tela 2D o religa (não está em disableWhileOpen).
+        // Sem isso, fechar o tablet com uma tela 2D ainda aberta (ex.: crimpagem) deixava o detector desligado para
+        // sempre e o jogador não conseguia mais soltar o item da mão.
         if (!forcar && (!NoMundo3D() || Oculto))
-        { controlesAnteriores.Clear(); controlesRetidos = false; return; }
+        {
+            if (interactionDetector != null && interactionDetector.enabled == false && !aberto) interactionDetector.enabled = true;
+            controlesAnteriores.Clear(); controlesRetidos = false; return;
+        }
         // Só RELIGA o que estava ligado quando o tablet o desligou: nunca desliga de volta. Um controle memorizado como
         // desligado tinha outro dono (a tela 2D); "restaurar" esse valor deixava o jogador travado sem andar, interagir
         // ou soltar o item até sair do Play Mode.
         foreach (var par in controlesAnteriores) if (par.Key != null && par.Value) par.Key.enabled = true;
+        if (interactionDetector != null) interactionDetector.enabled = true;   // rede de segurança: o detector nunca fica preso
         controlesAnteriores.Clear(); controlesRetidos = false;
         // A tela 2D fechada com o tablet aberto deixou os controles para o tablet devolver (UIScreenManager).
         if (UIScreenManager.Active != null) UIScreenManager.Active.DevolverControlesDoJogador();
@@ -387,17 +400,20 @@ public class TicketTabletPrototype : MonoBehaviour
         }
         // Botão no canto inferior direito, dentro da área reservada a ele (RedeUi): as setas "►" das telas de
         // manutenção (PC, notebook, impressora) ficam à esquerda dessa área, lado a lado, sem sobreposição.
+        // Subido para não sobrepor o cursor/tablet com a seta "►" dos minigames nem com a notificação.
         var rtAtalho = (RectTransform)atalho.transform;
         rtAtalho.anchorMin = rtAtalho.anchorMax = rtAtalho.pivot = new Vector2(1, 0);
         rtAtalho.sizeDelta = Vector2.Min(tamanhoAtalho, new Vector2(RedeUi.CelularLargura, RedeUi.CelularAltura));
-        rtAtalho.anchoredPosition = new Vector2(-RedeUi.CelularMargem, RedeUi.CelularMargem);
-        // Notificação de chamado novo: alinhada à esquerda com a pontuação e logo ABAIXO dela. Os selos do HUD
-        // (HudEstilo) são IMGUI e ficam por cima de qualquer Canvas, então a notificação não pode dividir a área deles.
+        rtAtalho.anchoredPosition = new Vector2(-RedeUi.CelularMargem, RedeUi.CelularMargem + 20f);
+        // Notificação de chamado novo: canto INFERIOR DIREITO, um pouco acima do botão do tablet. O botão fica em
+        // (1,0) com margem; a notificação sobe acima dele, alinhada à direita. Subimos um pouco para não sobrepor a
+        // seta para a direita dos minigames.
         if (aviso != null)
         {
             var toast = (RectTransform)aviso.transform.parent;
-            toast.anchorMin = toast.anchorMax = toast.pivot = new Vector2(0, 1);
-            toast.anchoredPosition = new Vector2(margem, -(HudEstilo.BaseDosSelos + 14f));
+            toast.anchorMin = toast.anchorMax = toast.pivot = new Vector2(1, 0);
+            float alturaAtalho = rtAtalho.sizeDelta.y;
+            toast.anchoredPosition = new Vector2(-RedeUi.CelularMargem, RedeUi.CelularMargem + 20f + alturaAtalho + 12f);
         }
         bloqueio.GetComponent<Image>().color = new Color(0, 0, 0, escurecerFundo);
         if (!Application.isPlaying) { AtualizarEstilosBotoes(); AtualizarVisuais(); }
@@ -527,8 +543,20 @@ public class TicketTabletPrototype : MonoBehaviour
             }
             else if (c.Status == TicketStatus.InProgress)
             {
-                if (!ticketManager.TryFinishTicket(c.Number)) { recusaNumero = c.Number; recusaAte = Time.unscaledTime + 3.5f; Tocar(somRecusa); }
-                else Tocar(somSucesso);
+                if (!ticketManager.TryFinishTicket(c.Number))
+                {
+                    // Fica FIXO: o cartão mostra o porquê enquanto o chamado continuar pendente travado (não é aviso que some).
+                    recusaNumero = c.Number; recusaAte = float.PositiveInfinity; Tocar(somRecusa);
+                }
+                else
+                {
+                    Tocar(somSucesso);
+                    // Último atendimento finalizado: volta para a aba de PENDENTES (se não sobrou nenhum em atendimento).
+                    assinatura = "";
+                    bool aindaAtendendo = false;
+                    foreach (TicketInstance t in ticketManager.Tickets) if (t.Status == TicketStatus.InProgress) { aindaAtendendo = true; break; }
+                    if (!aindaAtendendo) TrocarAba(0);
+                }
             }
             assinatura = "";
         });
@@ -581,9 +609,15 @@ public class TicketTabletPrototype : MonoBehaviour
             float seg = Mathf.Max(0, c.IsOverdue ? c.OverdueSeconds : c.SecondsLeft);
             v.tempo.text = c.IsClosed ? "" : (c.IsOverdue ? "Atrasado há " : "Prazo: ") + Mathf.FloorToInt(seg / 60) + ":" + Mathf.FloorToInt(seg % 60).ToString("00");
             v.tempo.color = c.IsOverdue ? corAlerta : corTexto;
-            bool rejeitado = recusaNumero == c.Number && Time.unscaledTime < recusaAte;
+            // Recado FIXO: continua no cartão enquanto o atendimento não pode ser entregue. Reavalia o motivo a cada
+            // quadro, então some sozinho assim que o jogador resolve o que faltava (ex.: fechou os parafusos).
+            string bloqueio = c.Status == TicketStatus.InProgress ? TicketDeviceBridge.DeliveryBlockerFor(c) : null;
+            bool rejeitado = recusaNumero == c.Number && (Time.unscaledTime < recusaAte || c.Status == TicketStatus.InProgress);
+            if (rejeitado && !string.IsNullOrEmpty(bloqueio)) v.recusa.text = "Não dá para entregar: " + bloqueio + ".";
+            else if (rejeitado && string.IsNullOrEmpty(c.LastRejectReason) == false) v.recusa.text = "Não dá para entregar: " + c.LastRejectReason + ".";
+            else if (rejeitado && c.Status == TicketStatus.InProgress) v.recusa.text = "Ainda há etapas pendentes neste atendimento.";
+            else { rejeitado = false; recusaNumero = recusaNumero == c.Number ? -1 : recusaNumero; }
             v.recusa.gameObject.SetActive(rejeitado);
-            if (rejeitado) v.recusa.text = string.IsNullOrEmpty(c.LastRejectReason) ? "Ainda há etapas pendentes neste atendimento." : "Não dá para entregar: " + c.LastRejectReason + ".";
         }
     }
     // Mantém o desenho original do prazo sem presumir campos novos de TicketInstance.
@@ -897,8 +931,15 @@ public class TicketTabletPrototype : MonoBehaviour
         conteudo = Retangulo("Conteudo", viewport, Color.clear); conteudo.anchorMin = new Vector2(0, 1); conteudo.anchorMax = Vector2.one; conteudo.pivot = new Vector2(.5f, 1); conteudo.sizeDelta = Vector2.zero;
         Vertical(conteudo, 14, 10); scroll.content = conteudo;
         proximo = Texto(painel, "Proximo", "", 18); Esticar(proximo.rectTransform, new Vector2(28, 14), new Vector2(-28, 50)); proximo.rectTransform.anchorMax = new Vector2(1, 0);
-        atalho = Botao(raizUI, "AbrirTablet", "TABLET [" + toggleKey + "]"); Canto((RectTransform)atalho.transform, new Vector2(1, 0), new Vector2(-margem, margem), tamanhoAtalho); ((RectTransform)atalho.transform).pivot = new Vector2(1, 0);
-        selo = Texto(atalho.transform, "Selo", "", 20); Canto(selo.rectTransform, new Vector2(1, 1), new Vector2(0, 8), new Vector2(50, 30)); selo.color = corDestaque;
+        atalho = Botao(raizUI, "AbrirTablet", "TABLET [" + toggleKey + "]"); Canto((RectTransform)atalho.transform, new Vector2(1, 0), new Vector2(-margem, margem + 20f), tamanhoAtalho); ((RectTransform)atalho.transform).pivot = new Vector2(1, 0);
+        // Bolinha atrás do número de chamados: círculo cheio AZUL (mesma família dos brilhos azuis do tablet),
+        // ligado/desligado com o número.
+        seloFundo = Retangulo("SeloFundo", atalho.transform, corSeloFundo);
+        Canto(seloFundo, new Vector2(1, 1), new Vector2(-12, -14), new Vector2(42, 42));
+        var seloImg = seloFundo.GetComponent<Image>(); seloImg.type = Image.Type.Simple; seloImg.raycastTarget = false;
+        seloFundo.SetAsLastSibling();
+        selo = Texto(atalho.transform, "Selo", "", 20); Canto(selo.rectTransform, new Vector2(1, 1), new Vector2(-12, -14), new Vector2(42, 42));
+        selo.alignment = TextAlignmentOptions.Center; selo.color = Color.white; selo.fontStyle = FontStyles.Bold; selo.transform.SetAsLastSibling();
         var toast = Retangulo("Notificacao", raizUI, corCard); Canto(toast, new Vector2(0, 1), new Vector2(24, -24), new Vector2(400, 120)); toast.pivot = new Vector2(0, 1);
         aviso = Texto(toast, "Texto", "", 19); Esticar(aviso.rectTransform, Vector2.one * 14, Vector2.one * -14); toast.gameObject.SetActive(false);
         modeloCard = Retangulo("ModeloCard_EDITAVEL", raizUI, corCard); Vertical(modeloCard, 9, 18);
@@ -1113,6 +1154,15 @@ public class TicketTabletPrototype : MonoBehaviour
             visuaisPendentes = true;
         }
         if (fundoSprite == null) { fundo.sprite = spriteArredondado; fundo.type = Image.Type.Sliced; }
+        if (seloFundo != null && circuloCheioGerado == null)
+        {
+            circuloCheioGerado = CirculoCheio();
+            if (seloFundo != null) { var imgSelo = seloFundo.GetComponent<Image>(); imgSelo.sprite = circuloCheioGerado; imgSelo.type = Image.Type.Simple; }
+        }
+        else if (seloFundo != null)
+        {
+            var imgSelo = seloFundo.GetComponent<Image>(); imgSelo.sprite = circuloCheioGerado; imgSelo.type = Image.Type.Simple;
+        }
         if (!visuaisPendentes) return;
         visuaisPendentes = false;
         foreach (var imagem in raizUI.GetComponentsInChildren<Image>(true))
@@ -1202,8 +1252,24 @@ public class TicketTabletPrototype : MonoBehaviour
         materiaisTexto.Clear();
         if (spriteArredondado != null) { DestruirVisual(spriteArredondado.texture); DestruirVisual(spriteArredondado); }
         spriteArredondado = null; visuaisPendentes = true;
+        if (circuloCheioGerado != null) { DestruirVisual(circuloCheioGerado.texture); DestruirVisual(circuloCheioGerado); circuloCheioGerado = null; }
     }
 
+    private static Sprite CirculoCheio()
+    {
+        const int lado = 128;
+        var tex = new Texture2D(lado, lado, TextureFormat.RGBA32, false)
+        { name = "Tablet_CirculoCheio", hideFlags = HideFlags.HideAndDontSave, wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+        var pixels = new Color[lado * lado];
+        for (int y = 0; y < lado; y++) for (int x = 0; x < lado; x++)
+        {
+            float d = new Vector2(x + .5f - lado * .5f, y + .5f - lado * .5f).magnitude;
+            pixels[y * lado + x] = new Color(1, 1, 1, Mathf.Clamp01(lado * .5f - d));   // 1 px de antialias na borda
+        }
+        tex.SetPixels(pixels); tex.Apply(false, true);
+        var sp = Sprite.Create(tex, new Rect(0, 0, lado, lado), Vector2.one * .5f);
+        sp.hideFlags = HideFlags.HideAndDontSave; return sp;
+    }
     private RectTransform Retangulo(string nome, Transform pai, Color cor, bool raycast = false)
     {
         if (nome != "Impacto" && nome != "OuterGlow_Tablet") visuaisPendentes = true;

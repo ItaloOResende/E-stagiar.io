@@ -101,8 +101,9 @@ public class ImpressoraTicketBridge : TicketDeviceBridge
             case "trocar-toner": return s.TemToner;
             // o IP da rodada (cartaz da sala de TI) confirmado no painel
             case "configurar-ip": return s.RedeConfigurada;
-            // teste-impressao: pronta E uma página de teste saiu DEPOIS de assumir o chamado (tela "Teste de impressão")
-            default: return s.Pronta && estacao.TestesOk > testesNoInicio;
+            // teste-impressao: basta a impressora estar PRONTA (toner, papel e IP). Não é mais exigido imprimir uma
+            // página de teste para fechar o chamado de problema de impressão.
+            default: return s.Pronta;
         }
     }
 }

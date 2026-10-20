@@ -86,7 +86,7 @@ public static class UICursor
         int width = Mathf.Max(1, Mathf.RoundToInt(textura.width * k));
         Texture2D scaled = Scaled(textura, width, height);
         Vector2 hotspot = new Vector2(Mathf.Clamp(hotspotPixels.x * k, 0, width - 1), Mathf.Clamp(hotspotPixels.y * k, 0, height - 1));
-        Cursor.SetCursor(scaled, hotspot, Modo);
+        Cursor.SetCursor(scaled, hotspot, CursorMode.ForceSoftware);
         Current = textura;
     }
 
