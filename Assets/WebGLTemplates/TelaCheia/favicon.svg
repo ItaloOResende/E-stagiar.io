@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="v" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ccff69"/>
+      <stop offset="1" stop-color="#4ff24f"/>
+    </linearGradient>
+    <radialGradient id="f" cx=".5" cy=".38" r=".75">
+      <stop offset="0" stop-color="#1d2620"/>
+      <stop offset="1" stop-color="#101412"/>
+    </radialGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#f)" stroke="#4ff24f" stroke-opacity=".55" stroke-width="2.5"/>
+  <!-- "E" do título, com o ponto do ".io" -->
+  <path d="M17 15h26a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3H27v4h13a3 3 0 0 1 3 3v2a3 3 0 0 1-3 3H27v4h16a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3H17a3 3 0 0 1-3-3V18a3 3 0 0 1 3-3z" fill="url(#v)"/>
+  <circle cx="51" cy="46" r="4.5" fill="#f2f7f2"/>
+</svg>

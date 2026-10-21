@@ -4,35 +4,67 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
   <title>E-stagiar.io</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <meta name="theme-color" content="#101412">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
   <style>
-    :root { --fundo: #0f1a29; --painel: #16263a; --borda: #40d9c4; --texto: #f5faff; --suave: #9eb3c7; }
+    /* cinza escuro + o verde dos botões e do título do menu principal */
+    :root { --fundo: #101412; --painel: #1a201c; --verde: #4ff24f; --lima: #ccff69; --texto: #f2f7f2; --suave: #93a397; }
     html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--fundo); }
-    body { font-family: "Segoe UI", Roboto, Arial, sans-serif; color: var(--texto); }
+    body { font-family: "Varela Round", "Segoe UI", Roboto, Arial, sans-serif; color: var(--texto); }
     /* o jogo ocupa a janela inteira */
     #unity-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; background: var(--fundo); outline: none; }
 
     /* tela de carregamento */
     #carregando { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-                  gap: 22px; background: radial-gradient(circle at 50% 40%, #1b2f47 0%, var(--fundo) 70%); transition: opacity .4s ease; }
+                  gap: 22px; background: radial-gradient(circle at 50% 40%, #1d2620 0%, var(--fundo) 70%); transition: opacity .8s ease; }
     #carregando.sumindo { opacity: 0; pointer-events: none; }
-    #titulo { font-size: clamp(32px, 6vw, 64px); font-weight: 800; letter-spacing: .02em; }
-    #titulo span { color: var(--borda); }
+    #titulo { font-size: clamp(40px, 7.5vw, 84px); font-weight: 800; letter-spacing: .02em;
+              background: linear-gradient(180deg, var(--lima), var(--verde)); -webkit-background-clip: text; background-clip: text;
+              color: transparent; filter: drop-shadow(0 0 18px rgba(79, 242, 79, .28)); }
+    #titulo span { color: var(--texto); -webkit-text-fill-color: var(--texto); }
     #subtitulo { color: var(--suave); font-size: clamp(14px, 1.6vw, 18px); margin-top: -12px; }
     #barra { width: min(420px, 70vw); height: 14px; border-radius: 999px; background: var(--painel);
-             border: 2px solid rgba(64, 217, 196, .45); overflow: hidden; }
-    #barra-cheia { width: 0%; height: 100%; background: var(--borda); border-radius: 999px; transition: width .2s ease; }
+             border: 2px solid rgba(79, 242, 79, .4); overflow: hidden; }
+    #barra-cheia { width: 0%; height: 100%; background: linear-gradient(90deg, var(--verde), var(--lima)); border-radius: 999px; transition: width .2s ease; }
     #porcentagem { color: var(--suave); font-size: 14px; font-variant-numeric: tabular-nums; }
     #erro { display: none; max-width: min(560px, 85vw); text-align: center; line-height: 1.5; color: #ffb4ad; }
 
+    /* créditos de abertura: entram depois do carregamento e revelam o jogo */
+    #creditos { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center;
+                background: radial-gradient(ellipse at 50% 45%, #18201a 0%, #0a0d0b 75%); opacity: 0; transition: opacity 1.1s ease;
+                cursor: default; user-select: none; }
+    /* entra rápido (cobre o fim da intro antes do menu aparecer) e sai devagar */
+    #creditos.visivel { opacity: 1; transition-duration: .4s; }
+    #creditos .rotulo { font-size: clamp(12px, 1.3vw, 15px); letter-spacing: .5em; text-transform: uppercase; color: var(--verde);
+                        padding-left: .5em; opacity: 0; transform: translateY(8px); transition: opacity 1s ease, transform 1s ease; }
+    #creditos .traco { width: 0; height: 1px; margin: 18px 0 30px; background: linear-gradient(90deg, transparent, var(--verde), transparent);
+                       transition: width 1.4s ease .3s; }
+    #creditos.visivel .rotulo { opacity: 1; transform: none; }
+    #creditos.visivel .traco { width: min(320px, 60vw); }
+    #nomes { list-style: none; margin: 0; padding: 0; text-align: center; }
+    #nomes li { margin: 0 0 22px; opacity: 0; transform: translateY(10px); transition: opacity .9s ease, transform .9s ease; }
+    #nomes li.visivel { opacity: 1; transform: none; }
+    #nomes .nome { display: block; font-size: clamp(22px, 3vw, 36px); letter-spacing: .08em; }
+    #nomes .github { display: block; margin-top: 4px; font-size: clamp(11px, 1vw, 13px); letter-spacing: .12em; color: var(--suave); }
+    #rodape { position: absolute; bottom: 7vh; left: 0; right: 0; text-align: center; font-size: clamp(11px, 1.1vw, 14px);
+              letter-spacing: .28em; text-transform: uppercase; color: var(--suave); opacity: 0; transition: opacity 1.2s ease; }
+    #rodape b { color: var(--verde); font-weight: normal; }
+    #rodape.visivel { opacity: 1; }
+    #pular { position: absolute; right: 22px; bottom: 18px; font-size: 12px; letter-spacing: .1em; color: var(--suave); opacity: .45; }
+
     /* botão de tela cheia: discreto, no canto, some enquanto carrega */
     #tela-cheia { position: fixed; right: 14px; bottom: 14px; width: 42px; height: 42px; border-radius: 10px; display: none;
-                  align-items: center; justify-content: center; cursor: pointer; background: rgba(15, 26, 41, .72);
-                  border: 2px solid rgba(64, 217, 196, .55); color: var(--texto); opacity: .55; transition: opacity .2s; }
+                  align-items: center; justify-content: center; cursor: pointer; background: rgba(16, 20, 18, .72);
+                  border: 2px solid rgba(79, 242, 79, .5); color: var(--texto); opacity: .55; transition: opacity .2s; }
     #tela-cheia:hover { opacity: 1; }
     #tela-cheia svg { width: 22px; height: 22px; }
     #aviso { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); padding: 8px 14px; border-radius: 8px;
-             background: rgba(15, 26, 41, .9); border: 1px solid rgba(64, 217, 196, .5); color: var(--texto);
+             background: rgba(16, 20, 18, .9); border: 1px solid rgba(79, 242, 79, .5); color: var(--texto);
              font-size: 13px; display: none; }
+    @media (prefers-reduced-motion: reduce) { #creditos, #creditos *, #carregando { transition-duration: .01s !important; } }
   </style>
 </head>
 <body>
@@ -44,6 +76,20 @@
     <div id="barra"><div id="barra-cheia"></div></div>
     <div id="porcentagem">0%</div>
     <div id="erro"></div>
+  </div>
+
+  <div id="creditos" aria-live="polite">
+    <div class="rotulo">Desenvolvimento</div>
+    <div class="traco"></div>
+    <!-- GitHubs: os do README do repositório -->
+    <ul id="nomes">
+      <li><span class="nome">Ana Letícia</span><span class="github">github.com/AnaSouzaPinheiro</span></li>
+      <li><span class="nome">Ítalo Oliveira</span><span class="github">github.com/ItaloOResende</span></li>
+      <li><span class="nome">Fernanda Mendes</span><span class="github">github.com/Fefevsc</span></li>
+      <li><span class="nome">Matheus Martins</span><span class="github">github.com/tujikonoriko420</span></li>
+    </ul>
+    <div id="rodape">Desenvolvido para o concurso <b>FRAMEWORK ARCADE 2026</b></div>
+    <div id="pular">clique ou aperte qualquer tecla para pular</div>
   </div>
 
   <div id="tela-cheia" title="Tela cheia (F11 também funciona)">
@@ -59,6 +105,7 @@
     var barra = document.querySelector("#barra-cheia");
     var porcentagem = document.querySelector("#porcentagem");
     var aviso = document.querySelector("#aviso");
+    var creditos = document.querySelector("#creditos");
 
     // avisos não críticos da Unity aparecem por alguns segundos no topo; erros vão para a tela de carregamento
     function unityShowBanner(msg, type) {
@@ -72,7 +119,44 @@
       var erro = document.querySelector("#erro");
       erro.innerHTML = "Não foi possível carregar o jogo.<br><small>" + msg + "</small>";
       erro.style.display = "block";
+      carregando.style.display = "flex";
       carregando.classList.remove("sumindo");
+    }
+
+    // Créditos por cima do jogo já iniciado (o menu inicial espera um clique, então nada começa por baixo).
+    // Enquanto estão na tela, teclado e mouse não chegam à Unity; clicar ou apertar uma tecla pula.
+    // o bloqueio dura até o fim do fade: o mouseup/click do clique que pulou não pode cair num botão do menu
+    var emCreditos = false, bloqueando = false, timers = [];
+    // tempo da intro "Made with Unity" contado a partir do createUnityInstance resolver; sem a splash no Player Settings, use 0.
+    // Com 3600 o menu já aparecia antes dos créditos: eles precisam entrar logo antes do fim da intro
+    var DURACAO_INTRO_UNITY = 1800;
+    function bloquear(e) {
+      if (!bloqueando) return;
+      e.stopImmediatePropagation(); e.preventDefault();
+      if (emCreditos && (e.type === "keydown" || e.type === "mousedown" || e.type === "touchstart")) fecharCreditos();
+    }
+    ["keydown", "keyup", "keypress", "mousedown", "mouseup", "click", "touchstart", "touchend", "wheel"].forEach(function (t) {
+      window.addEventListener(t, bloquear, { capture: true, passive: false });
+    });
+    function depois(ms, f) { timers.push(setTimeout(f, ms)); }
+
+    function mostrarCreditos(aoTerminar) {
+      emCreditos = bloqueando = true;
+      creditos.style.display = "flex";
+      // um quadro com display:flex antes de trocar a opacidade, senão a transição não roda
+      requestAnimationFrame(function () { requestAnimationFrame(function () { creditos.classList.add("visivel"); }); });
+      document.querySelectorAll("#nomes li").forEach(function (li, i) { depois(700 + i * 500, function () { li.classList.add("visivel"); }); });
+      depois(2900, function () { document.querySelector("#rodape").classList.add("visivel"); });
+      depois(9500, fecharCreditos);
+      fecharCreditos.aoTerminar = aoTerminar;
+    }
+    function fecharCreditos() {
+      if (!emCreditos) return;
+      emCreditos = false;
+      timers.forEach(clearTimeout); timers = [];
+      creditos.classList.remove("visivel");
+      setTimeout(function () { creditos.style.display = "none"; bloqueando = false; }, 1150);
+      if (fecharCreditos.aoTerminar) fecharCreditos.aoTerminar();
     }
 
     var buildUrl = "Build";
@@ -99,11 +183,18 @@
         barra.style.width = p + "%";
         porcentagem.textContent = p + "%";
       }).then(function (unityInstance) {
+        // o carregamento some e aparece a intro da Unity (splash do Player Settings, ~3 s); depois dela, os créditos.
+        // Durante a intro a entrada já fica bloqueada, para nenhum clique chegar ao menu por baixo.
+        bloqueando = true;
         carregando.classList.add("sumindo");
-        setTimeout(function () { carregando.style.display = "none"; }, 450);
-        botao.style.display = "flex";
-        botao.onclick = function () { unityInstance.SetFullscreen(1); };
-        canvas.focus();
+        setTimeout(function () { carregando.style.display = "none"; }, 850);
+        setTimeout(function () {
+          mostrarCreditos(function () {
+            botao.style.display = "flex";
+            botao.onclick = function () { unityInstance.SetFullscreen(1); };
+            canvas.focus();
+          });
+        }, DURACAO_INTRO_UNITY);
       }).catch(mostrarErro);
     };
     script.onerror = function () { mostrarErro("Arquivo do jogo não encontrado (" + script.src + ")."); };
