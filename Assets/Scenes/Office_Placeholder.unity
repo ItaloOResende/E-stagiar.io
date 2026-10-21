@@ -29950,49 +29950,19 @@ MonoBehaviour:
   previaControles: 0
   textoControles: CONTROLES
   tituloControles: CONTROLES
-  dicaRolagem: Role o mouse ou arraste a lista para ver mais
-  alturaListaControles: 350
-  alturaLinhaControle: 88
-  proporcaoColunaTeclas: 0.34
-  listaControles:
-  - tecla: W A S D
-    acao: Mover o personagem
-  - tecla: MOUSE
-    acao: Olhar ao redor
-  - tecla: CLIQUE ESQUERDO
-    acao: "Pegar / interagir. Com um item na m\xE3o, soltar o item."
-  - tecla: CLIQUE DIREITO
-    acao: "Abrir a tela do equipamento / esta\xE7\xE3o, inclusive com um item na
-      m\xE3o."
-  - tecla: T
-    acao: Abrir / fechar o tablet
-  - tecla: ALT ESQUERDO
-    acao: Segurar para liberar o cursor no mundo 3D, com o tablet fechado.
-  - tecla: ESC
-    acao: Fechar a tela ou tablet aberto. No mundo 3D, pausar. No pause, voltar /
-      continuar.
-  - tecla: CLICAR / ARRASTAR
-    acao: "Usar bot\xF5es, pe\xE7as, ferramentas e fios nas telas e minigames, conforme
-      a tarefa."
-  - tecla: SETAS ESQ. / DIR.
-    acao: Trocar a vista do computador, notebook ou impressora.
-  - tecla: "0\u20139  /  PONTO"
-    acao: "Digitar o endere\xE7o de rede no painel da impressora."
-  - tecla: TAB
-    acao: "Alternar entre IP e m\xE1scara no painel da impressora."
-  - tecla: BACKSPACE
-    acao: Apagar um caractere no painel da impressora.
-  - tecla: DELETE
-    acao: Limpar o campo no painel da impressora.
-  - tecla: ENTER
-    acao: Confirmar no painel da impressora.
+  subtituloControles: Aprenda a se movimentar e interagir
+  tamanhoPaginaControles: {x: 1480, y: 940}
   paginaControles: {fileID: 0}
-  listaControlesUI: {fileID: 0}
-  rolagemControles: {fileID: 0}
   tituloControlesUI: {fileID: 0}
-  dicaControlesUI: {fileID: 0}
+  rolagemControles: {fileID: 0}
   controlesUI: {fileID: 0}
   voltarControlesUI: {fileID: 0}
+  teclasControles: []
+  setasControles: []
+  botoesMouse: []
+  titulosMouse: []
+  baseTeclas: []
+  baseSetas: []
   tamanhoPainel: {x: 780, y: 690}
   escalaMenu: 1
   posicaoMenu: {x: 0, y: 0}
@@ -40821,15 +40791,15 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1638108189}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 16.5, y: 0.97999996, z: -0.5}
+  m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: 32.3, y: 0.97999996, z: 14.16}
   m_LocalScale: {x: 0.9, y: 0.9, z: 0.9}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 330585546}
   - {fileID: 945214354}
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 90, z: 0}
 --- !u!114 &1638108196
 MonoBehaviour:
   m_ObjectHideFlags: 0
