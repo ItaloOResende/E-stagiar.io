@@ -13,7 +13,7 @@ using UnityEngine.UI;
 /// <summary>Menu inicial integrado ao StageController; estilo e animações reaproveitados do pause (do Matheus).
 /// Configurações (volume e sensibilidade) gravadas no mesmo prefixo do PauseMenu ("Estagiario.Pause"): o que muda
 /// aqui vale na pausa e vice-versa. Botões: Iniciar jogo (expediente), Tutorial (cena Tutorial_Montagem, opcional),
-/// Configurações e Sair.</summary>
+/// Controles (a página do PauseMenu), Configurações e Sair.</summary>
 [DefaultExecutionOrder(-9000)]
 [DisallowMultipleComponent]
 public class MainMenuScreen : MonoBehaviour
@@ -45,6 +45,9 @@ public class MainMenuScreen : MonoBehaviour
     [SerializeField] private UnityEvent aoIniciar = new UnityEvent();
     private Image fundoUI, logoUI;
     [SerializeField, HideInInspector] private Button tutorialUI;
+    [Tooltip("Botão que abre a página de controles do PauseMenu da cena, sem iniciar a partida.")]
+    [SerializeField] private string textoControles = "CONTROLES";
+    [SerializeField, HideInInspector] private Button controlesUI;
 
     [Header("Volume")]
     [SerializeField] private AudioMixer mixer;
@@ -263,7 +266,9 @@ public class MainMenuScreen : MonoBehaviour
             entradasAlpha[i].alpha = Mathf.Clamp01(t * 3);
             entradasAlpha[i].interactable = t >= .95f; entradasAlpha[i].blocksRaycasts = t >= .95f;
         }
-        Vector2 mouse = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.one * -10000;
+        // página do pause aberta por cima (controles): os botões do menu ficam cobertos, sem hover
+        bool coberto = referenciaPause != null && referenciaPause.PaginaAvulsaAberta;
+        Vector2 mouse = Mouse.current != null && !coberto ? Mouse.current.position.ReadValue() : Vector2.one * -10000;
         foreach (var h in hovers)
         {
             bool sobre = h.botao.IsActive() && h.botao.IsInteractable() && RectTransformUtility.RectangleContainsScreenPoint((RectTransform)h.botao.transform, mouse, null);
@@ -336,6 +341,14 @@ public class MainMenuScreen : MonoBehaviour
         carregandoCena = false;
     }
     public void MostrarConfiguracoes() { if (estado == Estado.Aberto) MostrarPagina(true); }
+    /// <summary>Controles: a página do PauseMenu da cena, aberta por cima do menu (Voltar/Esc volta ao menu).</summary>
+    public void MostrarControles()
+    {
+        if (estado != Estado.Aberto || carregandoCena) return;
+        if (referenciaPause == null) referenciaPause = FindFirstObjectByType<PauseMenu>();
+        if (referenciaPause != null) referenciaPause.AbrirControlesAvulsos();
+        else mensagemUI.text = "Esta cena não tem a tela de controles (PauseMenu).";
+    }
     public void Voltar() { if (estado == Estado.Aberto) MostrarPagina(false); }
     private void MostrarPagina(bool config)
     {
@@ -454,11 +467,12 @@ public class MainMenuScreen : MonoBehaviour
         paginaConfig = Rect("PaginaConfiguracoes", painel); Stretch(paginaConfig); paginaConfig.gameObject.AddComponent<CanvasGroup>();
         tituloMenuUI = Texto(raiz, "TituloJogo", tituloMenu, tamanhoTituloJogo); // acima do card, fora da máscara
         tituloConfigUI = Texto(paginaConfig, "Titulo", tituloConfiguracoes, tamanhoTitulo);
-        entradasMenu = new RectTransform[4];
+        entradasMenu = new RectTransform[5];
         entradasMenu[0] = Holder("Iniciar", paginaMenu); iniciarUI = Botao(entradasMenu[0], textoIniciar);
         entradasMenu[1] = Holder("Tutorial", paginaMenu); tutorialUI = Botao(entradasMenu[1], textoTutorial);
-        entradasMenu[2] = Holder("Configuracoes", paginaMenu); configuracoesUI = Botao(entradasMenu[2], textoConfiguracoes);
-        entradasMenu[3] = Holder("Sair", paginaMenu); sairUI = Botao(entradasMenu[3], textoSair);
+        entradasMenu[2] = Holder("Controles", paginaMenu); controlesUI = Botao(entradasMenu[2], textoControles);
+        entradasMenu[3] = Holder("Configuracoes", paginaMenu); configuracoesUI = Botao(entradasMenu[3], textoConfiguracoes);
+        entradasMenu[4] = Holder("Sair", paginaMenu); sairUI = Botao(entradasMenu[4], textoSair);
         logoUI = Imagem("Logo", paginaMenu, Color.white); logoUI.preserveAspect = true;
         valorVolumeUI = Texto(paginaConfig, "VolumeLabel", "VOLUME", tamanhoTexto);
         valorSensUI = Texto(paginaConfig, "SensibilidadeLabel", "SENSIBILIDADE", tamanhoTexto);
@@ -497,6 +511,7 @@ public class MainMenuScreen : MonoBehaviour
     {
         hovers.Clear();
         Ligar(iniciarUI, IniciarJogo); Ligar(tutorialUI, IniciarTutorial);
+        if (controlesUI != null) Ligar(controlesUI, MostrarControles);
         Ligar(configuracoesUI, MostrarConfiguracoes); Ligar(sairUI, SairDoJogo); Ligar(voltarUI, Voltar);
         volumeUI.onValueChanged.AddListener(AplicarVolume); sensUI.onValueChanged.AddListener(AplicarSensibilidade);
         entradasBase = new Vector2[entradasMenu.Length]; entradasAlpha = new CanvasGroup[entradasMenu.Length];
@@ -570,6 +585,7 @@ public class MainMenuScreen : MonoBehaviour
         tituloMenuUI.gameObject.SetActive(logo == null);
         if (logoUI != null && logo != null) { logoUI.transform.SetParent(raiz, false); Centro(logoUI.rectTransform, Vector2.zero, tamanhoLogo); }
         tutorialUI.GetComponentInChildren<TMP_Text>().text = textoTutorial;
+        if (controlesUI != null) controlesUI.GetComponentInChildren<TMP_Text>().text = textoControles;
         if (!Application.isPlaying)
         {
             raiz.gameObject.SetActive(previaNoEditor); grupo.alpha = 1;

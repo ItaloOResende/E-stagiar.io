@@ -418,15 +418,26 @@ public class PauseMenu : MonoBehaviour
     }
 
     /// <summary>Configurações sem pausar (menu inicial): mesma tela e mesmas preferências do pause.</summary>
-    public void AbrirConfiguracoesAvulsas()
+    public void AbrirConfiguracoesAvulsas() => AbrirPaginaAvulsa(1);
+    /// <summary>Uma página avulsa (configurações ou controles, sem pausar) está aberta.</summary>
+    public bool PaginaAvulsaAberta => soConfiguracoes && estado != Estado.Fechado;
+    /// <summary>Controles sem pausar (menu inicial): a mesma página de controles do pause; Voltar/Esc fecham.</summary>
+    public void AbrirControlesAvulsos()
+    {
+        AbrirPaginaAvulsa(-1);
+        if (estado == Estado.Aberto && rolagemControles != null) { rolagemControles.StopMovement(); rolagemControles.verticalNormalizedPosition = 1; }
+    }
+    // página do pause aberta sozinha, sem pausar o jogo (1 = configurações, -1 = controles); por cima do menu inicial
+    private void AbrirPaginaAvulsa(float paginaAvulsa)
     {
         if (!iniciou || estado != Estado.Fechado || carregandoCena) return;
+        if (canvas != null) canvas.sortingOrder = 32767;
         soConfiguracoes = true;
         if (audioUI != null) { audioUIIgnoravaPause = audioUI.ignoreListenerPause; audioUI.ignoreListenerPause = true; }
         grupo.alpha = 0; grupo.interactable = true; grupo.blocksRaycasts = true;
         raiz.gameObject.SetActive(true); Canvas.ForceUpdateCanvases(); AtualizarLayout();
         imagemBlur.gameObject.SetActive(false); mensagemUI.text = "";
-        pagina = paginaAlvo = paginaOrigem = 1; paginaInicio = Time.unscaledTime - duracaoPagina;
+        pagina = paginaAlvo = paginaOrigem = paginaAvulsa; paginaInicio = Time.unscaledTime - duracaoPagina;
         aberturaEm = Time.unscaledTime;
         for (int i = 0; i < entradasMenu.Length; i++) { entradasAlpha[i].alpha = 0; entradasMenu[i].localScale = Vector3.one * .65f; }
         PosicionarPaginas(); estado = Estado.Aberto; Tocar(somAbrir);
