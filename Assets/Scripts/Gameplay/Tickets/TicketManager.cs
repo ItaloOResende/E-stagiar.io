@@ -266,6 +266,22 @@ public class TicketManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>TESTE: cria agora um chamado do catálogo pelo Ticket Id, fora do sorteio. Devolve false se não existir.</summary>
+    public bool CreateTicketForTest(string ticketId)
+    {
+        TicketDefinition d = catalog.Find(x => x != null && x.ticketId == ticketId);
+        if (!running || d == null)
+        {
+            Debug.LogWarning($"TicketManager: chamado '{ticketId}' não está no Catalog (ou a fase não começou).", this);
+            return false;
+        }
+        var ticket = new TicketInstance(nextTicketNumber++, d, SlaSecondsFor(d));
+        tickets.Add(ticket);
+        TicketCreated?.Invoke(ticket);
+        Debug.Log($"TESTE: chamado #{ticket.Number} criado: {d.title}", this);
+        return true;
+    }
+
     private TicketDefinition ChooseDefinition()
     {
         if (stageNumber == 0) return tutorialTicket;

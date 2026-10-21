@@ -12,7 +12,8 @@ using UnityEngine;
 ///    validar-imagem: no sistema com vídeo · validar-rede: no sistema com rede.
 /// Defeito criado ao assumir (pelo nome do chamado; o PC deve começar funcional): sem RAM, sem HD, peças ausentes
 /// (RAM + HD), sem sistema (HD sem SO), sem energia / sem rede / sem vídeo (cabo solto na ponta da parede ou do
-/// gabinete), montagem completa (sem peças e sem cabos de energia e vídeo), cabo de rede defeituoso / crimpar-cabo
+/// gabinete), estação nova (mesa vazia: o equipamento vai para a sala de TI e vale QUALQUER gabinete, monitor, teclado e
+/// mouse de lá; o gabinete entregue passa a ser o PC da estação), cabo de rede defeituoso / crimpar-cabo
 /// (o cabo de rede DESTA estação estraga; no crimpar-cabo a estação só volta com um cabo novo crimpado) e rack (o par
 /// do ponto de rede desta estação desligado). A rede só volta pelo estado real: cabo bom nas duas pontas E par do rack
 /// ligado (ComputerPower.NetworkConnected); corrigir só um dos lados não conclui.
@@ -49,7 +50,7 @@ public class PcTicketBridge : TicketDeviceBridge
     private static int cableDefectTurn;
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetCableTurn() => cableDefectTurn = 0;
-    private void OnDestroy() => cableDefectTurn = 0;
+    private void OnDestroy() { if (!transferido) cableDefectTurn = 0; }   // transferido: a partida continua
 
     /// <summary>Variação usada no último defeito de cabo desta estação (para testes e para o Console).</summary>
     public CableDefect LastCableDefect { get; private set; }
@@ -110,14 +111,18 @@ public class PcTicketBridge : TicketDeviceBridge
 
     protected override bool Condition(string id)
     {
+        // estação nova: as etapas valem no gabinete que o jogador está montando (qualquer um da sala de TI), não só neste
+        ComputerCase pcCase = Alvo();
+        ComputerPower power = EnergiaDe(pcCase);
         bool sistema = power.State == PcPowerState.OperatingSystem;
         switch (id)
         {
             case "inspecionar-pc": case "inspecionar-video": case "verificar-rede": case "verificar-armazenamento":
                 return Inspected;
             case "abrir-gabinete": return pcCase.State == CaseState.Open;
-            // estação nova: o gabinete e o monitor trazidos da sala de TI estão apoiados na mesa DESTA estação
-            case "posicionar-equipamentos": return EquipmentOnHomeDesk();
+            // estação nova: gabinete, monitor (o ligado a ele), teclado e mouse apoiados na mesa DESTA estação;
+            // tutorial: o gabinete e o monitor da estação na mesa dela
+            case "posicionar-equipamentos": return EstacaoNovaEmAndamento ? KitNaMesa(pcCase, power) : EquipmentOnHomeDesk();
             // o cabo estragado saiu do PC (desconectado nas duas pontas); testá-lo e descartá-lo é opcional
             case "remover-cabo-defeituoso": return caboDefeituoso == null || power.CableItemOf(PcLink.Network) != caboDefeituoso;
             // o par da porta desta estação está CERTO no rack (P N ↔ S N, cabo bom, sem laço) — sem vínculo: a rede do PC
@@ -182,25 +187,29 @@ public class PcTicketBridge : TicketDeviceBridge
                 }
                 else Debug.LogWarning("PcTicketBridge: o ponto de rede desta estação não tem porta no rack (PontoDeRedeRack).", this);
                 break;
-            case "pc-montagem-completa": PrepareNewStation(); break;
+            case EstacaoNova: PrepareNewStation(); break;
             // tutorial: o gabinete já foi esvaziado ao abrir a cena (TutorialMontagem → PrepareTutorialStation)
             case "tutorial-montagem": break;
         }
     }
 
     /// <summary>
-    /// Estação "nova": a mesa fica VAZIA. Gabinete (sem peças), monitor, teclado, mouse e todos os cabos (soltos das
-    /// duas pontas) vão para a bancada da sala de TI (AssemblyPickupPoint); o jogador os traz, monta e liga tudo. Sem
-    /// ponto de retirada na cena, tudo fica na mesa.
+    /// Estação "nova" (como no tutorial): a mesa fica VAZIA. O equipamento da estação sai (<see cref="EsconderKit"/>: nada
+    /// vai para a sala de TI, que já tem o estoque dela) e os cabos saem de vez (o jogador busca outros no gaveteiro).
+    /// Vale QUALQUER gabinete, monitor, teclado e mouse da sala de TI: o chamado acompanha o gabinete que o jogador está
+    /// montando (<see cref="Alvo"/>) e, na entrega, o que estiver na mesa precisa estar completo e funcionando.
     /// </summary>
     private void PrepareNewStation()
     {
         pcCase.SetComponents(PcComponent.None, false);
-        var kit = new System.Collections.Generic.List<PickupInteractable>();
+        var cabos = new System.Collections.Generic.List<PickupInteractable>();
         int n = 0;
         foreach (PcLink link in new[] { PcLink.Power, PcLink.MonitorPower, PcLink.Vga, PcLink.Hdmi, PcLink.Network })
-            if (RemoveCable(link, n, kit)) n++;
-        MoveKitToItRoom(kit);
+            if (RemoveCable(link, n, cabos)) n++;
+        foreach (PickupInteractable c in cabos) if (c != null) Destroy(c.gameObject);
+
+        EsconderKit();
+        AcompanharGabinetes();
     }
 
     /// <summary>
@@ -251,25 +260,41 @@ public class PcTicketBridge : TicketDeviceBridge
         power.UsePort(wallEnd, null, false, out _);
     }
 
-    // Equipamentos da estação levados à sala de TI no chamado de estação nova (o gabinete é este objeto).
-    private void MoveKitToItRoom(System.Collections.Generic.List<PickupInteractable> cables)
+    // Estação nova: o equipamento da estação SAI da mesa (nada vai para a sala de TI, que já tem o estoque dela). O
+    // monitor, o teclado e o mouse são desativados; este gabinete fica no lugar, invisível e sem colisão (continua ativo:
+    // é ele que guarda a ponte do chamado e as âncoras 3D do ponto elétrico da estação).
+    private readonly System.Collections.Generic.List<GameObject> kitDesativado = new System.Collections.Generic.List<GameObject>();
+    private readonly System.Collections.Generic.List<Renderer> visuaisOcultos = new System.Collections.Generic.List<Renderer>();
+    private readonly System.Collections.Generic.List<Collider> colisoresOcultos = new System.Collections.Generic.List<Collider>();
+    private bool kitEscondido;
+
+    private void EsconderKit()
     {
-        AssemblyPickupPoint point = AssemblyPickupPoint.Nearest(transform.position);
-        if (point == null)
-        {
-            Debug.LogWarning($"PcTicketBridge ({DeviceLabel}): sem AssemblyPickupPoint na cena; o gabinete e o monitor ficam na mesa.", this);
-            return;
-        }
-        var kit = new System.Collections.Generic.List<PickupInteractable>();
-        kit.Add(GetComponent<PickupInteractable>());
-        PickupInteractable monitorItem = MonitorItem();
-        if (monitorItem != null) kit.Add(monitorItem);
-        kit.AddRange(Peripherals());
-        kit.AddRange(cables);
-        kit.RemoveAll(p => p == null);
-        for (int i = kit.Count - 1; i > 0; i--) if (kit.IndexOf(kit[i]) < i) kit.RemoveAt(i);   // sem repetidos, na ordem
-        point.Place(kit);
-        Debug.Log($"[Montagem] {DeviceLabel}: mesa vazia; {kit.Count} itens na sala de TI ({point.name}).", this);
+        var itens = new System.Collections.Generic.List<PickupInteractable> { MonitorItem() };
+        itens.AddRange(Peripherals());
+        foreach (Periferico p in Periferico.Ativos) if (NaMesa(p.Item)) itens.Add(p.Item);
+        kitDesativado.Clear();
+        foreach (PickupInteractable item in itens)
+            if (item != null && item.gameObject.activeSelf && !kitDesativado.Contains(item.gameObject)) kitDesativado.Add(item.gameObject);
+        foreach (GameObject g in kitDesativado) g.SetActive(false);
+
+        visuaisOcultos.Clear(); colisoresOcultos.Clear();
+        foreach (Renderer r in GetComponentsInChildren<Renderer>()) if (r.enabled) { r.enabled = false; visuaisOcultos.Add(r); }
+        foreach (Collider c in GetComponentsInChildren<Collider>()) if (c.enabled) { c.enabled = false; colisoresOcultos.Add(c); }
+        if (TryGetComponent(out Rigidbody corpo)) corpo.isKinematic = true;
+        kitEscondido = true;
+        Debug.Log($"[Montagem] {DeviceLabel}: mesa vazia ({kitDesativado.Count} itens retirados + gabinete).", this);
+    }
+
+    // Chamado de estação nova perdido sem gabinete na mesa: o equipamento da estação volta (o gabinete continua vazio).
+    private void MostrarKit()
+    {
+        if (!kitEscondido) return;
+        kitEscondido = false;
+        foreach (Renderer r in visuaisOcultos) if (r != null) r.enabled = true;
+        foreach (Collider c in colisoresOcultos) if (c != null) c.enabled = true;
+        foreach (GameObject g in kitDesativado) if (g != null) g.SetActive(true);
+        kitDesativado.Clear(); visuaisOcultos.Clear(); colisoresOcultos.Clear();
     }
 
     private PickupInteractable MonitorItem() =>
@@ -304,6 +329,135 @@ public class PcTicketBridge : TicketDeviceBridge
         if (pcCase.SupportingSurface() != homeDesk) return false;
         PickupInteractable monitorItem = MonitorItem();
         return monitorItem == null || (!monitorItem.IsHeld && SurfaceUnder(monitorItem) == homeDesk);
+    }
+
+    // ---------------------------------------------------------------- estação nova: qualquer equipamento da sala de TI
+
+    private const string EstacaoNova = "pc-montagem-completa";
+
+    private ComputerCase[] candidatos = new ComputerCase[0];   // gabinetes que podem virar o desta estação
+    private MonitorDisplay[] monitores = new MonitorDisplay[0];
+    private ComputerCase ultimoMexido;                         // o gabinete em que o jogador mexeu por último
+    private readonly System.Collections.Generic.List<System.Action> desinscrever = new System.Collections.Generic.List<System.Action>();
+    private float proximoMonitor;
+    private bool transferido;
+
+    private bool EstacaoNovaEmAndamento => Current != null && Current.Definition != null && Current.Definition.ticketId == EstacaoNova;
+
+    /// <summary>
+    /// Gabinete em que as etapas do chamado são conferidas. Fora da estação nova é sempre este. Na estação nova: o
+    /// gabinete apoiado na mesa da estação; sem nenhum lá, o último em que o jogador mexeu (parafuso, tampa, peça).
+    /// Gabinetes de OUTRAS estações (com chamado próprio) nunca contam.
+    /// </summary>
+    private ComputerCase Alvo()
+    {
+        if (!EstacaoNovaEmAndamento) return pcCase;
+        if (homeDesk != null)
+            foreach (ComputerCase c in candidatos)
+                if (c != null && c.SupportingSurface() == homeDesk) return c;
+        return ultimoMexido != null ? ultimoMexido : pcCase;
+    }
+
+    private ComputerPower EnergiaDe(ComputerCase c) => c == pcCase ? power : c.GetComponent<ComputerPower>();
+
+    // Gabinetes sem chamado próprio (estoque, bancada) e este: passam a ser acompanhados até o fim do chamado.
+    private void AcompanharGabinetes()
+    {
+        PararDeAcompanhar();
+        ultimoMexido = null;
+        var lista = new System.Collections.Generic.List<ComputerCase>();
+        foreach (ComputerCase c in FindObjectsByType<ComputerCase>())
+        {
+            PcTicketBridge dono = c.GetComponent<PcTicketBridge>();
+            if (dono != null) continue;   // de outra estação ou este (escondido: a estação começa sem gabinete)
+            lista.Add(c);
+            ComputerCase caso = c;
+            System.Action peca = () => ultimoMexido = caso;
+            System.Action<CaseState> tampa = _ => ultimoMexido = caso;
+            System.Action<int> parafuso = _ => ultimoMexido = caso;
+            caso.ComponentsChanged += peca;
+            caso.StateChanged += tampa;
+            caso.ScrewRemoved += parafuso;
+            desinscrever.Add(() =>
+            {
+                if (caso == null) return;
+                caso.ComponentsChanged -= peca;
+                caso.StateChanged -= tampa;
+                caso.ScrewRemoved -= parafuso;
+            });
+        }
+        candidatos = lista.ToArray();
+        monitores = FindObjectsByType<MonitorDisplay>();
+    }
+
+    private void PararDeAcompanhar()
+    {
+        foreach (System.Action a in desinscrever) a();
+        desinscrever.Clear();
+    }
+
+    // Estação completa na mesa: o gabinete, o monitor ligado a ele, um teclado e um mouse (quaisquer).
+    private bool KitNaMesa(ComputerCase caso, ComputerPower energia)
+    {
+        if (homeDesk == null) return caso.IsOnWorkSurface;
+        if (caso.SupportingSurface() != homeDesk) return false;
+        PickupInteractable monitor = energia.Monitor != null ? energia.Monitor.GetComponentInParent<PickupInteractable>() : null;
+        return NaMesa(monitor) && PerifericoNaMesa(Periferico.Tipo.Teclado) && PerifericoNaMesa(Periferico.Tipo.Mouse);
+    }
+
+    private bool NaMesa(PickupInteractable item) => item != null && homeDesk != null && !item.IsHeld && SurfaceUnder(item) == homeDesk;
+
+    private bool PerifericoNaMesa(Periferico.Tipo tipo)
+    {
+        foreach (Periferico p in Periferico.Ativos)
+            if (p.Qual == tipo && NaMesa(p.Item)) return true;
+        return false;
+    }
+
+    protected override void Update()
+    {
+        base.Update();
+        if (!EstacaoNovaEmAndamento || Time.time < proximoMonitor) return;
+        proximoMonitor = Time.time + 0.5f;
+        LigarMonitorDaMesa();
+    }
+
+    // O monitor avulso só se liga ao ser colocado perto de um gabinete: se o jogador pôs o monitor na mesa ANTES do
+    // gabinete, ele se liga agora (mesma regra do MonitorDisplay.TryConnectToNearby).
+    private void LigarMonitorDaMesa()
+    {
+        ComputerCase caso = Alvo();
+        if (homeDesk == null || caso.SupportingSurface() != homeDesk) return;
+        ComputerPower energia = EnergiaDe(caso);
+        if (!MonitorDisplay.CanTake(energia)) return;
+        foreach (MonitorDisplay m in monitores)
+        {
+            if (m == null || !m.ConnectWhenPlaced || !NaMesa(m.GetComponentInParent<PickupInteractable>())) continue;
+            if (m.TryConnectToNearby() == energia) return;
+        }
+    }
+
+    /// <summary>
+    /// Estação nova entregue com OUTRO gabinete: ele passa a ser o PC desta estação (recebe a ponte de chamados com a
+    /// mesma configuração, estação, NPC e histórico) e este gabinete fica como equipamento de estoque, sem chamados.
+    /// </summary>
+    private void TransferirPara(ComputerCase novo)
+    {
+        PcTicketBridge ponte = novo.GetComponent<PcTicketBridge>();
+        if (ponte == null) ponte = novo.gameObject.AddComponent<PcTicketBridge>();
+        ponte.InheritStation(this);
+        ponte.scoreKeeper = scoreKeeper;
+        ponte.pesoSoltoNaParede = pesoSoltoNaParede;
+        ponte.pesoSoltoNoEquipamento = pesoSoltoNoEquipamento;
+        ponte.pesoAusente = pesoAusente;
+        ponte.mesaDaEstacao = mesaDaEstacao;
+        ponte.homeDesk = homeDesk;
+        ponte.peripherals = new System.Collections.Generic.List<PickupInteractable>();
+        foreach (Periferico p in Periferico.Ativos) if (NaMesa(p.Item)) ponte.peripherals.Add(p.Item);
+        Debug.Log($"[Montagem] {DeviceLabel}: estação montada com o gabinete '{novo.name}', que passa a ser o PC dela.", ponte);
+        transferido = true;
+        enabled = false;   // sai da escolha de equipamentos já, antes do Destroy (fim do quadro)
+        Destroy(this);
     }
 
     // Superfície de trabalho logo abaixo de um item (raio para baixo a partir da base dele, ignorando o próprio item).
@@ -390,20 +544,38 @@ public class PcTicketBridge : TicketDeviceBridge
     // é concluído e a tentativa é penalizada (ScoreKeeper). Durante as etapas o gabinete aberto é legítimo.
     protected override string DeliveryBlocker()
     {
-        if (pcCase.IsIncomplete) return "o gabinete ainda está aberto: feche a tampa e recoloque os parafusos";
-        // estação nova: só é entregue montada NA MESA dela (gabinete e monitor apoiados ali)
-        if (Current != null && Current.Definition != null && IsNewStation(Current.Definition.ticketId) && !EquipmentOnHomeDesk())
+        ComputerCase caso = Alvo();
+        if (caso.IsIncomplete) return "o gabinete ainda está aberto: feche a tampa e recoloque os parafusos";
+        // estação nova: só é entregue montada NA MESA dela (gabinete, monitor, teclado e mouse apoiados ali)
+        if (EstacaoNovaEmAndamento && !KitNaMesa(caso, EnergiaDe(caso)))
+            return "o gabinete, o monitor, o teclado e o mouse precisam estar na mesa da estação";
+        // tutorial: gabinete e monitor da estação apoiados na mesa dela
+        if (Current != null && Current.Definition != null && Current.Definition.ticketId == "tutorial-montagem" && !EquipmentOnHomeDesk())
             return "o gabinete e o monitor precisam estar na mesa da estação";
         return null;
     }
 
-    private static bool IsNewStation(string ticketId) => ticketId == "pc-montagem-completa" || ticketId == "tutorial-montagem";
-
     // abrir-gabinete é passagem: a entrega exige o gabinete fechado (DeliveryBlocker), então ele não pode "deixar de valer"
     protected override bool MustHoldOnDelivery(string id) => id != "abrir-gabinete";
 
+    // Estação nova perdida por tempo: com um gabinete na mesa, ele vira o PC da estação (no estado em que está); sem
+    // nenhum, o equipamento da estação volta para a mesa.
+    protected override void OnTicketExpired(TicketInstance ticket)
+    {
+        if (!EstacaoNovaEmAndamento) return;
+        ComputerCase caso = Alvo();
+        PararDeAcompanhar();
+        if (caso != pcCase && homeDesk != null && caso.SupportingSurface() == homeDesk) TransferirPara(caso);
+        else MostrarKit();
+    }
+
     protected override void OnTicketCompleted(TicketInstance ticket)
     {
-        if (scoreKeeper != null && pcCase.IsIncomplete) scoreKeeper.ApplyIncompleteCasePenalty(ticket);
+        ComputerCase caso = Alvo();
+        if (scoreKeeper != null && caso.IsIncomplete) scoreKeeper.ApplyIncompleteCasePenalty(ticket);
+        if (!EstacaoNovaEmAndamento) return;
+        PararDeAcompanhar();
+        if (caso != pcCase) TransferirPara(caso);
+        else MostrarKit();
     }
 }

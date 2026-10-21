@@ -107,6 +107,13 @@ public class StageController : MonoBehaviour
         EndStageNow();
     }
 
+    /// <summary>TESTE: o chamado de estação nova chega agora no tablet (sem esperar o sorteio). Só pelo menu de contexto.</summary>
+    [ContextMenu("TESTE: Criar chamado de estação nova")]
+    public void TesteCriarEstacaoNova()
+    {
+        if (ticketManager != null) ticketManager.CreateTicketForTest("pc-montagem-completa");
+    }
+
     /// <summary>Encerra a fase agora (como se o tempo tivesse acabado): pontuação final e relatório.</summary>
     [ContextMenu("TESTE: Encerrar a fase agora")]
     public void EndStageNow()

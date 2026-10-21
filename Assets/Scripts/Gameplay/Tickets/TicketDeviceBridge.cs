@@ -111,6 +111,25 @@ public abstract class TicketDeviceBridge : MonoBehaviour
         if (ticketManager == null) ticketManager = FindAnyObjectByType<TicketManager>();
     }
 
+    /// <summary>
+    /// Este equipamento passa a ser o da estação de <paramref name="anterior"/> (ex.: estação nova montada com OUTRO
+    /// gabinete): herda a configuração, a estação, o NPC e o histórico de atendimentos. A raiz passa a ser este objeto.
+    /// </summary>
+    protected void InheritStation(TicketDeviceBridge anterior)
+    {
+        ticketManager = anterior.ticketManager;
+        deviceLabel = anterior.deviceLabel;
+        stationNpc = anterior.stationNpc;
+        acceptedTicketIds = new List<string>(anterior.acceptedTicketIds);
+        prepareProblemOnClaim = anterior.prepareProblemOnClaim;
+        recentCooldownSeconds = anterior.recentCooldownSeconds;
+        checkInterval = anterior.checkInterval;
+        deviceRoot = transform;
+        HomeStation = anterior.Station;
+        ClaimCount = anterior.ClaimCount;
+        LastFinishedAt = anterior.LastFinishedAt;
+    }
+
     protected virtual void OnEnable()
     {
         if (!active.Contains(this)) active.Add(this);
@@ -140,6 +159,7 @@ public abstract class TicketDeviceBridge : MonoBehaviour
         // chamado perdido por tempo (TicketStatus.Expired): o equipamento fica livre para outro (o defeito continua nele)
         if (t == Current && t.Status == TicketStatus.Expired)
         {
+            OnTicketExpired(t);
             Release();
             AssignAll(ticketManager);
             return;
@@ -321,4 +341,6 @@ public abstract class TicketDeviceBridge : MonoBehaviour
     protected virtual void PrepareProblem(string ticketId) { }
     protected virtual void OnClaimed(TicketInstance ticket) { }
     protected virtual void OnTicketCompleted(TicketInstance ticket) { }
+    /// <summary>O chamado reservado aqui foi perdido por tempo (antes de liberar o equipamento).</summary>
+    protected virtual void OnTicketExpired(TicketInstance ticket) { }
 }

@@ -288,6 +288,8 @@ public static class TutorialMontagemSetup
         var todos = Raizes(cena).SelectMany(r => r.GetComponentsInChildren<Transform>(true)).ToList();
         var estoque = todos.Where(t => t.name.StartsWith("Teclado_Estoque")).ToList();
         var caixas = todos.Where(t => t.name.StartsWith("Caixa_Estoque")).ToList();
+        // a Office_Placeholder já pode vir com os mouses nas estantes (EstacaoNovaSetup): esses entram na lista
+        mouses.AddRange(todos.Where(t => t.name.StartsWith("Mouse_Estoque_")));
         Physics.SyncTransforms();
         var empilhados = new HashSet<Transform>();
         foreach (Transform teclado in estoque)

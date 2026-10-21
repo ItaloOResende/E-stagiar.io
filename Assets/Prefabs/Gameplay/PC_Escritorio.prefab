@@ -722,6 +722,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1990000832525974477, guid: c4ce511ba18fba24fb4c3f7c4fb1ea31, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4175217991377098458}
+    - targetCorrespondingSourceObject: {fileID: 1990000832525974477, guid: c4ce511ba18fba24fb4c3f7c4fb1ea31, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4212867457325021984}
   m_SourcePrefab: {fileID: 100100000, guid: c4ce511ba18fba24fb4c3f7c4fb1ea31, type: 3}
 --- !u!4 &4183223008838303380 stripped
 Transform:
@@ -781,6 +784,19 @@ MonoBehaviour:
   gripLocalPoint: {x: 0, y: 0, z: 0}
   placedYawOffset: 180
   startsFrozen: 1
+--- !u!114 &4212867457325021984
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6738641122699214840}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af578b5e202880548abb1a08866e5539, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Periferico
+  tipo: 1
 --- !u!1001 &6297715457793954578
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -843,6 +859,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6019342911511243933, guid: 55f47697352f9d740a77068f4dda31ee, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4625875913120631514}
+    - targetCorrespondingSourceObject: {fileID: 6019342911511243933, guid: 55f47697352f9d740a77068f4dda31ee, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6570254973188374708}
   m_SourcePrefab: {fileID: 100100000, guid: 55f47697352f9d740a77068f4dda31ee, type: 3}
 --- !u!1 &354934086821691279 stripped
 GameObject:
@@ -897,6 +916,19 @@ MonoBehaviour:
   gripLocalPoint: {x: 0, y: 0, z: 0}
   placedYawOffset: 180
   startsFrozen: 1
+--- !u!114 &6570254973188374708
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 354934086821691279}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af578b5e202880548abb1a08866e5539, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Periferico
+  tipo: 0
 --- !u!4 &8588471413706341990 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2329939806590315892, guid: 55f47697352f9d740a77068f4dda31ee, type: 3}

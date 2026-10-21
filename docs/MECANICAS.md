@@ -105,6 +105,11 @@ na segunda; monitor na primeira). Item quebrado não é instalado e não liga.
   senão vai a que atendeu menos.
 - As etapas se completam pelo estado real do equipamento. O jogador **finaliza** pelo tablet; entrega incompleta ou
   com o equipamento aberto é recusada (com penalidade).
+- **Estação nova** (`pc-montagem-completa`): ao iniciar, a mesa da estação fica vazia (o gabinete, o monitor, o
+  teclado, o mouse e os cabos da estação saem; nada é levado para a sala de TI). Vale
+  **qualquer** gabinete, monitor, teclado e mouse (`Periferico`) da sala de TI. A entrega exige, na mesa da estação, o
+  gabinete fechado e montado, o monitor ligado a ele, um teclado e um mouse, com energia, vídeo e rede ligados e o PC no
+  sistema. Entregue com outro gabinete, ele passa a ser o PC da estação. Os gabinetes da sala de TI começam vazios.
 - Cada chamado tem um **prazo** de referência (SLA): passar dele custa pontos, mas não bloqueia nada.
 - Todas as estações (PCs e notebooks) recebem chamados. A plaquinha, o tablet e o solicitante do chamado mostram o
   nome do funcionário da estação (`StationEmployee`).
