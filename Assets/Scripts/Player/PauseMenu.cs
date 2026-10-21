@@ -68,43 +68,23 @@ public class PauseMenu : MonoBehaviour
     [SerializeField] private bool previaConfiguracoes;
     [SerializeField] private bool previaControles;
 
-    [Serializable]
-    public class EntradaControle
-    {
-        public string tecla;
-        [TextArea(1, 3)] public string acao;
-        public EntradaControle(string tecla, string acao) { this.tecla = tecla; this.acao = acao; }
-    }
     [Header("Página de controles")]
     [SerializeField] private string textoControles = "CONTROLES";
     [SerializeField] private string tituloControles = "CONTROLES";
-    [SerializeField] private string dicaRolagem = "Role o mouse ou arraste a lista para ver mais";
-    [SerializeField, Min(160)] private float alturaListaControles = 350;
-    [SerializeField, Min(60)] private float alturaLinhaControle = 88;
-    [SerializeField, Range(.2f, .5f)] private float proporcaoColunaTeclas = .34f;
-    [Tooltip("Guia visual; editar aqui não altera as teclas da gameplay.")]
-    [SerializeField] private EntradaControle[] listaControles =
-    {
-        new EntradaControle("W A S D", "Mover o personagem"),
-        new EntradaControle("MOUSE", "Olhar ao redor"),
-        new EntradaControle("CLIQUE ESQUERDO", "Pegar / interagir. Com um item na mão, soltar o item."),
-        new EntradaControle("CLIQUE DIREITO", "Abrir a tela do equipamento / estação, inclusive com um item na mão."),
-        new EntradaControle("T", "Abrir / fechar o tablet"),
-        new EntradaControle("ALT ESQUERDO", "Segurar para liberar o cursor no mundo 3D, com o tablet fechado."),
-        new EntradaControle("ESC", "Fechar a tela ou tablet aberto. No mundo 3D, pausar. No pause, voltar / continuar."),
-        new EntradaControle("CLICAR / ARRASTAR", "Usar botões, peças, ferramentas e fios nas telas e minigames, conforme a tarefa."),
-        new EntradaControle("SETAS ESQ. / DIR.", "Trocar a vista do computador, notebook ou impressora."),
-        new EntradaControle("0–9  /  PONTO", "Digitar o endereço de rede no painel da impressora."),
-        new EntradaControle("TAB", "Alternar entre IP e máscara no painel da impressora."),
-        new EntradaControle("BACKSPACE", "Apagar um caractere no painel da impressora."),
-        new EntradaControle("DELETE", "Limpar o campo no painel da impressora."),
-        new EntradaControle("ENTER", "Confirmar no painel da impressora.")
-    };
-    [SerializeField, HideInInspector] private RectTransform paginaControles, listaControlesUI;
+    [SerializeField] private string subtituloControles = "Aprenda a se movimentar e interagir";
+    [Tooltip("Tamanho da página de controles (canvas 1920x1080). É mais larga que as outras: o card cresce ao abri-la. " +
+             "Os textos são um guia visual; editar aqui não altera as teclas da gameplay.")]
+    [SerializeField] private Vector2 tamanhoPaginaControles = new Vector2(1480, 940);
+    [SerializeField, HideInInspector] private RectTransform paginaControles;
+    [SerializeField, HideInInspector] private TMP_Text tituloControlesUI;
     [SerializeField, HideInInspector] private ScrollRect rolagemControles;
-    [SerializeField, HideInInspector] private TMP_Text tituloControlesUI, dicaControlesUI;
     [SerializeField, HideInInspector] private Button controlesUI, voltarControlesUI;
-    private float alturaPaginaControles = 690;
+    // peças animadas da página (W, A, S, D: face da tecla e seta; mouse: botão e título do texto de cada lado)
+    [SerializeField, HideInInspector] private Image[] teclasControles, setasControles, botoesMouse;
+    [SerializeField, HideInInspector] private TMP_Text[] titulosMouse;
+    [SerializeField, HideInInspector] private Vector2[] baseTeclas, baseSetas;
+    private float alturaPaginaControles = 940, larguraPaginaControles = 1480;
+    private readonly float[] brilhoTeclas = new float[4], brilhoMouse = new float[2];
     [SerializeField] private Vector2 tamanhoPainel = new Vector2(780, 690);
     [SerializeField, Range(.4f, 1.6f)] private float escalaMenu = 1;
     [SerializeField] private Vector2 posicaoMenu;
@@ -313,6 +293,7 @@ public class PauseMenu : MonoBehaviour
         var grupoControles = paginaControles.GetComponent<CanvasGroup>();
         grupoControles.interactable = !transitando && paginaAlvo < -.5f;
         grupoControles.blocksRaycasts = grupoControles.interactable;
+        if (pagina < -.01f) AnimarControles(dt);
         for (int i = 0; i < entradasMenu.Length; i++)
         {
             float t = Mathf.Clamp01((Time.unscaledTime - aberturaEm - i * intervaloBotoes) / Mathf.Max(.05f, duracaoBounce));
@@ -646,7 +627,7 @@ public class PauseMenu : MonoBehaviour
         AtualizarLayout(); AtualizarAparencia();
         if (!Application.isPlaying) raiz.gameObject.SetActive(previaNoEditor);
     }
-    // Acrescenta a página também às interfaces que já estavam salvas na cena.
+    // Acrescenta a página também às interfaces que já estavam salvas na cena (e refaz uma versão antiga dela).
     private void GarantirPaginaControles()
     {
         if (controlesUI == null)
@@ -657,76 +638,278 @@ public class PauseMenu : MonoBehaviour
             entradas.Insert(Mathf.Max(0, entradas.Count - 1), holder);
             entradasMenu = entradas.ToArray();
         }
+        if (paginaControles != null && (rolagemControles == null || teclasControles == null || teclasControles.Length != 4 || teclasControles[0] == null))
+        {
+            var antiga = paginaControles.gameObject; paginaControles = null;
+            antiga.transform.SetParent(null); antiga.SetActive(false); Destruir(antiga);
+        }
         if (paginaControles != null) return;
         paginaControles = Rect("PaginaControles", painel); Stretch(paginaControles);
         var cg = paginaControles.gameObject.AddComponent<CanvasGroup>();
         cg.interactable = false; cg.blocksRaycasts = false;
         tituloControlesUI = Texto(paginaControles, "Titulo", tituloControles, tamanhoTitulo);
-        var area = Rect("Rolagem", paginaControles);
+        TextoControle(paginaControles, "Subtitulo", subtituloControles, 24, new Vector2(0, 318), new Vector2(1200, 36))
+            .color = CorTextoSuave;
+
+        // Abaixo do cabeçalho, tudo rola: ANDAR e MOUSE no topo (o que aparece ao abrir); teclas e ícones da mira embaixo.
+        // Coordenadas fixas no canvas de 1920x1080 (página de 1480x940), a partir do centro de cada peça.
+        var area = Rect("Rolagem", paginaControles); Centro(area, new Vector2(0, -30), new Vector2(1440, 640));
         rolagemControles = area.gameObject.AddComponent<ScrollRect>();
         var viewport = Imagem("Viewport", area, new Color(0, 0, 0, 0), true).rectTransform;
-        Stretch(viewport); viewport.gameObject.AddComponent<RectMask2D>();
-        listaControlesUI = Rect("Lista", viewport);
-        listaControlesUI.anchorMin = new Vector2(0, 1); listaControlesUI.anchorMax = Vector2.one;
-        listaControlesUI.pivot = new Vector2(.5f, 1);
-        rolagemControles.viewport = viewport; rolagemControles.content = listaControlesUI;
+        Stretch(viewport, Vector2.zero, new Vector2(-24, 0)); viewport.gameObject.AddComponent<RectMask2D>();
+        var conteudo = Rect("Conteudo", viewport);
+        conteudo.anchorMin = conteudo.anchorMax = conteudo.pivot = new Vector2(.5f, 1);
+        conteudo.sizeDelta = new Vector2(1400, 1028);   // 988 de cartões + 20 de folga em cima e embaixo conteudo.anchoredPosition = Vector2.zero;
+        var meio = Rect("Meio", conteudo); Centro(meio, Vector2.zero, Vector2.zero);   // origem no centro do conteúdo
+        rolagemControles.viewport = viewport; rolagemControles.content = conteudo;
         rolagemControles.horizontal = false; rolagemControles.vertical = true;
-        rolagemControles.movementType = ScrollRect.MovementType.Clamped;
-        rolagemControles.scrollSensitivity = 35;
-        dicaControlesUI = Texto(paginaControles, "Dica", dicaRolagem, 16);
+        rolagemControles.movementType = ScrollRect.MovementType.Clamped; rolagemControles.scrollSensitivity = 35;
+        rolagemControles.verticalScrollbar = BarraRolagem(area);
+        rolagemControles.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
+
+        var cartaoTeclado = Cartao(meio, "CartaoMovimento", new Vector2(-350, 294), new Vector2(660, 400));
+        var cartaoMouse = Cartao(meio, "CartaoMouse", new Vector2(350, 294), new Vector2(660, 400));
+        var cartaoTeclas = Cartao(meio, "CartaoTeclas", new Vector2(0, -25), new Vector2(1360, 190));
+        var cartaoMira = Cartao(meio, "CartaoMira", new Vector2(0, -319), new Vector2(1360, 350));
+        TituloCartao(cartaoTeclado, "ANDAR", 166);
+        TituloCartao(cartaoMouse, "MOUSE", 166);
+        TituloCartao(cartaoTeclas, "TECLAS", 70);
+        TituloCartao(cartaoMira, "NA MIRA", 150);
+
+        // W A S D (PlayerMovement): tecla física com a seta da direção do lado de fora
+        string[] letras = { "W", "A", "S", "D" }, acoes = { "FRENTE", "ESQUERDA", "TRÁS", "DIREITA" };
+        Vector2[] pos = { new Vector2(0, 46), new Vector2(-136, -90), new Vector2(0, -90), new Vector2(136, -90) };
+        Vector2[] dir = { Vector2.up, Vector2.left, Vector2.down, Vector2.right };
+        teclasControles = new Image[4]; setasControles = new Image[4]; baseTeclas = new Vector2[4]; baseSetas = new Vector2[4];
+        for (int i = 0; i < 4; i++)
+        {
+            Centro(Imagem("Tecla" + letras[i], cartaoTeclado, CorTeclaBase).rectTransform, pos[i] + Vector2.down * 8, new Vector2(120, 120));
+            var face = Imagem("Face", cartaoTeclado, CorTecla); Centro(face.rectTransform, pos[i], new Vector2(120, 120));
+            Contorno(face, .35f);
+            var letra = TextoControle(face.rectTransform, "Letra", letras[i], 56, new Vector2(0, 12), new Vector2(110, 70));
+            letra.fontStyle = FontStyles.Bold; letra.color = HudEstilo.Valor;
+            TextoControle(face.rectTransform, "Acao", acoes[i], 15, new Vector2(0, -36), new Vector2(112, 24)).color = HudEstilo.Rotulo;
+            var seta = Imagem("Seta", cartaoTeclado, HudEstilo.Borda);
+            Centro(seta.rectTransform, pos[i] + dir[i] * 84, new Vector2(28, 34));
+            seta.rectTransform.localEulerAngles = new Vector3(0, 0, Mathf.Atan2(dir[i].y, dir[i].x) * Mathf.Rad2Deg);
+            teclasControles[i] = face; setasControles[i] = seta; baseTeclas[i] = pos[i]; baseSetas[i] = pos[i] + dir[i] * 84;
+        }
+
+        // Mouse (InteractionDetector): os botões são filhos do corpo e recortados pelo formato dele (Mask), então
+        // nunca passam da borda; cada botão liga ao seu texto por um traço
+        var corpo = Imagem("CorpoMouse", cartaoMouse, CorTecla);
+        Centro(corpo.rectTransform, new Vector2(0, -10), new Vector2(170, 270));
+        corpo.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+        botoesMouse = new Image[2]; titulosMouse = new TMP_Text[2];
+        for (int i = 0; i < 2; i++)
+        {
+            float lado = i == 0 ? -1 : 1;
+            var botaoMouse = Imagem(i == 0 ? "BotaoEsquerdo" : "BotaoDireito", corpo.rectTransform, CorTeclaClara);
+            Centro(botaoMouse.rectTransform, new Vector2(lado * 43, 80), new Vector2(82, 110));
+            botoesMouse[i] = botaoMouse;
+            var linha = Imagem("Linha", cartaoMouse, new Color(HudEstilo.Borda.r, HudEstilo.Borda.g, HudEstilo.Borda.b, .6f));
+            Centro(linha.rectTransform, new Vector2(lado * 112, 70), new Vector2(50, 3));
+            titulosMouse[i] = TextoControle(cartaoMouse, "Titulo", i == 0 ? "CLIQUE ESQUERDO" : "CLIQUE DIREITO", 20,
+                new Vector2(lado * 232, 96), new Vector2(190, 30));
+            titulosMouse[i].fontStyle = FontStyles.Bold;
+            TextoControle(cartaoMouse, "Acao", i == 0 ? "Pegar, abrir e usar.\nCom item na mão: soltar." :
+                "Abrir a tela do equipamento.\nVale com item na mão.", 17, new Vector2(lado * 232, 32), new Vector2(190, 96))
+                .color = CorTextoSuave;
+        }
+        Centro(Imagem("Roda", corpo.rectTransform, CorTeclaBase).rectTransform, new Vector2(0, 86), new Vector2(14, 42));
+        // contorno FORA da máscara e depois dela: fica por cima dos botões e esconde o serrilhado do recorte
+        Centro(Imagem("ContornoMouse", cartaoMouse, HudEstilo.Borda).rectTransform, new Vector2(0, -10), new Vector2(170, 270));
+        TextoControle(cartaoMouse, "Olhar", "Mover o mouse: olhar ao redor", 18, new Vector2(0, -172), new Vector2(600, 28))
+            .color = CorTextoSuave;
+
+        // Teclas (TicketTabletPrototype, PauseMenu/UIScreenManager, telas com vistas, TutorialMontagem): tecla em cima,
+        // o que ela faz embaixo
+        (string, string)[] atalhos =
+        {
+            ("T", "Tablet: chamados e guia"), ("ESC", "Fechar a tela ou pausar"), ("ALT", "Segurar: soltar o cursor"),
+            ("SETAS", "Trocar a vista do aparelho"), ("TAB", "Minimizar o tutorial"),
+        };
+        for (int i = 0; i < atalhos.Length; i++)
+        {
+            float x = -544 + i * 272;
+            Centro(Imagem("Atalho" + atalhos[i].Item1, cartaoTeclas, CorTeclaBase).rectTransform, new Vector2(x, 4), new Vector2(104, 52));
+            var tecla = Imagem("Atalho" + atalhos[i].Item1, cartaoTeclas, CorTecla); Contorno(tecla, .35f);
+            Centro(tecla.rectTransform, new Vector2(x, 10), new Vector2(104, 52));
+            var rotulo = TextoControle(tecla.rectTransform, "Tecla", atalhos[i].Item1, 20, Vector2.zero, new Vector2(96, 44));
+            rotulo.fontStyle = FontStyles.Bold; rotulo.color = HudEstilo.Valor;
+            TextoControle(cartaoTeclas, "Texto", atalhos[i].Item2, 17, new Vector2(x, -50), new Vector2(250, 40)).color = CorTextoSuave;
+        }
+
+        // Na mira (InteractionPrompt + IconesInteracao.Para): todos os ícones que o HUD mostra, pelo clique que os usa
+        SubtituloGrupo(cartaoMira, "CLIQUE ESQUERDO", -340);
+        SubtituloGrupo(cartaoMira, "CLIQUE DIREITO", 340);
+        (Sprite, string)[] esquerdo =
+        {
+            (IconesInteracao.Pegar, "Pegar ou usar um objeto"), (IconesInteracao.Abrir, "Abrir gaveta ou porta"),
+            (IconesInteracao.Rack, "Abrir o rack de rede"), (IconesInteracao.Bloqueado, "Ação bloqueada agora (o motivo aparece na mira)"),
+        };
+        (Sprite, string)[] direito =
+        {
+            (IconesInteracao.ChaveDeFenda, "Manutenção do gabinete ou do notebook"), (IconesInteracao.Monitor, "Manutenção do PC pelo monitor"),
+            (IconesInteracao.Impressora, "Painel da impressora"), (IconesInteracao.Testador, "Testador de cabo de rede"),
+            (IconesInteracao.Crimpador, "Crimpar o cabo na caixa (com o alicate, também no esquerdo)"),
+        };
+        for (int i = 0; i < esquerdo.Length; i++) ItemMira(cartaoMira, esquerdo[i], new Vector2(-500 + i % 2 * 320, 50 - i / 2 * 80));
+        for (int i = 0; i < direito.Length; i++) ItemMira(cartaoMira, direito[i], new Vector2(180 + i % 2 * 320, 50 - i / 2 * 80));
+        Centro(Imagem("Linha", cartaoMira, new Color(HudEstilo.Borda.r, HudEstilo.Borda.g, HudEstilo.Borda.b, .18f)).rectTransform,
+            new Vector2(0, -40), new Vector2(2, 250));
+
         voltarControlesUI = Botao(Holder("Voltar", paginaControles), textoVoltar);
         if (mensagemUI != null) mensagemUI.transform.SetAsLastSibling();
     }
-    private void LayoutControles(float largura, float bloco, float titulo, float espaco, Vector2 botao, float k)
+    private void LayoutControles(Vector2 botao)
     {
-        float y = bloco * .5f;
-        Centro(tituloControlesUI.rectTransform, new Vector2(0, y - titulo * .5f), new Vector2(largura - 50, titulo));
-        y -= titulo + espaco * 1.5f;
-        float altura = Mathf.Max(160, alturaListaControles) * k;
-        float w = largura - 90;
-        Centro((RectTransform)rolagemControles.transform, new Vector2(0, y - altura * .5f), new Vector2(w, altura));
-        y -= altura;
-        Centro(dicaControlesUI.rectTransform, new Vector2(0, y - 18 * k), new Vector2(w, 36 * k));
-        y -= 36 * k + espaco;
-        Centro((RectTransform)voltarControlesUI.transform.parent, new Vector2(0, y - botao.y * .5f), botao);
-        tituloControlesUI.text = tituloControles; dicaControlesUI.text = dicaRolagem;
+        float topo = alturaPaginaControles * .5f;
+        Centro(tituloControlesUI.rectTransform, new Vector2(0, topo - 90), new Vector2(1200, 80));
+        Centro((RectTransform)voltarControlesUI.transform.parent, new Vector2(0, -400), botao);
+        tituloControlesUI.text = tituloControles;
+        paginaControles.Find("Subtitulo").GetComponent<TMP_Text>().text = subtituloControles;
         controlesUI.GetComponentInChildren<TMP_Text>().text = textoControles;
         voltarControlesUI.GetComponentInChildren<TMP_Text>().text = textoVoltar;
-        int count = listaControles == null ? 0 : listaControles.Length;
-        while (listaControlesUI.childCount > count)
+    }
+    // Cartões e teclas com os cantos arredondados do card; setas com o triângulo desenhado (sem glifo de fonte).
+    // Cores da página: as do HUD de jogo (selos de pontos e tempo, HudEstilo), não o gradiente dos botões.
+    private void EstilizarControles(Sprite redondo)
+    {
+        if (paginaControles == null) return;
+        Sprite triangulo = CriarTriangulo(); recursosVisuais.Add(triangulo.texture); recursosVisuais.Add(triangulo);
+        // mouse em resolução própria (raio 60 sem esticar o sprite do card, que borrava) e contorno de 3 px por cima
+        Sprite corpoMouse = CriarArredondado(60), contornoMouse = CriarContorno(60, 3);
+        foreach (var img in paginaControles.GetComponentsInChildren<Image>(true))
         {
-            var extra = listaControlesUI.GetChild(listaControlesUI.childCount - 1);
-            extra.SetParent(null); extra.gameObject.SetActive(false); Destruir(extra.gameObject);
+            if (img.GetComponentInParent<Button>() != null || img.name == "Icone" || img.name == "Viewport") continue;
+            if (img.name == "Seta") { img.sprite = triangulo; img.type = Image.Type.Simple; continue; }
+            if (img.name == "Linha") continue;
+            if (img.name == "CorpoMouse" || img.name == "ContornoMouse")
+            { img.sprite = img.name == "CorpoMouse" ? corpoMouse : contornoMouse; img.type = Image.Type.Sliced; img.pixelsPerUnitMultiplier = 1; continue; }
+            img.sprite = redondo; img.type = Image.Type.Sliced;
+            // cantos bem redondos no corpo do mouse; nos botões dele, cantos pequenos (os de fora são os do corpo)
+            img.pixelsPerUnitMultiplier = img.name.StartsWith("Botao") ? 2f : img.name == "Roda" ? .5f : 1f;
         }
-        float h = Mathf.Max(60, alturaLinhaControle) * k, gap = 10 * k;
-        float kw = (w - 32 * k) * proporcaoColunaTeclas;
-        for (int i = 0; i < count; i++)
+        // o título desta página fica no branco dos valores do HUD, com o contorno escuro dos textos
+        tituloControlesUI.enableVertexGradient = false; tituloControlesUI.color = HudEstilo.Valor;
+        AplicarMaterialTexto(tituloControlesUI);
+        // o material da fonte do tablet tinge a face das letras (amarelado): aqui a face é branca e a cor vem só do texto
+        var brancos = new Dictionary<Material, Material>();
+        foreach (var t in paginaControles.GetComponentsInChildren<TMP_Text>(true))
         {
-            RectTransform linha;
-            if (i < listaControlesUI.childCount) linha = (RectTransform)listaControlesUI.GetChild(i);
-            else
+            if (t.GetComponentInParent<Button>() != null) continue;
+            Material origem = t.fontSharedMaterial;
+            if (origem == null || !origem.HasProperty("_FaceColor")) continue;
+            if (!brancos.TryGetValue(origem, out Material branco))
             {
-                linha = Imagem("Controle", listaControlesUI, Color.white, true).rectTransform;
-                var badge = Imagem("Tecla", linha, Color.white).rectTransform;
-                var label = Texto(badge, "Texto", "", tamanhoTexto); Stretch(label.rectTransform, Vector2.one * 8, -Vector2.one * 8);
-                label.enableAutoSizing = true; label.fontSizeMin = 12; label.fontSizeMax = tamanhoTexto * k;
-                var acao = Texto(linha, "Acao", "", tamanhoTexto); acao.alignment = TextAlignmentOptions.MidlineLeft;
-                acao.enableAutoSizing = true; acao.fontSizeMin = 12; acao.fontSizeMax = tamanhoTexto * k;
+                branco = new Material(origem) { name = "Pause_Controles", hideFlags = HideFlags.HideAndDontSave };
+                brancos.Add(origem, branco); recursosVisuais.Add(branco);
             }
-            linha.anchorMin = linha.anchorMax = new Vector2(.5f, 1); linha.pivot = new Vector2(.5f, 1);
-            linha.sizeDelta = new Vector2(w - 8 * k, h); linha.anchoredPosition = new Vector2(0, -i * (h + gap));
-            var tecla = (RectTransform)linha.Find("Tecla");
-            Centro(tecla, new Vector2(-linha.sizeDelta.x * .5f + 8 * k + kw * .5f, -h * .5f), new Vector2(kw, h - 16 * k));
-            // Filhos usam âncoras centrais: a origem fica no centro da linha.
-            tecla.anchoredPosition = new Vector2(tecla.anchoredPosition.x, 0);
-            var textoAcao = linha.Find("Acao").GetComponent<TMP_Text>();
-            float aw = linha.sizeDelta.x - kw - 32 * k;
-            Centro(textoAcao.rectTransform, new Vector2(kw * .5f + 8 * k, 0), new Vector2(aw, h - 12 * k));
-            tecla.GetComponentInChildren<TMP_Text>().text = listaControles[i]?.tecla ?? "";
-            textoAcao.text = listaControles[i]?.acao ?? "";
-            tecla.GetComponentInChildren<TMP_Text>().fontSizeMax = textoAcao.fontSizeMax = tamanhoTexto * k;
+            branco.SetColor("_FaceColor", Color.white);
+            t.fontSharedMaterial = branco;
         }
-        listaControlesUI.sizeDelta = new Vector2(0, Mathf.Max(altura, count * (h + gap) - gap));
+    }
+    // W A S D acendem em sequência (a tecla afunda e a seta dá um passo na direção); os botões do mouse alternam.
+    private void AnimarControles(float dt)
+    {
+        if (teclasControles == null || botoesMouse == null) return;
+        float t = Time.unscaledTime, suave = 1 - Mathf.Exp(-12 * dt);
+        int acesa = Mathf.FloorToInt(t / .6f) % 5;   // 4 = pausa curta com todas apagadas
+        for (int i = 0; i < 4; i++)
+        {
+            brilhoTeclas[i] = Mathf.Lerp(brilhoTeclas[i], i == acesa ? 1 : 0, suave);
+            float b = brilhoTeclas[i];
+            teclasControles[i].rectTransform.anchoredPosition = baseTeclas[i] + Vector2.down * 6 * b;
+            teclasControles[i].color = Color.Lerp(CorTecla, CorTeclaAcesa, b);
+            Vector2 passo = (baseSetas[i] - baseTeclas[i]).normalized;
+            setasControles[i].rectTransform.anchoredPosition = baseSetas[i] + passo * 10 * b;
+            setasControles[i].color = new Color(HudEstilo.Borda.r, HudEstilo.Borda.g, HudEstilo.Borda.b, .4f + .6f * b);
+        }
+        int lado = Mathf.FloorToInt(t / 1.4f) % 2;
+        for (int i = 0; i < 2; i++)
+        {
+            brilhoMouse[i] = Mathf.Lerp(brilhoMouse[i], i == lado ? 1 : 0, suave);
+            botoesMouse[i].color = Color.Lerp(CorTeclaClara, CorTeclaAcesa, brilhoMouse[i]);
+            titulosMouse[i].color = Color.Lerp(HudEstilo.Valor, HudEstilo.Borda, brilhoMouse[i]);
+        }
+    }
+    // tons das teclas: o azul-marinho do selo do HUD, um pouco mais claro; acesa = verde-água da borda dos selos
+    private static readonly Color CorTecla = new Color(.11f, .17f, .26f, 1), CorTeclaClara = new Color(.16f, .24f, .35f, 1),
+        CorTeclaBase = new Color(.03f, .05f, .09f, 1), CorTeclaAcesa = new Color(.13f, .45f, .46f, 1),
+        CorTextoSuave = new Color(.82f, .88f, .94f, 1);
+    private RectTransform Cartao(Transform pai, string nome, Vector2 pos, Vector2 tamanho)
+    {
+        var img = Imagem(nome, pai, HudEstilo.Fundo); Contorno(img, .45f);
+        Centro(img.rectTransform, pos, tamanho); return img.rectTransform;
+    }
+    private static void Contorno(Image img, float alfa)
+    {
+        var o = img.gameObject.AddComponent<Outline>();
+        o.effectColor = new Color(HudEstilo.Borda.r, HudEstilo.Borda.g, HudEstilo.Borda.b, alfa);
+        o.effectDistance = new Vector2(1.5f, -1.5f); o.useGraphicAlpha = true;
+    }
+    private void TituloCartao(RectTransform cartao, string texto, float y)
+    {
+        var t = TextoControle(cartao, "TituloCartao", texto, 24, new Vector2(0, y), new Vector2(600, 36));
+        t.fontStyle = FontStyles.Bold; t.color = HudEstilo.Rotulo; t.characterSpacing = 8;
+    }
+    private void SubtituloGrupo(RectTransform cartao, string texto, float x)
+    {
+        var t = TextoControle(cartao, "Grupo", texto, 17, new Vector2(x, 106), new Vector2(620, 28));
+        t.fontStyle = FontStyles.Bold; t.color = HudEstilo.Borda;
+    }
+    // ícone num ladrilho escuro (o mesmo para a mãozinha em pixel art e os ícones cartoon) e o significado ao lado
+    private void ItemMira(RectTransform cartao, (Sprite, string) item, Vector2 pos)
+    {
+        var ladrilho = Imagem("Ladrilho", cartao, CorTecla); Centro(ladrilho.rectTransform, pos + new Vector2(-120, 0), new Vector2(64, 64));
+        var icone = Imagem("Icone", ladrilho.rectTransform, Color.white); icone.sprite = item.Item1; icone.preserveAspect = true;
+        Centro(icone.rectTransform, Vector2.zero, new Vector2(48, 48));
+        var texto = TextoControle(cartao, "Texto", item.Item2, 17, pos + new Vector2(40, 0), new Vector2(232, 64));
+        texto.alignment = TextAlignmentOptions.MidlineLeft; texto.color = HudEstilo.Valor;
+    }
+    private Scrollbar BarraRolagem(RectTransform area)
+    {
+        var trilho = Imagem("BarraRolagem", area, new Color(HudEstilo.Borda.r, HudEstilo.Borda.g, HudEstilo.Borda.b, .12f), true).rectTransform;
+        trilho.anchorMin = new Vector2(1, 0); trilho.anchorMax = Vector2.one; trilho.pivot = new Vector2(1, .5f);
+        trilho.sizeDelta = new Vector2(8, -20); trilho.anchoredPosition = Vector2.zero;
+        var deslize = Rect("Deslize", trilho); Stretch(deslize);
+        var alca = Imagem("Alca", deslize, new Color(HudEstilo.Borda.r, HudEstilo.Borda.g, HudEstilo.Borda.b, .7f), true);
+        Stretch(alca.rectTransform);
+        var barra = trilho.gameObject.AddComponent<Scrollbar>();
+        barra.handleRect = alca.rectTransform; barra.targetGraphic = alca; barra.direction = Scrollbar.Direction.BottomToTop;
+        barra.navigation = new Navigation { mode = Navigation.Mode.None };
+        return barra;
+    }
+    private TMP_Text TextoControle(Transform pai, string nome, string texto, float tamanho, Vector2 pos, Vector2 caixa)
+    {
+        var t = Texto(pai, nome, texto, tamanho); Centro(t.rectTransform, pos, caixa);
+        t.enableAutoSizing = true; t.fontSizeMin = 12; t.fontSizeMax = tamanho; return t;
+    }
+    // só a borda de um retângulo arredondado (espessura em px), suavizada dos dois lados
+    private Sprite CriarContorno(int raio, float espessura)
+    {
+        int n = raio * 2 + 6; var pixels = new Color[n * n];
+        for (int y = 0; y < n; y++) for (int x = 0; x < n; x++)
+        {
+            float d = DistanciaBorda(x + .5f - n * .5f, y + .5f - n * .5f, n, n, raio);
+            pixels[y * n + x] = new Color(1, 1, 1, Mathf.Clamp01(.5f - d) * Mathf.Clamp01(.5f + d + espessura));
+        }
+        var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave, wrapMode = TextureWrapMode.Clamp };
+        tex.SetPixels(pixels); tex.Apply(false, true);
+        var sp = Sprite.Create(tex, new Rect(0, 0, n, n), Vector2.one * .5f, 100, 0, SpriteMeshType.FullRect, Vector4.one * (raio + 2));
+        sp.hideFlags = HideFlags.HideAndDontSave; recursosVisuais.Add(tex); recursosVisuais.Add(sp); return sp;
+    }
+    private Sprite CriarTriangulo()
+    {
+        const int n = 64; var pixels = new Color[n * n];
+        for (int y = 0; y < n; y++) for (int x = 0; x < n; x++)
+        {
+            // aponta para a direita; meia altura cai linearmente de x = 0 a x = n
+            float meia = (n - x - .5f) * .5f, dy = Mathf.Abs(y + .5f - n * .5f);
+            pixels[y * n + x] = new Color(1, 1, 1, Mathf.Clamp01(meia - dy + .5f));
+        }
+        return SpriteDosPixels(pixels, n, n, "Pause_Seta");
     }
     private RectTransform Holder(string nome, Transform pai)
     { var rt = Rect(nome, pai); rt.gameObject.AddComponent<CanvasGroup>(); return rt; }
@@ -780,15 +963,15 @@ public class PauseMenu : MonoBehaviour
         float grupoSlider = rotulo + 10 * k + slider.y;
         float blocoConfig = alturaTitulo + espaco * 1.5f + grupoSlider * 2 + espaco * 2 + espaco * 2 + botao.y;
         alturaPaginaMenu = blocoMenu + margemCard * 2; alturaPaginaConfig = blocoConfig + margemCard * 2;
-        float blocoControles = alturaTitulo + espaco * 1.5f + alturaListaControles * k + 36 * k + espaco + botao.y;
-        alturaPaginaControles = blocoControles + margemCard * 2;
+        larguraPaginaControles = Mathf.Max(largura, tamanhoPaginaControles.x);
+        alturaPaginaControles = Mathf.Max(600, tamanhoPaginaControles.y);
         float alturaMax = Mathf.Max(alturaPaginaMenu, alturaPaginaConfig, alturaPaginaControles);
         larguraPainel = largura;
         float scale = escalaMenu;
         if (Application.isPlaying)
         {
             Vector2 disponivel = raiz.rect.size - new Vector2(Mathf.Abs(posicaoMenu.x), Mathf.Abs(posicaoMenu.y)) * 2 - Vector2.one * 40;
-            if (disponivel.x > 1 && disponivel.y > 1) scale = Mathf.Max(.05f, Mathf.Min(scale, disponivel.x / largura, disponivel.y / alturaMax));
+            if (disponivel.x > 1 && disponivel.y > 1) scale = Mathf.Max(.05f, Mathf.Min(scale, disponivel.x / larguraPaginaControles, disponivel.y / alturaMax));
         }
         painel.localScale = Vector3.one * scale; painel.anchoredPosition = posicaoMenu;
         float y = blocoMenu * .5f;
@@ -809,7 +992,7 @@ public class PauseMenu : MonoBehaviour
             y -= grupoSlider + espaco * 2;
         }
         Centro((RectTransform)voltarUI.transform.parent, new Vector2(0, y - botao.y * .5f), botao);
-        LayoutControles(largura, blocoControles, alturaTitulo, espaco, botao, k);
+        LayoutControles(botao);
         var msg = mensagemUI.rectTransform; msg.anchorMin = msg.anchorMax = new Vector2(.5f, 0);
         msg.sizeDelta = new Vector2(largura - 50, 50); msg.anchoredPosition = new Vector2(0, margemCard * .5f);
         tituloMenuUI.text = tituloPause; tituloConfigUI.text = tituloConfiguracoes;
@@ -828,8 +1011,12 @@ public class PauseMenu : MonoBehaviour
     }
     private void PosicionarPaginas()
     {
-        float distancia = larguraPainel + 60;
-        painel.sizeDelta = new Vector2(larguraPainel, Mathf.Lerp(alturaPaginaMenu, pagina < 0 ? alturaPaginaControles : alturaPaginaConfig, Mathf.Abs(pagina)));
+        // a página de controles é mais larga: o card cresce na largura também, e as páginas ficam afastadas pela maior
+        float distancia = Mathf.Max(larguraPainel, larguraPaginaControles) + 60;
+        float u = Mathf.Abs(pagina);
+        painel.sizeDelta = pagina < 0
+            ? new Vector2(Mathf.Lerp(larguraPainel, larguraPaginaControles, u), Mathf.Lerp(alturaPaginaMenu, alturaPaginaControles, u))
+            : new Vector2(larguraPainel, Mathf.Lerp(alturaPaginaMenu, alturaPaginaConfig, u));
         paginaMenu.anchoredPosition = new Vector2(-pagina * distancia, 0);
         paginaConfig.anchoredPosition = new Vector2((1 - pagina) * distancia, 0);
         if (paginaControles != null) paginaControles.anchoredPosition = new Vector2((-1 - pagina) * distancia, 0);
@@ -889,23 +1076,15 @@ public class PauseMenu : MonoBehaviour
         foreach (var t in raiz.GetComponentsInChildren<TMP_Text>(true))
         {
             if (fonte != null) t.font = fonte;
+            // textos desenhados da página de controles: tamanho e cor próprios (dados ao construir a página)
+            if (paginaControles != null && t != tituloControlesUI && t.transform.IsChildOf(paginaControles) && t.GetComponentInParent<Button>() == null)
+            { AplicarMaterialTexto(t); continue; }
             t.color = t == mensagemUI ? new Color(1, .65f, .4f) : corTexto;
             t.fontSize = (t == tituloMenuUI || t == tituloConfigUI || t == tituloControlesUI ? tamanhoTitulo * 1.15f : t == mensagemUI ? 18 : tamanhoTexto) * escalaElementos;
             AplicarMaterialTexto(t);
         }
         EstilizarTitulo(tituloMenuUI); EstilizarTitulo(tituloConfigUI); EstilizarTitulo(tituloControlesUI);
-        if (listaControlesUI != null)
-        {
-            foreach (Transform linha in listaControlesUI)
-            {
-                var fundo = linha.GetComponent<Image>(); fundo.sprite = redondo; fundo.type = Image.Type.Sliced;
-                fundo.color = new Color(gradienteBase.r, gradienteBase.g, gradienteBase.b, .6f);
-                var tecla = linha.Find("Tecla").GetComponent<Image>(); tecla.sprite = redondo; tecla.type = Image.Type.Sliced;
-                tecla.color = gradienteTopo; AplicarBordaESombra(tecla, efeitosBotoes);
-                var texto = tecla.GetComponentInChildren<TMP_Text>(); texto.color = corDestaque; texto.fontStyle = FontStyles.Bold;
-            }
-            dicaControlesUI.fontSize = tamanhoTexto * escalaElementos * .7f;
-        }
+        EstilizarControles(redondo);
     }
     // Título em destaque com o visual dos botões: gradiente verde (gradienteTopo → gradienteBase), contorno escuro
     // (o mesmo dos botões) e brilho externo na cor do glow dos botões (underlay sem deslocamento).

@@ -22,15 +22,15 @@ public static class IconesInteracao
     public static Sprite Pegar => mao != null ? mao : mao = Carregar("mao_pixel");
     public static Sprite Usar => Pegar;
     public static Sprite Bloqueado => bloqueado != null ? bloqueado : bloqueado = Carregar("icone_bloqueado");
-    private static Sprite Abrir => abrir != null ? abrir : abrir = Carregar("icone_abrir");
+    public static Sprite Abrir => abrir != null ? abrir : abrir = Carregar("icone_abrir");
     /// <summary>Desenho da chave de fenda (aviso de ferramenta que falta, como o alicate na caixa de cabo).</summary>
     public static Sprite ChaveDeFenda => chave != null ? chave : chave = Carregar("icone_chave_fenda");
     /// <summary>Desenho do alicate de crimpar (aviso de ferramenta que falta na crimpagem).</summary>
     public static Sprite Crimpador => crimpador != null ? crimpador : crimpador = Carregar("icone_crimpador");
-    private static Sprite Impressora => impressora != null ? impressora : impressora = Carregar("icone_impressora");
-    private static Sprite Monitor => monitor != null ? monitor : monitor = Carregar("icone_monitor");
-    private static Sprite Rack => rack != null ? rack : rack = Carregar("icone_rack");
-    private static Sprite Testador => testador != null ? testador : testador = Carregar("icone_testador");
+    public static Sprite Impressora => impressora != null ? impressora : impressora = Carregar("icone_impressora");
+    public static Sprite Monitor => monitor != null ? monitor : monitor = Carregar("icone_monitor");
+    public static Sprite Rack => rack != null ? rack : rack = Carregar("icone_rack");
+    public static Sprite Testador => testador != null ? testador : testador = Carregar("icone_testador");
 
     /// <summary>Ícone da ação do alvo: <paramref name="esquerdo"/> = clique esquerdo; senão, direito.</summary>
     public static Sprite Para(Interactable alvo, bool esquerdo)
