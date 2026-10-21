@@ -144,7 +144,7 @@ public class StageReportScreen : MonoBehaviour
         openedAt = Time.unscaledTime;
         Showing = true;
         SetPlayerControls(false);
-        UICursor.Reset();
+        UICursor.SobreporMao();   // a mãozinha branca das telas 2D (a mesma do menu e da pausa)
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
         InteractionSounds.Raise(InteractionSound.DrawerOpened);
@@ -167,6 +167,7 @@ public class StageReportScreen : MonoBehaviour
         if (canvas != null) canvas.gameObject.SetActive(false);
         Showing = false;
         SetPlayerControls(true);
+        UICursor.LimparSobreposicao();
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }
@@ -175,6 +176,7 @@ public class StageReportScreen : MonoBehaviour
     private void Restart()
     {
         Showing = false;
+        UICursor.LimparSobreposicao();
         GameSession.ReloadActiveScene();
     }
 
@@ -182,6 +184,7 @@ public class StageReportScreen : MonoBehaviour
     public void GoToMainMenu()
     {
         Showing = false;
+        UICursor.LimparSobreposicao();
         GameSession.GoToMainMenu();
     }
 
@@ -423,6 +426,7 @@ public class StageReportScreen : MonoBehaviour
     private void Update()
     {
         if (!IsOpen) return;
+        UICursor.SobreporMao();   // só reaplica se outra coisa tiver trocado o cursor
         var teclado = UnityEngine.InputSystem.Keyboard.current;
         if (teclaComparar != UnityEngine.InputSystem.Key.None && teclado != null && teclado[teclaComparar].wasPressedThisFrame)
         {
@@ -867,7 +871,7 @@ public class StageReportScreen : MonoBehaviour
         rt.anchoredPosition = new Vector2(78f, 2f);   // logo à direita do rótulo "Recolher"
         var img = rt.gameObject.AddComponent<Image>();
         img.sprite = TrianguloParaCima();
-        img.color = Color.white; img.raycastTarget = false; img.preserveAspect = true;
+        img.color = new Color(0.62f, 0.70f, 0.78f); img.raycastTarget = false; img.preserveAspect = true;   // cinza (a mesma do "-" do tutorial)
     }
 
     /// <summary>Sprite de triângulo apontando para cima (gerado uma vez e reaproveitado).</summary>

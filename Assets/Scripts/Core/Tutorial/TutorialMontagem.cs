@@ -341,7 +341,7 @@ public sealed class TutorialMontagem : MonoBehaviour
         minimizar.color = new Color(HudEstilo.Borda.r, HudEstilo.Borda.g, HudEstilo.Borda.b, .35f);
         var bm = minimizar.GetComponent<Button>(); bm.targetGraphic = minimizar; bm.onClick.AddListener(AlternarMinimizado);
         bm.navigation = new Navigation { mode = Navigation.Mode.None };
-        textoMinimizar = Texto(minimizar.transform, "-", 22, HudEstilo.Valor, FontStyles.Bold);
+        textoMinimizar = Texto(minimizar.transform, "-", 22, new Color(0.62f, 0.70f, 0.78f), FontStyles.Bold);   // cinza (branco sumia no fundo)
         textoMinimizar.alignment = TextAlignmentOptions.Center; Esticar(textoMinimizar.rectTransform);
 
         tablet = FindFirstObjectByType<TicketTabletPrototype>();
