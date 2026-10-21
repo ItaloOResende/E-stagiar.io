@@ -124,6 +124,8 @@
     // Enquanto estão na tela, teclado e mouse não chegam à Unity; clicar ou apertar uma tecla pula.
     // o bloqueio dura até o fim do fade: o mouseup/click do clique que pulou não pode cair num botão do menu
     var emCreditos = false, bloqueando = false, timers = [];
+    // tempo da intro "Made with Unity" (logo com animação + fade); sem a splash no Player Settings, use 0
+    var DURACAO_INTRO_UNITY = 3600;
     function bloquear(e) {
       if (!bloqueando) return;
       e.stopImmediatePropagation(); e.preventDefault();
@@ -177,13 +179,18 @@
         barra.style.width = p + "%";
         porcentagem.textContent = p + "%";
       }).then(function (unityInstance) {
-        // os créditos aparecem por cima do carregamento e só então ele some (sem piscar o jogo no meio)
-        mostrarCreditos(function () {
-          botao.style.display = "flex";
-          botao.onclick = function () { unityInstance.SetFullscreen(1); };
-          canvas.focus();
-        });
-        setTimeout(function () { carregando.style.display = "none"; }, 1200);
+        // o carregamento some e aparece a intro da Unity (splash do Player Settings, ~3 s); depois dela, os créditos.
+        // Durante a intro a entrada já fica bloqueada, para nenhum clique chegar ao menu por baixo.
+        bloqueando = true;
+        carregando.classList.add("sumindo");
+        setTimeout(function () { carregando.style.display = "none"; }, 850);
+        setTimeout(function () {
+          mostrarCreditos(function () {
+            botao.style.display = "flex";
+            botao.onclick = function () { unityInstance.SetFullscreen(1); };
+            canvas.focus();
+          });
+        }, DURACAO_INTRO_UNITY);
       }).catch(mostrarErro);
     };
     script.onerror = function () { mostrarErro("Arquivo do jogo não encontrado (" + script.src + ")."); };
