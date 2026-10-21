@@ -138,3 +138,6 @@ __pycache__/
 /.vscode/
 /.vs/
 /.idea/
+
+# Instruções locais para IA (não versionar)
+/CLAUDE.md

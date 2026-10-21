@@ -78,7 +78,3 @@ Detalhes de cada mecânica: [`docs/MECANICAS.md`](docs/MECANICAS.md).
 
 Autoria e licença de cada asset (modelos, texturas, fontes e sons), incluindo os itens cuja licença ainda precisa ser
 confirmada: [`Assets/Art/ORIGEM.md`](Assets/Art/ORIGEM.md).
-
-## Desenvolvimento
-
-Regras do projeto (Git, Unity, arquitetura, assets, testes): [`CLAUDE.md`](CLAUDE.md).
