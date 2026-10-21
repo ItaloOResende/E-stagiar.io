@@ -59,6 +59,8 @@ public sealed class TutorialGuide : MonoBehaviour
     }
     private void OnStageEnded() { currentObjective = ""; }
 
+    private PlayerMovement movement;
+
     private void Update()
     {
         if (stage == null || tickets == null) return;
@@ -72,7 +74,7 @@ public sealed class TutorialGuide : MonoBehaviour
         if (ticket.Status == TicketStatus.InProgress && pc == null) FindOwner();
         if (employee != null && !visitedEmployee)
         {
-            PlayerMovement movement = FindAnyObjectByType<PlayerMovement>();
+            if (movement == null) movement = FindAnyObjectByType<PlayerMovement>();   // busca só até achar (antes: todo quadro)
             if (movement != null && Vector3.Distance(movement.transform.position, employee.transform.position) < 4.5f)
                 visitedEmployee = true;
         }

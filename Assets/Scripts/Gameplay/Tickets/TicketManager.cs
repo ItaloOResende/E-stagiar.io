@@ -97,7 +97,16 @@ public class TicketManager : MonoBehaviour
     public Func<List<TicketDefinition>, TicketDefinition, TicketDefinition> SelectionOverride { get; set; }
     public int StageNumber => stageNumber;
     public bool Running => running;
-    public int OpenCount => tickets.FindAll(t => !t.IsClosed).Count;
+    public int OpenCount
+    {
+        get
+        {
+            // lido várias vezes por quadro (fila e tablet): conta sem criar lista
+            int n = 0;
+            for (int i = 0; i < tickets.Count; i++) if (!tickets[i].IsClosed) n++;
+            return n;
+        }
+    }
     public float RemainingStageTime => remainingStageTime;
     public float SecondsUntilNextArrival => running && stageNumber >= 2 && arrivalClockStarted
         ? Mathf.Max(0f, nextArrivalAt - Time.time) : -1f;
