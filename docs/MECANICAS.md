@@ -117,7 +117,7 @@ na segunda; monitor na primeira). Item quebrado não é instalado e não liga.
 ## Fase, pontuação e relatório
 
 - A fase dura **15 minutos** (cronômetro e faixa de tempo no topo; vermelho no último minuto). Começa pelo menu
-  inicial (botões Iniciar jogo, Tutorial, Configurações e Sair) ou pelo fim do tutorial.
+  inicial (botões Iniciar jogo, Tutorial, Controles, Configurações e Sair) ou pelo fim do tutorial.
 - **Pontos:** cada chamado concluído soma o valor dele; atraso, entrega recusada e infração vista descontam.
 - **Estrelas:** percentual da pontuação final sobre a pontuação possível — 1 estrela a partir de 20%, 2 a partir de
   70%, 3 a partir de 90%.
@@ -129,16 +129,25 @@ na segunda; monitor na primeira). Item quebrado não é instalado e não liga.
 
 - Menu inicial → **TUTORIAL** carrega a cena `Tutorial_Montagem` (opcional: "Iniciar jogo" vai direto ao expediente).
 - A cena é só a **sala de TI**, isolada do escritório (sem o cenário de fora e com a porta fechada por parede). O PC é
-  montado na **estação de montagem** (prefab `Estacao_Trabalho`, encostada no fundo da sala): gabinete vazio, monitor e
-  ponto elétrico funcionais; as peças, os cabos e o pendrive saem dos gaveteiros da sala, e a chave de fenda da bancada
-  de manutenção.
-- Um único chamado, *Treinamento: monte um PC completo* (`tutorial-montagem`, fase 0: sem cronômetro, pontuação nem
-  NPCs). As etapas aparecem num card no alto à esquerda e **avançam sozinhas** quando a ação é reconhecida pelo estado
-  real do jogo: iniciar o chamado no tablet → pegar a chave de fenda → abrir o gabinete → placa-mãe → RAM → cooler →
-  fonte → HD → fechar o gabinete → energia do PC e do monitor → vídeo → pendrive bootável → ligar e instalar o sistema
-  → finalizar o chamado no tablet. Um marcador no cenário mostra onde ir (gaveteiro, bancada ou estação).
+  montado na **bancada de manutenção** (onde ficam a chave de fenda e o alicate) e depois levado para a **estação de
+  trabalho** (prefab `Estacao_Trabalho`, encostada no fundo da sala, sem cadeira), que começa com a **mesa vazia**. O
+  gabinete da estação (sem nenhuma peça e sem cabos) e o monitor ficam no móvel do estoque (`Bancada_Armarios (1)`), no
+  lugar das reservas, que não existem nesta cena. Teclados e mouses ficam nas duas estantes do estoque (dois teclados e
+  dois mouses em cada, no lugar da caixa que ficava ao lado dos teclados); qualquer um serve. Os cabos, as peças e o
+  pendrive saem dos gaveteiros.
+- Um único chamado, *Monte um PC completo* (`tutorial-montagem`, fase 0: sem cronômetro, pontuação nem
+  NPCs), ligado ao gabinete da estação. As etapas aparecem num card no alto à esquerda e **avançam sozinhas** quando a
+  ação é reconhecida pelo estado real do jogo: iniciar o atendimento no tablet → pegar o gabinete → levá-lo à bancada
+  de manutenção → pegar a chave de fenda → abrir o gabinete (retirar os 3 parafusos obrigatórios da traseira; a tampa
+  abre sozinha) → placa-mãe → RAM → cooler → fonte → HD → fechar o gabinete → levá-lo à estação de trabalho → trazer
+  monitor, teclado e mouse → energia do PC e do monitor → vídeo → rede (cabo do gabinete ao ponto de rede da parede; vale
+  quando o PC tem rede) → pendrive → ligar o PC e instalar o sistema → finalizar o atendimento no tablet. O chamado só é
+  entregue com o gabinete e o monitor na mesa da estação.
+- Um marcador (nome + seta) aponta o objetivo da etapa: o botão do tablet nas etapas do tablet; o item a buscar e, com
+  ele na mão, o lugar onde levá-lo. Objeto na mão não é marcado; alvo fora da tela fica preso à borda, com a seta virada
+  para ele. **TAB** (ou o botão "-" no canto do card) minimiza o card, deixando só a etapa atual.
 - **F8** duas vezes pula o tutorial (volta ao menu inicial). No fim: **Começar o expediente** (carrega a fase e começa
-  sem passar pelo menu) ou **Voltar ao menu**. A pausa também volta ao menu.
+  sem passar pelo menu) ou **Voltar ao menu**; nessa tela o jogador fica parado e o cursor, livre. A pausa também volta ao menu.
 - A cena é gerada por *Tools > E-stagiar.io > Tutorial > Montar cena Tutorial_Montagem* (`TutorialMontagemSetup`), a
   partir de uma cópia da `Office_Placeholder`; refazê-la apaga ajustes manuais na cena do tutorial (faça-os no setup).
   Componente: `TutorialMontagem` (no objeto `Chamados` da cena).
@@ -147,8 +156,10 @@ na segunda; monitor na primeira). Item quebrado não é instalado e não liga.
 
 - **Tablet** (tecla **T** ou botão no canto inferior direito): chamados pendentes, em atendimento e histórico.
 - **Alt esquerdo** (segurando): solta o cursor para clicar no botão do tablet sem abrir uma tela.
-- **Esc:** fecha a tela 2D ou o tablet abertos; no jogo, abre a **pausa** (continuar, configurações de volume e
-  sensibilidade, sair).
+- **Esc:** fecha a tela 2D ou o tablet abertos; no jogo, abre a **pausa** (continuar, controles, configurações de
+  volume e sensibilidade, sair).
+- **Controles:** lista de teclas, aberta pela pausa ou pelo menu inicial (a mesma página do `PauseMenu`; no menu
+  inicial, sem pausar nem iniciar a partida, e Voltar/Esc voltam ao menu).
 - HUD: pontuação (alto à esquerda), cronômetro (alto à direita), ícones de ação ao lado da mira, avisos dos minigames
   no rodapé.
 

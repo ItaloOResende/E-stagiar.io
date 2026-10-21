@@ -144,6 +144,8 @@ public class TicketTabletPrototype : MonoBehaviour
 
     public static bool PonteiroSobreOAparelho { get; private set; }
     public static bool CelularAberto { get; private set; }
+    /// <summary>Botão "TABLET [T]" do canto da tela (o tutorial aponta para ele). Null antes de a interface existir.</summary>
+    public RectTransform BotaoAtalho => atalho != null && atalho.gameObject.activeInHierarchy ? (RectTransform)atalho.transform : null;
     public static bool CursorLiberado { get; private set; }
     public bool IsOpen => aberto;
     public void Abrir() { if (Application.isPlaying && !Oculto) SetAberto(true); }

@@ -41,6 +41,8 @@ public class PcTicketBridge : TicketDeviceBridge
     [Min(0)] [SerializeField] private int pesoSoltoNoEquipamento = 1;
     [Tooltip("Peso de 'cabo ausente' (o jogador busca outro no gaveteiro de cabos) no rodízio. 0 = nunca.")]
     [Min(0)] [SerializeField] private int pesoAusente = 1;
+    [Tooltip("Mesa da estação nova (posicionar-equipamentos). Vazio = a mesa da StationEmployee desta estação.")]
+    [SerializeField] private WorkSurface mesaDaEstacao;
 
     // rodízio único da cena: os chamados de cabo seguidos (em qualquer estação) passam pelas variações em ordem,
     // na proporção dos pesos — sem sorteio. Zera a cada carga de cena (partida nova).
@@ -82,7 +84,7 @@ public class PcTicketBridge : TicketDeviceBridge
         power = GetComponent<ComputerPower>();
         if (scoreKeeper == null) scoreKeeper = FindAnyObjectByType<ScoreKeeper>();
         RedeConectividade.Garantir();
-        if (HomeStation != null) homeDesk = HomeStation.GetComponentInChildren<WorkSurface>(true);
+        homeDesk = mesaDaEstacao != null ? mesaDaEstacao : HomeStation != null ? HomeStation.GetComponentInChildren<WorkSurface>(true) : null;
         Peripherals();
     }
 
@@ -180,26 +182,39 @@ public class PcTicketBridge : TicketDeviceBridge
                 }
                 else Debug.LogWarning("PcTicketBridge: o ponto de rede desta estação não tem porta no rack (PontoDeRedeRack).", this);
                 break;
-            case "pc-montagem-completa":
-                // estação "nova": a mesa começa VAZIA. Gabinete (sem peças), monitor, teclado, mouse e todos os cabos
-                // (soltos das duas pontas) vão para a bancada da sala de TI (AssemblyPickupPoint); o jogador os traz,
-                // monta e liga tudo. Sem ponto de retirada na cena, tudo fica na mesa (comportamento antigo).
-                pcCase.SetComponents(PcComponent.None, false);
-                var kit = new System.Collections.Generic.List<PickupInteractable>();
-                int n = 0;
-                foreach (PcLink link in new[] { PcLink.Power, PcLink.MonitorPower, PcLink.Vga, PcLink.Hdmi, PcLink.Network })
-                    if (RemoveCable(link, n, kit)) n++;
-                MoveKitToItRoom(kit);
-                break;
-            case "tutorial-montagem":
-                // tutorial (cena Tutorial_Montagem): a bancada da sala de TI JÁ é a estação. Gabinete sem peças e cabos
-                // soltos das duas pontas, deixados ali mesmo (sem ponto de retirada): o jogador monta e liga tudo.
-                pcCase.SetComponents(PcComponent.None, false);
-                int m = 0;
-                foreach (PcLink link in new[] { PcLink.Power, PcLink.MonitorPower, PcLink.Vga, PcLink.Hdmi, PcLink.Network })
-                    if (RemoveCable(link, m)) m++;
-                break;
+            case "pc-montagem-completa": PrepareNewStation(); break;
+            // tutorial: o gabinete já foi esvaziado ao abrir a cena (TutorialMontagem → PrepareTutorialStation)
+            case "tutorial-montagem": break;
         }
+    }
+
+    /// <summary>
+    /// Estação "nova": a mesa fica VAZIA. Gabinete (sem peças), monitor, teclado, mouse e todos os cabos (soltos das
+    /// duas pontas) vão para a bancada da sala de TI (AssemblyPickupPoint); o jogador os traz, monta e liga tudo. Sem
+    /// ponto de retirada na cena, tudo fica na mesa.
+    /// </summary>
+    private void PrepareNewStation()
+    {
+        pcCase.SetComponents(PcComponent.None, false);
+        var kit = new System.Collections.Generic.List<PickupInteractable>();
+        int n = 0;
+        foreach (PcLink link in new[] { PcLink.Power, PcLink.MonitorPower, PcLink.Vga, PcLink.Hdmi, PcLink.Network })
+            if (RemoveCable(link, n, kit)) n++;
+        MoveKitToItRoom(kit);
+    }
+
+    /// <summary>
+    /// Tutorial (cena Tutorial_Montagem): gabinete sem peças e sem cabo nenhum (os cabos saem de vez: o jogador os busca
+    /// no gaveteiro). Gabinete, monitor, teclado e mouse já estão guardados na sala de TI pela própria cena.
+    /// </summary>
+    public void PrepareTutorialStation()
+    {
+        pcCase.SetComponents(PcComponent.None, false);
+        var cabos = new System.Collections.Generic.List<PickupInteractable>();
+        int n = 0;
+        foreach (PcLink link in new[] { PcLink.Power, PcLink.MonitorPower, PcLink.Vga, PcLink.Hdmi, PcLink.Network })
+            if (RemoveCable(link, n, cabos)) n++;
+        foreach (PickupInteractable c in cabos) if (c != null) Destroy(c.gameObject);
     }
 
     protected override void OnClaimed(TicketInstance ticket)
@@ -377,10 +392,12 @@ public class PcTicketBridge : TicketDeviceBridge
     {
         if (pcCase.IsIncomplete) return "o gabinete ainda está aberto: feche a tampa e recoloque os parafusos";
         // estação nova: só é entregue montada NA MESA dela (gabinete e monitor apoiados ali)
-        if (Current != null && Current.Definition != null && Current.Definition.ticketId == "pc-montagem-completa" && !EquipmentOnHomeDesk())
+        if (Current != null && Current.Definition != null && IsNewStation(Current.Definition.ticketId) && !EquipmentOnHomeDesk())
             return "o gabinete e o monitor precisam estar na mesa da estação";
         return null;
     }
+
+    private static bool IsNewStation(string ticketId) => ticketId == "pc-montagem-completa" || ticketId == "tutorial-montagem";
 
     // abrir-gabinete é passagem: a entrega exige o gabinete fechado (DeliveryBlocker), então ele não pode "deixar de valer"
     protected override bool MustHoldOnDelivery(string id) => id != "abrir-gabinete";

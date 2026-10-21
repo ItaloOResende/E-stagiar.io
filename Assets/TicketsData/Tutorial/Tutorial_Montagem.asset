@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Tutorial_Montagem
   m_EditorClassIdentifier: Assembly-CSharp::TicketDefinition
   ticketId: tutorial-montagem
-  title: 'Treinamento: monte um PC completo'
-  description: "Primeiro dia na TI! Monte o computador da esta\xE7\xE3o do zero,
-    ligue os cabos, instale o sistema e entregue a m\xE1quina funcionando."
+  title: Monte um PC completo
+  description: "A esta\xE7\xE3o de montagem precisa de um computador funcionando:
+    monte o PC, ligue os cabos e instale o sistema."
   requester: Supervisor da TI
   department: Sala de TI
   minimumStage: 0
@@ -42,11 +42,17 @@ MonoBehaviour:
   - id: fechar-gabinete
     description: Fechar o gabinete
     weight: 1
+  - id: posicionar-equipamentos
+    description: "Levar o gabinete e o monitor at\xE9 a esta\xE7\xE3o de trabalho"
+    weight: 1
   - id: conectar-energia
     description: Ligar a energia do PC e do monitor
     weight: 1
   - id: conectar-video
     description: "Ligar o cabo de v\xEDdeo"
+    weight: 1
+  - id: conectar-rede
+    description: Ligar o cabo de rede
     weight: 1
   - id: instalar-sistema
     description: Instalar o sistema operacional

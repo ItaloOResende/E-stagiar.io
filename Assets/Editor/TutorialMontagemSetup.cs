@@ -14,7 +14,10 @@ using UnityEngine.SceneManagement;
 /// aberturas das paredes da sala são fechadas), e com o essencial do jogo: jogador, HUD, telas 2D e chamados.
 /// O conjunto do fundo da sala (móvel com monitor, teclado e cadeira de testes) vira uma estação de trabalho de verdade
 /// (prefab <c>Estacao_Trabalho</c>: mesa com WorkSurface + PC_Escritorio com gabinete, monitor e ponto elétrico), onde o
-/// jogador monta o PC do zero pelas mecânicas reais.
+/// jogador monta o PC do zero pelas mecânicas reais. O chamado do tutorial fica no gabinete da estação (como nas estações
+/// do escritório). A mesa começa vazia: gabinete e monitor da estação ficam no móvel do estoque (<c>Bancada_Armarios (1)</c>),
+/// no lugar dos gabinetes e do monitor de reserva, que saem desta cena; teclados e mouses (pegáveis) ficam nas estantes
+/// do estoque, no lugar da caixa ao lado dos teclados. A cadeira da estação sai (atrapalhava o acesso ao estoque).
 /// Idempotente: refaz a cena do zero a cada execução (ajustes manuais na cena do tutorial se perdem; faça-os aqui).
 /// Também cria o chamado do tutorial e põe as duas cenas no Build Settings.
 /// Menu: Tools &gt; E-stagiar.io &gt; Tutorial &gt; Montar cena Tutorial_Montagem.
@@ -37,7 +40,9 @@ public static class TutorialMontagemSetup
     private static readonly string[] ItensRemovidos =
     {
         "Gabinete_Bancada", "CaboEnergia_Bancada", "CaboRede_Bancada",
-        "Monitor_Reserva_2", "Teclado_Testes", "Cadeira_Bancada", "Testador_CaboRede"
+        "Monitor_Reserva_2", "Teclado_Testes", "Cadeira_Bancada", "Testador_CaboRede",
+        // reservas do móvel do estoque: o lugar delas é ocupado pelo equipamento da estação (GuardarNoEstoque)
+        "Gabinete_Reserva_1", "Gabinete_Reserva_2", "Monitor_Reserva_1"
     };
     // Raízes de cenário do escritório: delas só fica o que toca a sala de TI (paredes, piso, teto, decoração) e as luzes.
     private static readonly string[] RaizesDeCenario =
@@ -72,16 +77,20 @@ public static class TutorialMontagemSetup
         estacao.name = "Estacao_Montagem_Tutorial";
         estacao.transform.SetParent(Achar(cena, "Sala_TI").transform, true);
         PosicionarEstacao(estacao.transform, lugar, sala, log);
-        // o PC da estação = a instância de PC_Escritorio (raiz com gabinete, monitor e tomada)
+        // o PC da estação = a instância de PC_Escritorio (raiz com gabinete, monitor e tomada). A ponte do chamado vai no
+        // GABINETE (o objeto com ComputerCase/ComputerPower): na raiz do PC o RequireComponent criava um segundo
+        // ComputerCase, que o tutorial observava enquanto o jogador abria o gabinete de verdade.
         ComputerPower energia = estacao.GetComponentInChildren<ComputerPower>(true);
         GameObject pc = estacao.GetComponentsInChildren<Transform>(true).Select(t => t.gameObject)
             .FirstOrDefault(g => g.name.StartsWith("PC_Escritorio")) ?? energia.transform.parent.gameObject;
-        var ponte = pc.GetComponent<PcTicketBridge>() ?? pc.AddComponent<PcTicketBridge>();
+        GameObject gabinete = energia.gameObject;
+        var ponte = gabinete.GetComponent<PcTicketBridge>() ?? gabinete.AddComponent<PcTicketBridge>();
         EditorUtility.CopySerialized(molde, ponte);
         var so = new SerializedObject(ponte);
         so.FindProperty("deviceLabel").stringValue = "PC da estação de montagem";
         var ids = so.FindProperty("acceptedTicketIds"); ids.ClearArray(); ids.InsertArrayElementAtIndex(0); ids.GetArrayElementAtIndex(0).stringValue = "tutorial-montagem";
         so.FindProperty("prepareProblemOnClaim").boolValue = true;
+        so.FindProperty("mesaDaEstacao").objectReferenceValue = estacao.GetComponentInChildren<WorkSurface>(true);
         so.ApplyModifiedPropertiesWithoutUndo();
         log.AppendLine($"estação em {estacao.transform.position} rotY {estacao.transform.eulerAngles.y:0}; PC '{pc.name}'; " +
                        $"WorkSurface={estacao.GetComponentInChildren<WorkSurface>(true) != null}; tomadas={estacao.GetComponentsInChildren<WallConnectionPoint>(true).Length}");
@@ -94,6 +103,10 @@ public static class TutorialMontagemSetup
             if (npc || RaizesRemovidas.Contains(r.name)) { log.AppendLine("removido: " + r.name); Object.DestroyImmediate(r); }
         }
         Desempacotar(movel); Object.DestroyImmediate(movel); log.AppendLine("removido da sala: Bancada_Armarios (fundo)");
+        GuardarNoEstoque(cena, pc.transform, gabinete.transform, log);
+        PrepararEstantes(cena, pc.transform, log, out List<Transform> teclados, out List<Transform> mouses);
+        Transform cadeira = estacao.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == "Cadeira");
+        if (cadeira != null) { Desempacotar(cadeira.gameObject); Object.DestroyImmediate(cadeira.gameObject); log.AppendLine("removido da sala: Cadeira da estação"); }
         foreach (string nome in ItensRemovidos)
         {
             GameObject item = Achar(cena, nome);
@@ -124,6 +137,10 @@ public static class TutorialMontagemSetup
         Definir(guia, "stage", p => p.objectReferenceValue = stage);
         if (tablet != null) Definir(guia, "fonte", p => p.objectReferenceValue = new SerializedObject(tablet).FindProperty("fonte").objectReferenceValue);
         Definir(guia, "alvoBancada", p => p.objectReferenceValue = pc.transform);
+        Definir(guia, "alvoMesa", p => p.objectReferenceValue = Transf(estacao.GetComponentInChildren<WorkSurface>(true)?.gameObject));
+        Definir(guia, "alvoChave", p => p.objectReferenceValue = Transf(Achar(cena, "ChaveFenda_Bancada")));
+        Definir(guia, "teclados", p => Lista(p, teclados));
+        Definir(guia, "mouses", p => Lista(p, mouses));
         Definir(guia, "alvoFerramentas", p => p.objectReferenceValue = Transf(Achar(cena, "Bancada_Manutencao")));
         Definir(guia, "alvoHardware", p => p.objectReferenceValue = Transf(Achar(cena, "Gaveteiro3_Hardware")));
         Definir(guia, "alvoCabos", p => p.objectReferenceValue = Transf(Achar(cena, "Gaveteiro3_Cabos")));
@@ -157,8 +174,8 @@ public static class TutorialMontagemSetup
         var t = AssetDatabase.LoadAssetAtPath<TicketDefinition>(Chamado);
         if (t == null) { t = ScriptableObject.CreateInstance<TicketDefinition>(); AssetDatabase.CreateAsset(t, Chamado); }
         t.ticketId = "tutorial-montagem";
-        t.title = "Treinamento: monte um PC completo";
-        t.description = "Primeiro dia na TI! Monte o computador da estação do zero, ligue os cabos, instale o sistema e entregue a máquina funcionando.";
+        t.title = "Monte um PC completo";
+        t.description = "A estação de montagem precisa de um computador funcionando: monte o PC, ligue os cabos e instale o sistema.";
         t.requester = "Supervisor da TI";
         t.department = "Sala de TI";
         t.minimumStage = 0;
@@ -173,8 +190,10 @@ public static class TutorialMontagemSetup
             Passo("instalar-fonte", "Instalar a fonte"),
             Passo("instalar-hd", "Instalar o HD"),
             Passo("fechar-gabinete", "Fechar o gabinete"),
+            Passo("posicionar-equipamentos", "Levar o gabinete e o monitor até a estação de trabalho"),
             Passo("conectar-energia", "Ligar a energia do PC e do monitor"),
             Passo("conectar-video", "Ligar o cabo de vídeo"),
+            Passo("conectar-rede", "Ligar o cabo de rede"),
             Passo("instalar-sistema", "Instalar o sistema operacional"),
             Passo("validar-funcionamento", "Confirmar que o PC chega ao sistema"),
         };
@@ -222,6 +241,113 @@ public static class TutorialMontagemSetup
         desvio.y = lugar.min.y - Limites(mesa).min.y;
         estacao.position += desvio;
         log.AppendLine($"móvel antigo {lugar.min:F2}..{lugar.max:F2}; mesa nova {Limites(mesa).min:F2}..{Limites(mesa).max:F2}; giro {giro:0}; frente {frenteDesejada}");
+    }
+
+    // Mesa vazia: gabinete e monitor da estação vão para o móvel do estoque, no lugar das reservas (medidas aqui antes de
+    // saírem da cena); continuam filhos do PC_Escritorio. O monitor fica de frente para a sala, apoiado no tampo.
+    private static void GuardarNoEstoque(Scene cena, Transform pc, Transform gabinete, StringBuilder log)
+    {
+        GameObject gab1 = Achar(cena, "Gabinete_Reserva_1"), mon = Achar(cena, "Monitor_Reserva_1"), movel = Achar(cena, "Bancada_Armarios (1)");
+        Transform monitor = pc.Find("Monitor");
+        if (gab1 == null || mon == null || movel == null || monitor == null)
+        { Debug.LogError("[Tutorial] Reservas do estoque ou monitor da estação não encontrados; a mesa não foi esvaziada."); return; }
+        PegadaDoMonitor(monitor, log);
+        Bounds g1 = Limites(gab1.transform), m = Limites(mon.transform);
+        float tampo = Limites(movel.transform).max.y;
+        Colocar(gabinete, gab1.transform.rotation, g1.center, tampo);
+        Colocar(monitor, Quaternion.Euler(0f, 180f, 0f) * monitor.rotation, m.center, tampo);
+        foreach (Transform t in new[] { gabinete, monitor })
+            log.AppendLine($"no estoque: {t.name} {Limites(t).min:F2}..{Limites(t).max:F2}");
+    }
+
+    // O monitor era segurado pela rotação de repouso (a pose na mão gira junto com o giro em que ele estava apoiado):
+    // guardado no estoque, virado para a sala, ia para a mão de costas. Passa a usar a empunhadura (pose relativa aos
+    // eixos do próprio monitor, igual em qualquer giro), com a mesma pose que ele tinha ao ser pego na mesa da estação
+    // olhando para ela. Só neste monitor (override da instância nesta cena).
+    private static void PegadaDoMonitor(Transform monitor, StringBuilder log)
+    {
+        var pega = monitor.GetComponent<PickupInteractable>();
+        if (pega == null) return;
+        var so = new SerializedObject(pega);
+        if (so.FindProperty("useGripPoint").boolValue) return;
+        Vector3 euler = so.FindProperty("holdEulerOffset").vector3Value;
+        Quaternion naMao = Quaternion.Euler(euler) * monitor.rotation;   // jogador de frente para a mesa (olhando +Z)
+        so.FindProperty("useGripPoint").boolValue = true;
+        so.FindProperty("gripLocalPoint").vector3Value = monitor.InverseTransformPoint(Limites(monitor).center);
+        so.FindProperty("holdEulerOffset").vector3Value = naMao.eulerAngles;
+        so.ApplyModifiedPropertiesWithoutUndo();
+        log.AppendLine($"monitor: empunhadura {naMao.eulerAngles:F0} (antes {euler:F0} sobre o giro de repouso)");
+    }
+
+    // Estantes do estoque: os teclados ficam pegáveis (mesmos componentes do teclado da estação; o de cima da pilha com
+    // física, para cair na prateleira quando o de baixo sai); a caixa ao lado deles sai e no lugar dela ficam dois mouses
+    // (cópias do mouse da estação). O teclado e o mouse da própria estação saem da cena.
+    private static void PrepararEstantes(Scene cena, Transform pc, StringBuilder log, out List<Transform> teclados, out List<Transform> mouses)
+    {
+        teclados = new List<Transform>(); mouses = new List<Transform>();
+        Transform modeloTeclado = pc.Find("Teclado"), modeloMouse = pc.Find("Mouse");
+        if (modeloTeclado == null || modeloMouse == null) { Debug.LogError("[Tutorial] Teclado/mouse da estação não encontrados."); return; }
+        var todos = Raizes(cena).SelectMany(r => r.GetComponentsInChildren<Transform>(true)).ToList();
+        var estoque = todos.Where(t => t.name.StartsWith("Teclado_Estoque")).ToList();
+        var caixas = todos.Where(t => t.name.StartsWith("Caixa_Estoque")).ToList();
+        Physics.SyncTransforms();
+        var empilhados = new HashSet<Transform>();
+        foreach (Transform teclado in estoque)
+        {
+            foreach (Component c in modeloTeclado.GetComponents<Component>())
+            {
+                if (c is Transform || c is Collider || c is Renderer || c is MeshFilter || teclado.GetComponent(c.GetType()) != null) continue;
+                UnityEditorInternal.ComponentUtility.CopyComponent(c);
+                UnityEditorInternal.ComponentUtility.PasteComponentAsNew(teclado.gameObject);
+            }
+            Bounds b = Limites(teclado);
+            bool empilhado = estoque.Any(o => o != teclado && Mathf.Abs(Limites(o).max.y - b.min.y) < 0.02f && Limites(o).Intersects(new Bounds(b.center - Vector3.up * 0.03f, b.size)));
+            if (empilhado)
+            {
+                empilhados.Add(teclado);
+                Definir(teclado.GetComponent<PickupInteractable>(), "startsFrozen", p => p.boolValue = false);
+                var corpo = teclado.GetComponent<Rigidbody>(); if (corpo != null) corpo.isKinematic = false;
+            }
+            teclados.Add(teclado);
+            log.AppendLine($"teclado pegável: {teclado.name} {(empilhado ? "(em cima de outro, com física)" : "")}");
+        }
+        // a caixa da mesma prateleira, ao lado dos teclados de cada estante (pelo teclado de baixo da pilha)
+        foreach (Transform teclado in estoque)
+        {
+            if (empilhados.Contains(teclado)) continue;
+            Bounds b = Limites(teclado);
+            Transform caixa = caixas.Where(c => c != null && Mathf.Abs(Limites(c).min.y - b.min.y) < 0.05f && Vector3.Distance(Limites(c).center, b.center) < 1.2f)
+                                    .OrderBy(c => Vector3.Distance(Limites(c).center, b.center)).FirstOrDefault();
+            if (caixa == null) continue;
+            Bounds cb = Limites(caixa);
+            Vector3 ao = cb.center - b.center; ao.y = 0f; ao = Mathf.Abs(ao.x) > Mathf.Abs(ao.z) ? new Vector3(Mathf.Sign(ao.x), 0, 0) : new Vector3(0, 0, Mathf.Sign(ao.z));
+            float prateleira = cb.min.y;
+            if (Physics.Raycast(new Vector3(cb.center.x, cb.max.y, cb.center.z), Vector3.down, out RaycastHit h, 1f, ~0, QueryTriggerInteraction.Ignore)) prateleira = h.point.y;
+            caixas.Remove(caixa);
+            Desempacotar(caixa.gameObject); log.AppendLine("removido da estante: " + caixa.name); Object.DestroyImmediate(caixa.gameObject);
+            foreach (float lado in new[] { -0.18f, 0.18f })
+            {
+                var copia = Object.Instantiate(modeloMouse.gameObject, teclado.parent);
+                copia.name = "Mouse_Estoque_" + (mouses.Count + 1);
+                Colocar(copia.transform, teclado.rotation, cb.center + ao * lado, prateleira + 0.002f);
+                mouses.Add(copia.transform);
+                log.AppendLine($"mouse na estante: {copia.name} {Limites(copia.transform).min:F2}..{Limites(copia.transform).max:F2}");
+            }
+        }
+        foreach (Transform t in new[] { modeloTeclado, modeloMouse }) { Desempacotar(t.gameObject); Object.DestroyImmediate(t.gameObject); }
+    }
+    private static void Lista(SerializedProperty p, List<Transform> itens)
+    {
+        p.ClearArray();
+        for (int i = 0; i < itens.Count; i++) { p.InsertArrayElementAtIndex(i); p.GetArrayElementAtIndex(i).objectReferenceValue = itens[i]; }
+    }
+
+    // gira e apoia o item: centro (x, z) do volume no ponto dado e a base na altura dada
+    private static void Colocar(Transform item, Quaternion rotacao, Vector3 centro, float baseY)
+    {
+        item.rotation = rotacao;
+        Bounds b = Limites(item);
+        item.position += new Vector3(centro.x - b.center.x, baseY - b.min.y, centro.z - b.center.z);
     }
 
     // Tira do cenário do escritório tudo o que não toca a sala de TI (folga de 0,5 m); luzes ficam.
