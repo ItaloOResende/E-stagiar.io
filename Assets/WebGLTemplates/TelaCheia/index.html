@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
+  <title>{{{ PRODUCT_NAME }}}</title>
+  <style>
+    :root { --fundo: #0f1a29; --painel: #16263a; --borda: #40d9c4; --texto: #f5faff; --suave: #9eb3c7; }
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--fundo); }
+    body { font-family: "Segoe UI", Roboto, Arial, sans-serif; color: var(--texto); }
+    /* o jogo ocupa a janela inteira */
+    #unity-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; background: var(--fundo); outline: none; }
+
+    /* tela de carregamento */
+    #carregando { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+                  gap: 22px; background: radial-gradient(circle at 50% 40%, #1b2f47 0%, var(--fundo) 70%); transition: opacity .4s ease; }
+    #carregando.sumindo { opacity: 0; pointer-events: none; }
+    #titulo { font-size: clamp(32px, 6vw, 64px); font-weight: 800; letter-spacing: .02em; }
+    #titulo span { color: var(--borda); }
+    #subtitulo { color: var(--suave); font-size: clamp(14px, 1.6vw, 18px); margin-top: -12px; }
+    #barra { width: min(420px, 70vw); height: 14px; border-radius: 999px; background: var(--painel);
+             border: 2px solid rgba(64, 217, 196, .45); overflow: hidden; }
+    #barra-cheia { width: 0%; height: 100%; background: var(--borda); border-radius: 999px; transition: width .2s ease; }
+    #porcentagem { color: var(--suave); font-size: 14px; font-variant-numeric: tabular-nums; }
+    #erro { display: none; max-width: min(560px, 85vw); text-align: center; line-height: 1.5; color: #ffb4ad; }
+
+    /* botão de tela cheia: discreto, no canto, some enquanto carrega */
+    #tela-cheia { position: fixed; right: 14px; bottom: 14px; width: 42px; height: 42px; border-radius: 10px; display: none;
+                  align-items: center; justify-content: center; cursor: pointer; background: rgba(15, 26, 41, .72);
+                  border: 2px solid rgba(64, 217, 196, .55); color: var(--texto); opacity: .55; transition: opacity .2s; }
+    #tela-cheia:hover { opacity: 1; }
+    #tela-cheia svg { width: 22px; height: 22px; }
+    #aviso { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); padding: 8px 14px; border-radius: 8px;
+             background: rgba(15, 26, 41, .9); border: 1px solid rgba(64, 217, 196, .5); color: var(--texto);
+             font-size: 13px; display: none; }
+  </style>
+</head>
+<body>
+  <canvas id="unity-canvas" tabindex="-1"></canvas>
+
+  <div id="carregando">
+    <div id="titulo">E-stagiar<span>.io</span></div>
+    <div id="subtitulo">Carregando o escritório…</div>
+    <div id="barra"><div id="barra-cheia"></div></div>
+    <div id="porcentagem">0%</div>
+    <div id="erro"></div>
+  </div>
+
+  <div id="tela-cheia" title="Tela cheia (F11 também funciona)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>
+    </svg>
+  </div>
+  <div id="aviso"></div>
+
+  <script>
+    var canvas = document.querySelector("#unity-canvas");
+    var carregando = document.querySelector("#carregando");
+    var barra = document.querySelector("#barra-cheia");
+    var porcentagem = document.querySelector("#porcentagem");
+    var aviso = document.querySelector("#aviso");
+
+    // avisos não críticos da Unity aparecem por alguns segundos no topo; erros vão para a tela de carregamento
+    function unityShowBanner(msg, type) {
+      if (type === "error") { mostrarErro(msg); return; }
+      aviso.textContent = msg;
+      aviso.style.display = "block";
+      setTimeout(function () { aviso.style.display = "none"; }, 5000);
+    }
+
+    function mostrarErro(msg) {
+      var erro = document.querySelector("#erro");
+      erro.innerHTML = "Não foi possível carregar o jogo.<br><small>" + msg + "</small>";
+      erro.style.display = "block";
+      carregando.classList.remove("sumindo");
+    }
+
+    var buildUrl = "Build";
+    var config = {
+      arguments: [],
+      dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
+      frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
+      codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
+      productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
+      productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+      showBanner: unityShowBanner,
+      // telas de alta densidade (notebooks com escala 150–200%) renderizam no máximo a 1,5x: nítido sem pesar demais
+      devicePixelRatio: Math.min(window.devicePixelRatio || 1, 1.5),
+    };
+
+    var botao = document.querySelector("#tela-cheia");
+    var script = document.createElement("script");
+    script.src = buildUrl + "/{{{ LOADER_FILENAME }}}";
+    script.onload = function () {
+      createUnityInstance(canvas, config, function (progress) {
+        var p = Math.round(100 * progress);
+        barra.style.width = p + "%";
+        porcentagem.textContent = p + "%";
+      }).then(function (unityInstance) {
+        carregando.classList.add("sumindo");
+        setTimeout(function () { carregando.style.display = "none"; }, 450);
+        botao.style.display = "flex";
+        botao.onclick = function () { unityInstance.SetFullscreen(1); };
+        canvas.focus();
+      }).catch(mostrarErro);
+    };
+    script.onerror = function () { mostrarErro("Arquivo do jogo não encontrado (" + script.src + ")."); };
+    document.body.appendChild(script);
+  </script>
+</body>
+</html>
