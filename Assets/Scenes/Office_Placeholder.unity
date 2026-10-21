@@ -8942,7 +8942,6 @@ Transform:
   - {fileID: 1227585517}
   - {fileID: 2079531396}
   - {fileID: 576573233}
-  - {fileID: 1470960839}
   - {fileID: 728965923}
   m_Father: {fileID: 361088023}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -36157,68 +36156,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1462299024}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!1001 &1470960838
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 378533284}
-    m_Modifications:
-    - target: {fileID: 2580334061321149167, guid: 54007f1ad99c84249a1be5cb1267f296, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 35.588715
-      objectReference: {fileID: 0}
-    - target: {fileID: 2580334061321149167, guid: 54007f1ad99c84249a1be5cb1267f296, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0.9049995
-      objectReference: {fileID: 0}
-    - target: {fileID: 2580334061321149167, guid: 54007f1ad99c84249a1be5cb1267f296, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 16.590721
-      objectReference: {fileID: 0}
-    - target: {fileID: 2580334061321149167, guid: 54007f1ad99c84249a1be5cb1267f296, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: -0.00000004371139
-      objectReference: {fileID: 0}
-    - target: {fileID: 2580334061321149167, guid: 54007f1ad99c84249a1be5cb1267f296, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2580334061321149167, guid: 54007f1ad99c84249a1be5cb1267f296, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 2580334061321149167, guid: 54007f1ad99c84249a1be5cb1267f296, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2580334061321149167, guid: 54007f1ad99c84249a1be5cb1267f296, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2580334061321149167, guid: 54007f1ad99c84249a1be5cb1267f296, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2580334061321149167, guid: 54007f1ad99c84249a1be5cb1267f296, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7637889831506734561, guid: 54007f1ad99c84249a1be5cb1267f296, type: 3}
-      propertyPath: m_Name
-      value: CaboRede_Bancada
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 54007f1ad99c84249a1be5cb1267f296, type: 3}
---- !u!4 &1470960839 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 2580334061321149167, guid: 54007f1ad99c84249a1be5cb1267f296, type: 3}
-  m_PrefabInstance: {fileID: 1470960838}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1480390704 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5561517070075018949, guid: 4698ab2bafbbde1438fba48a554ad160, type: 3}
