@@ -567,7 +567,8 @@ public class NotebookTela : MonoBehaviour
                 Mensagem("A tampa de baixo ainda está fechada.", Amarelo);
                 break;
             case NotebookEncaixeResultado.PecaQuebrada:
-                Mensagem("Este item está danificado e não pode ser instalado.", Vermelho);
+                FeedbackManutencao.PecaQuebrada(this);             // peça quebrada: som + recado
+                if (msgTxt != null) msgTxt.text = "";
                 break;
         }
         Atualizar();

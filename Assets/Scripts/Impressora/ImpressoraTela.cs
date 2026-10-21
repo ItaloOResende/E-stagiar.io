@@ -633,7 +633,8 @@ public class ImpressoraTela : MonoBehaviour
                 if (msgTxt != null) msgTxt.text = "";
                 break;
             case ImpressoraEncaixeResultado.PecaQuebrada:
-                Mensagem("Este item está danificado e não pode ser instalado.", Vermelho);
+                FeedbackManutencao.PecaQuebrada(this);             // peça quebrada: som + recado
+                if (msgTxt != null) msgTxt.text = "";
                 break;
         }
         Atualizar();

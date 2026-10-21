@@ -681,6 +681,7 @@ public class ComputerScreenController : MonoBehaviour
         else if (result == PartSlotResult.Removed) InteractionSounds.Raise(InteractionSound.PartRemoved);
         else if (result == PartSlotResult.HandsFull) FeedbackManutencao.MaoOcupada(screen);        // mão ocupada: som + recado
         else if (result == PartSlotResult.WrongPart) FeedbackManutencao.Incompativel(screen);      // peça no encaixe errado
+        else if (result == PartSlotResult.BrokenPart) FeedbackManutencao.PecaQuebrada(screen);     // peça quebrada: som + recado
         if (result == PartSlotResult.Installed) holder.Stow(boundCase.transform.position);
         else if (result == PartSlotResult.Removed && holder != null) holder.Retrieve(back);
         if (result == PartSlotResult.Installed)

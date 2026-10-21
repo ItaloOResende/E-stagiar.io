@@ -68,6 +68,13 @@ public static class FeedbackManutencao
         Mostrar(tela, "Item não compatível", TipoFeedback.Erro);
     }
 
+    /// <summary>Peça quebrada (caiu demais) não é instalada. MESMO recado e som de erro em TODOS os minigames.</summary>
+    public static void PecaQuebrada(Component tela)
+    {
+        InteractionSounds.Raise(InteractionSound.Error);
+        Mostrar(tela, "Peça quebrada: não é possível encaixar", TipoFeedback.Erro);
+    }
+
     private static AvisoRodape Aviso(Component tela)
     {
         AvisoRodape aviso = tela.GetComponent<AvisoRodape>();
