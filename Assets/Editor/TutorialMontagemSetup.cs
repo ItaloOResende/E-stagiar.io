@@ -129,8 +129,6 @@ public static class TutorialMontagemSetup
         Definir(tickets, "requirePlayerToFinish", p => p.boolValue = true);
         StageReportScreen relatorio = Componente<StageReportScreen>(cena);
         if (relatorio != null) Definir(relatorio, "showOnStageEnd", p => p.boolValue = false);
-        foreach (var antigo in stage.GetComponents<TutorialGuide>()) Object.DestroyImmediate(antigo);
-        foreach (var antigo in stage.GetComponents<TutorialKnowledgeBase>()) Object.DestroyImmediate(antigo);
         var guia = stage.GetComponent<TutorialMontagem>() ?? stage.gameObject.AddComponent<TutorialMontagem>();
         var tablet = Componente<TicketTabletPrototype>(cena);
         Definir(guia, "tickets", p => p.objectReferenceValue = tickets);

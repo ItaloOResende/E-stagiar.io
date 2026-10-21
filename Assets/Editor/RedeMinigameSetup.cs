@@ -23,7 +23,7 @@ public static class RedeMinigameSetup
     private const string SpritePlug = "Assets/Art/UI/ui_render_plugue_rj45.png";
 
     // Os PREFABS das duas telas: como as cenas usam esses prefabs por instância, preencher as artes aqui vale
-    // para todas elas de uma vez (Office_Placeholder, Escritorio_Teste e Fase_01), sem mexer em cena nenhuma.
+    // para todas elas de uma vez (Office_Placeholder e Tutorial_Montagem), sem mexer em cena nenhuma.
     private const string PrefabCrimp = "Assets/Prefabs/UI/UI_Screen_Crimpagem.prefab";
     private const string PrefabRack = "Assets/Prefabs/UI/UI_Screen_Rack.prefab";
 
@@ -179,7 +179,7 @@ public static class RedeMinigameSetup
 
     /// <summary>
     /// Aponta as artes/efeitos/sons do protótipo nos PREFABS das duas telas. Como as cenas usam esses prefabs por
-    /// instância, isto vale de uma vez para a Office_Placeholder, a Escritorio_Teste e a Fase_01, sem tocar em
+    /// instância, isto vale de uma vez para a Office_Placeholder e a Tutorial_Montagem, sem tocar em
     /// nenhuma cena. Devolve quantos prefabs foram preenchidos (0 a 2).
     /// </summary>
     public static int AplicarArtesNosPrefabs()
