@@ -41,14 +41,49 @@ public static class RedeUi
     {
         var cor = new Color(0.22f, 0.25f, 0.3f, 0.95f);
 
-        RectTransform anterior = Botao(pai, "Anterior", "\u25C4", cor, aoVoltar, 40);
+        RectTransform anterior = Botao(pai, "Anterior", "", cor, aoVoltar, 40);
+        Triangulo(anterior, true);
         Ancorar(anterior, new Vector2(0f, 0f), new Vector2(110f, 90f), new Vector2(0f, 0f));
         anterior.anchoredPosition = new Vector2(24f, 24f);
 
         // O canto inferior direito é do celular: a seta "►" fica na lateral esquerda dele.
-        RectTransform proxima = Botao(pai, "Proxima", "\u25BA", cor, aoAvancar, 40);
+        RectTransform proxima = Botao(pai, "Proxima", "", cor, aoAvancar, 40);
+        Triangulo(proxima, false);
         Ancorar(proxima, new Vector2(1f, 0f), new Vector2(110f, 90f), new Vector2(1f, 0f));
         proxima.anchoredPosition = new Vector2(-BordaSetaProxima, 24f);
+    }
+
+    // No WebGL a fonte embutida não tem "◄►" e não há fonte do sistema de reserva: a seta é desenhada.
+    static Sprite spriteTriangulo;
+
+    public static void Triangulo(RectTransform botao, bool paraEsquerda)
+    {
+        if (spriteTriangulo == null)
+        {
+            const int n = 64;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+            for (int x = 0; x < n; x++)
+            {
+                // Triângulo apontando para a direita; meia largura cai linearmente de x=0 a x=n.
+                float meia = (n - x - 0.5f) * 0.5f, dy = Mathf.Abs(y + 0.5f - n * 0.5f);
+                byte a = (byte)(Mathf.Clamp01(meia - dy + 0.5f) * 255f);
+                px[y * n + x] = new Color32(255, 255, 255, a);
+            }
+            tex.SetPixels32(px);
+            tex.Apply();
+            spriteTriangulo = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f));
+        }
+
+        Image img = ImagemSprite(botao, "Seta", spriteTriangulo, Color.white);
+        img.raycastTarget = false;
+        img.preserveAspect = false;   // a textura é quadrada; o formato vem do sizeDelta (mais alta que larga, como o "►")
+        var rt = img.rectTransform;
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(28f, 36f);
+        rt.anchoredPosition = Vector2.zero;
+        if (paraEsquerda) rt.localScale = new Vector3(-1f, 1f, 1f);
     }
 
     public static Font Fonte

@@ -199,9 +199,20 @@ public class ComputerScreenController : MonoBehaviour
     /// <summary>O painel do ponto elétrico (tomadas e rede) aparece na tela agora (ponto perto do gabinete deste PC).</summary>
     public bool WallPointVisible => boundPower == null || boundPower.IsWallPointInRange;
 
+    /// <summary>O "◄ ►" do prefab some no WebGL (a fonte não tem o glifo): esconde o texto e desenha a seta.</summary>
+    private static void TrocarSetaPorDesenho(Button botao, bool paraEsquerda)
+    {
+        if (botao == null) return;
+        Text texto = botao.GetComponentInChildren<Text>(true);
+        if (texto != null) texto.enabled = false;
+        RedeUi.Triangulo((RectTransform)botao.transform, paraEsquerda);
+    }
+
     private void Awake()
     {
         screen = GetComponent<UIScreen>();
+        TrocarSetaPorDesenho(backButton, true);
+        TrocarSetaPorDesenho(nextButton, false);
         if (backButton != null) backButton.onClick.AddListener(Back);
         if (nextButton != null)
         {
