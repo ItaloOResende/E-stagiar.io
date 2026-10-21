@@ -655,18 +655,29 @@ public class TicketTabletPrototype : MonoBehaviour
         cheio.anchorMax = new Vector2(fracao, 1f); cheio.offsetMin = cheio.offsetMax = Vector2.zero;
         var img = cheio.GetComponent<Image>(); img.color = cor; img.enabled = fracao > 0f;
     }
+    // Os 8 fios de uma ponta lado a lado, como ficam dentro do RJ45 (pino 1 à esquerda): cabe na área do tablet
+    // sem scroll e o jogador compara com a fileira da crimpagem.
     private void ConstruirCores()
     {
-        Texto(conteudo, "Instrucao", "PADRÃO T568B — ordem dos 8 fios", 26);
+        var instrucao = Texto(conteudo, "Instrucao", "PADRÃO T568B — ordem dos 8 fios, do pino 1 ao 8", 24);
+        instrucao.fontStyle = FontStyles.Bold; instrucao.color = corDestaque; instrucao.alignment = TextAlignmentOptions.Center;
+        var fileira = Retangulo("Fileira", conteudo, Color.clear); Altura(fileira, 400);
+        var h = fileira.gameObject.AddComponent<HorizontalLayoutGroup>(); h.spacing = 10;
+        h.childControlWidth = h.childControlHeight = true; h.childForceExpandWidth = h.childForceExpandHeight = true;
         for (int i = 0; i < RedeCores.OrdemT568B.Length; i++)
         {
             var fio = RedeCores.OrdemT568B[i];
-            var linha = Retangulo("Fio_" + (i + 1), conteudo, corCard); Altura(linha, 55);
-            var amostra = Retangulo("Amostra", linha, RedeCores.CorDoDesenho(fio));
-            amostra.anchorMin = amostra.anchorMax = new Vector2(0, .5f); amostra.anchoredPosition = new Vector2(70, 0); amostra.sizeDelta = new Vector2(64, 28);
-            if (RedeCores.EhListrado(fio)) for (int n = 0; n < 5; n++)
-            { var faixa = Retangulo("Listra", amostra, Color.white); faixa.sizeDelta = new Vector2(6, 28); faixa.anchoredPosition = new Vector2(-26 + n * 13, 0); }
-            var txt = Texto(linha, "Nome", (i + 1) + "     " + RedeCores.Nome(fio), 22); Esticar(txt.rectTransform, new Vector2(120, 0), new Vector2(-12, 0));
+            var card = Retangulo("Fio_" + (i + 1), fileira, corCard);
+            var numero = Texto(card, "Pino", (i + 1).ToString(), 26); numero.fontStyle = FontStyles.Bold; numero.alignment = TextAlignmentOptions.Center;
+            Esticar(numero.rectTransform, new Vector2(0, -50), new Vector2(0, -10)); numero.rectTransform.anchorMin = new Vector2(0, 1);
+            var amostra = Retangulo("Amostra", card, RedeCores.CorDoDesenho(fio));
+            amostra.anchorMin = amostra.anchorMax = new Vector2(.5f, 1); amostra.pivot = new Vector2(.5f, 1);
+            amostra.anchoredPosition = new Vector2(0, -60); amostra.sizeDelta = new Vector2(34, 250);
+            if (RedeCores.EhListrado(fio)) for (int n = 0; n < 9; n++)
+            { var faixa = Retangulo("Listra", amostra, Color.white); faixa.sizeDelta = new Vector2(34, 8); faixa.anchoredPosition = new Vector2(0, -112 + n * 28); }
+            var nome = Texto(card, "Nome", RedeCores.Nome(fio), 17); nome.alignment = TextAlignmentOptions.Center;
+            nome.enableAutoSizing = true; nome.fontSizeMin = 13; nome.fontSizeMax = 17;
+            Esticar(nome.rectTransform, new Vector2(4, 8), new Vector2(-4, 82)); nome.rectTransform.anchorMax = new Vector2(1, 0);
         }
     }
     // ====================================================== aba APLICATIVOS (vinda do antigo celular)
