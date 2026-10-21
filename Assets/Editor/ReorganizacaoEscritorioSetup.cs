@@ -297,6 +297,13 @@ public static class ReorganizacaoEscritorioSetup
 
     // ================================================================== funcionários, plaquinhas, NPCs, chamados
 
+    // Portas do rack da cena (RedeGame): uma por estação de PC, mais as reservas.
+    private static int PortasDoRack(Scene scene)
+    {
+        RedeGame g = Object.FindAnyObjectByType<RedeGame>(FindObjectsInactive.Include);
+        return g != null ? g.PortasDoRack : 6;
+    }
+
     private static void Associar(Scene scene, List<Transform> estacoes)
     {
         TicketManager tickets = Object.FindAnyObjectByType<TicketManager>(FindObjectsInactive.Include);
@@ -331,20 +338,19 @@ public static class ReorganizacaoEscritorioSetup
             NotebookEstacao nb = st.GetComponentInChildren<NotebookEstacao>(true);
             if (pc != null) MakeFunctional(pc);
             var wall = st.GetComponentInChildren<WallConnectionPoint>(true);
-            if (!dono.TryGetValue(st, out string nome))
-            {
-                // mesa livre: sem funcionário, sem plaquinha e sem chamados (equipamento continua no lugar, funcionando)
-                foreach (TicketDeviceBridge b in st.GetComponentsInChildren<TicketDeviceBridge>(true)) Object.DestroyImmediate(b);
-                foreach (ComputerCaseTicketBridge b in st.GetComponentsInChildren<ComputerCaseTicketBridge>(true)) Object.DestroyImmediate(b);
-                foreach (StationNamePlate p in st.GetComponentsInChildren<StationNamePlate>(true)) Object.DestroyImmediate(p.gameObject);
-                var e0 = st.GetComponent<StationEmployee>(); if (e0 != null) Object.DestroyImmediate(e0);
-                var pr0 = wall != null ? wall.GetComponent<PontoDeRedeRack>() : null; if (pr0 != null) Object.DestroyImmediate(pr0);
-                continue;
-            }
             string label = "Estação " + st.name.Substring(st.name.Length - 2);
             var emp = st.GetComponent<StationEmployee>() ?? st.gameObject.AddComponent<StationEmployee>();
-            emp.employeeName = nome;
-            emp.department = setores[nome];
+            if (dono.TryGetValue(st, out string nome))
+            {
+                emp.employeeName = nome;
+                emp.department = setores[nome];
+            }
+            else
+            {
+                // estação sem funcionário da lista: também recebe chamados, e o nome dela (posto à mão na
+                // StationEmployee) fica como está — o setup não apaga mais a estação, a plaquinha nem os chamados
+                nome = emp.employeeName;
+            }
             emp.stationLabel = label;
             EditorUtility.SetDirty(emp);
             if (st.GetComponentInChildren<StationNamePlate>(true) == null && placa != null)
@@ -353,10 +359,10 @@ public static class ReorganizacaoEscritorioSetup
                 p.name = "Placa_Mesa";
                 p.transform.SetParent(st, false);
             }
-            Transform npcT = NpcDe.TryGetValue(nome, out string modelo) ? CorrecoesFinaisSetup.CriarNpc(st, modelo, scene) : null;
+            Transform npcT = !string.IsNullOrEmpty(nome) && NpcDe.TryGetValue(nome, out string modelo) ? CorrecoesFinaisSetup.CriarNpc(st, modelo, scene) : null;
             if (pc != null)
             {
-                bool temPorta = wall != null && porta < 6;
+                bool temPorta = wall != null && porta < PortasDoRack(scene);
                 string[] ids = temPorta ? pcIds : pcIds.Where(i => i != TestadorCabo.ChamadoRack).ToArray();
                 Bridge<PcTicketBridge>(pc.gameObject, tickets, $"PC da {label}", ids, npcT, so => so.FindProperty("scoreKeeper").objectReferenceValue = score);
                 if (wall != null)
@@ -366,12 +372,12 @@ public static class ReorganizacaoEscritorioSetup
                     so.FindProperty("portaRack").intValue = temPorta ? ++porta : 0;
                     so.ApplyModifiedPropertiesWithoutUndo();
                 }
-                L.Add($"{st.name}: {nome} ({setores[nome]}) · desktop{(temPorta ? $" · porta {porta} do rack" : " · sem porta no rack")}{(npcT != null ? " · NPC" : "")}");
+                L.Add($"{st.name}: {nome} ({emp.department}) · desktop{(temPorta ? $" · porta {porta} do rack" : " · sem porta no rack")}{(npcT != null ? " · NPC" : "")}");
             }
             else
             {
                 Bridge<NotebookTicketBridge>(nb.gameObject, tickets, $"Notebook da {label}", nbIds, npcT, Extra("NotebookExtra"));
-                L.Add($"{st.name}: {nome} ({setores[nome]}) · notebook{(npcT != null ? " · NPC" : "")}");
+                L.Add($"{st.name}: {nome} ({emp.department}) · notebook{(npcT != null ? " · NPC" : "")}");
             }
         }
         foreach (ImpressoraEstacao pr in Object.FindObjectsByType<ImpressoraEstacao>(FindObjectsSortMode.None))

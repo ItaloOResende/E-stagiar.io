@@ -1180,6 +1180,7 @@ MonoBehaviour:
   pesoSoltoNaParede: 1
   pesoSoltoNoEquipamento: 1
   pesoAusente: 1
+  mesaDaEstacao: {fileID: 0}
 --- !u!1 &90531110
 GameObject:
   m_ObjectHideFlags: 0
@@ -1299,6 +1300,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6644885426566251908, guid: 2eef9da263513834cb0157a27912faa2, type: 3}
       insertIndex: -1
       addedObject: {fileID: 269274126}
+    - targetCorrespondingSourceObject: {fileID: 7811944724179491041, guid: 2eef9da263513834cb0157a27912faa2, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 857238724}
+    - targetCorrespondingSourceObject: {fileID: 5032907146815912381, guid: 2eef9da263513834cb0157a27912faa2, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1921359345}
   m_SourcePrefab: {fileID: 100100000, guid: 2eef9da263513834cb0157a27912faa2, type: 3}
 --- !u!4 &95139552 stripped
 Transform:
@@ -1753,6 +1760,7 @@ MonoBehaviour:
   pesoSoltoNaParede: 1
   pesoSoltoNoEquipamento: 1
   pesoAusente: 1
+  mesaDaEstacao: {fileID: 0}
 --- !u!114 &97172958
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2785,7 +2793,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -7493596028755563170, guid: 768bbea4214537248934df7b5704d1b8, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.01
+      value: -0.48
       objectReference: {fileID: 0}
     - target: {fileID: -7493596028755563170, guid: 768bbea4214537248934df7b5704d1b8, type: 3}
       propertyPath: m_LocalPosition.z
@@ -2837,7 +2845,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -5610832936595009893, guid: 768bbea4214537248934df7b5704d1b8, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.01
+      value: -0.48
       objectReference: {fileID: 0}
     - target: {fileID: -5610832936595009893, guid: 768bbea4214537248934df7b5704d1b8, type: 3}
       propertyPath: m_LocalPosition.z
@@ -2849,7 +2857,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -5217978706621872809, guid: 768bbea4214537248934df7b5704d1b8, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.01
+      value: -0.48
       objectReference: {fileID: 0}
     - target: {fileID: -5217978706621872809, guid: 768bbea4214537248934df7b5704d1b8, type: 3}
       propertyPath: m_LocalPosition.z
@@ -2909,7 +2917,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -1538112130698044685, guid: 768bbea4214537248934df7b5704d1b8, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.01
+      value: -0.48
       objectReference: {fileID: 0}
     - target: {fileID: -1538112130698044685, guid: 768bbea4214537248934df7b5704d1b8, type: 3}
       propertyPath: m_LocalPosition.z
@@ -2997,7 +3005,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -112934384319927395, guid: 768bbea4214537248934df7b5704d1b8, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.01
+      value: -0.47
       objectReference: {fileID: 0}
     - target: {fileID: -112934384319927395, guid: 768bbea4214537248934df7b5704d1b8, type: 3}
       propertyPath: m_LocalPosition.z
@@ -3145,7 +3153,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5811517544658636179, guid: 768bbea4214537248934df7b5704d1b8, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.01
+      value: -0.492
       objectReference: {fileID: 0}
     - target: {fileID: 5811517544658636179, guid: 768bbea4214537248934df7b5704d1b8, type: 3}
       propertyPath: m_LocalPosition.z
@@ -3173,7 +3181,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8616562853047217044, guid: 768bbea4214537248934df7b5704d1b8, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.01
+      value: -0.48
       objectReference: {fileID: 0}
     - target: {fileID: 8616562853047217044, guid: 768bbea4214537248934df7b5704d1b8, type: 3}
       propertyPath: m_LocalPosition.z
@@ -3727,6 +3735,7 @@ MonoBehaviour:
   pesoSoltoNaParede: 1
   pesoSoltoNoEquipamento: 1
   pesoAusente: 1
+  mesaDaEstacao: {fileID: 0}
 --- !u!114 &133096890
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4139,10 +4148,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6c83207c11339e0488af1d96bd72cc70, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StationEmployee
-  employeeName: 
+  employeeName: Eduardo
   department: 
   stationLabel: "Esta\xE7\xE3o 11"
-  nomeNaPlaca: Helena
+  nomeNaPlaca: 
   corDaPlaca: {r: 0.8, g: 0.22, b: 0.24, a: 1}
 --- !u!1 &143488402
 GameObject:
@@ -4234,6 +4243,38 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 143488402}
   m_Mesh: {fileID: -8302102485596996044, guid: 768bbea4214537248934df7b5704d1b8, type: 3}
+--- !u!1 &144312018 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 531658413947325320, guid: 4698ab2bafbbde1438fba48a554ad160, type: 3}
+  m_PrefabInstance: {fileID: 653546325}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &144312026
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 144312018}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 055075898864f9c44aded2daac477cc4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NotebookTicketBridge
+  ticketManager: {fileID: 1238468672}
+  deviceLabel: "Notebook da Esta\xE7\xE3o 16"
+  stationNpc: {fileID: 0}
+  acceptedTicketIds:
+  - notebook-sem-ram
+  - notebook-sem-ssd
+  - notebook-sem-sistema
+  - notebook-sem-boot
+  prepareProblemOnClaim: 1
+  deviceRoot: {fileID: 0}
+  recentCooldownSeconds: 180
+  checkInterval: 0.25
+  comecarFuncional: 1
+  ramPrefab: {fileID: 6495865664642062047, guid: da878ccd396edf14e956a24f013e4206, type: 3}
+  ssdPrefab: {fileID: 7354686020147518978, guid: b93bff58f6f1f754eb5ada64b8768bd9, type: 3}
 --- !u!1001 &145427474
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6710,6 +6751,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5561517070075018949, guid: 4698ab2bafbbde1438fba48a554ad160, type: 3}
       insertIndex: -1
       addedObject: {fileID: 682713063}
+    - targetCorrespondingSourceObject: {fileID: 531658413947325320, guid: 4698ab2bafbbde1438fba48a554ad160, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 710015226}
   m_SourcePrefab: {fileID: 100100000, guid: 4698ab2bafbbde1438fba48a554ad160, type: 3}
 --- !u!4 &206530749 stripped
 Transform:
@@ -7133,10 +7177,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6c83207c11339e0488af1d96bd72cc70, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StationEmployee
-  employeeName: 
+  employeeName: Lucas
   department: 
   stationLabel: "Esta\xE7\xE3o 05"
-  nomeNaPlaca: Rafael
+  nomeNaPlaca: 
   corDaPlaca: {r: 0.55, g: 0.36, b: 0.8, a: 1}
 --- !u!1001 &270013514
 PrefabInstance:
@@ -7316,6 +7360,48 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6921267035632994114, guid: 235b35262ff3d1243aefde8acfd7e96a, type: 3}
   m_PrefabInstance: {fileID: 289318569}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &289589884 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 9009184486882563329, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
+  m_PrefabInstance: {fileID: 1753374509}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &289589898
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 289589884}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4b4821954e43bb49961075de50ea886, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PcTicketBridge
+  ticketManager: {fileID: 1238468672}
+  deviceLabel: "PC da Esta\xE7\xE3o 11"
+  stationNpc: {fileID: 0}
+  acceptedTicketIds:
+  - pc-sem-energia
+  - pc-sem-ram
+  - pc-sem-hd
+  - pc-sem-rede
+  - pc-sem-sistema
+  - pc-pecas-ausentes
+  - pc-montagem-completa
+  - pc-sem-video-e-rede
+  - monitor-sem-imagem
+  - pc-cabo-rede-defeituoso
+  - pc-sem-rede-rack
+  - crimpar-cabo
+  prepareProblemOnClaim: 1
+  deviceRoot: {fileID: 0}
+  recentCooldownSeconds: 180
+  checkInterval: 0.25
+  scoreKeeper: {fileID: 1238468675}
+  pesoSoltoNaParede: 1
+  pesoSoltoNoEquipamento: 1
+  pesoAusente: 1
+  mesaDaEstacao: {fileID: 0}
 --- !u!1 &290793399
 GameObject:
   m_ObjectHideFlags: 0
@@ -8014,6 +8100,38 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 326780380}
   m_Mesh: {fileID: 4579454407841743219, guid: 768bbea4214537248934df7b5704d1b8, type: 3}
+--- !u!1 &328046053 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 531658413947325320, guid: 4698ab2bafbbde1438fba48a554ad160, type: 3}
+  m_PrefabInstance: {fileID: 1456540909}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &328046061
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 328046053}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 055075898864f9c44aded2daac477cc4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NotebookTicketBridge
+  ticketManager: {fileID: 1238468672}
+  deviceLabel: "Notebook da Esta\xE7\xE3o 09"
+  stationNpc: {fileID: 0}
+  acceptedTicketIds:
+  - notebook-sem-ram
+  - notebook-sem-ssd
+  - notebook-sem-sistema
+  - notebook-sem-boot
+  prepareProblemOnClaim: 1
+  deviceRoot: {fileID: 0}
+  recentCooldownSeconds: 180
+  checkInterval: 0.25
+  comecarFuncional: 1
+  ramPrefab: {fileID: 6495865664642062047, guid: da878ccd396edf14e956a24f013e4206, type: 3}
+  ssdPrefab: {fileID: 7354686020147518978, guid: b93bff58f6f1f754eb5ada64b8768bd9, type: 3}
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -13785,7 +13903,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 256d0462af56a6848997fe90a53082fe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PontoDeRedeRack
-  portaRack: 0
+  portaRack: 10
 --- !u!114 &502506065
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13813,6 +13931,7 @@ MonoBehaviour:
   - monitor-sem-imagem
   - pc-cabo-rede-defeituoso
   - crimpar-cabo
+  - pc-sem-rede-rack
   prepareProblemOnClaim: 1
   deviceRoot: {fileID: 0}
   recentCooldownSeconds: 180
@@ -13821,6 +13940,7 @@ MonoBehaviour:
   pesoSoltoNaParede: 1
   pesoSoltoNoEquipamento: 1
   pesoAusente: 1
+  mesaDaEstacao: {fileID: 0}
 --- !u!114 &502506066
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -15057,6 +15177,24 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 6237939067221362860, guid: 60d5f621cdb3a9546b8323d0864297b7, type: 3}
   m_PrefabInstance: {fileID: 514160492579941173}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &570285575 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6104327731293484125, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
+  m_PrefabInstance: {fileID: 924880287}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &570285579
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 570285575}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 256d0462af56a6848997fe90a53082fe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PontoDeRedeRack
+  portaRack: 8
 --- !u!1001 &571055199
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -15386,10 +15524,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6c83207c11339e0488af1d96bd72cc70, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StationEmployee
-  employeeName: 
+  employeeName: Giovana
   department: 
   stationLabel: "Esta\xE7\xE3o 07"
-  nomeNaPlaca: "T\xE2nia"
+  nomeNaPlaca: 
   corDaPlaca: {r: 0.35, g: 0.72, b: 0.38, a: 1}
 --- !u!114 &599994477
 MonoBehaviour:
@@ -16735,6 +16873,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5561517070075018949, guid: 4698ab2bafbbde1438fba48a554ad160, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1849905474}
+    - targetCorrespondingSourceObject: {fileID: 531658413947325320, guid: 4698ab2bafbbde1438fba48a554ad160, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 144312026}
   m_SourcePrefab: {fileID: 100100000, guid: 4698ab2bafbbde1438fba48a554ad160, type: 3}
 --- !u!4 &653546326 stripped
 Transform:
@@ -17031,10 +17172,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6c83207c11339e0488af1d96bd72cc70, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StationEmployee
-  employeeName: 
+  employeeName: Ana
   department: 
   stationLabel: "Esta\xE7\xE3o 03"
-  nomeNaPlaca: Beatriz
+  nomeNaPlaca: 
   corDaPlaca: {r: 0.93, g: 0.42, b: 0.36, a: 1}
 --- !u!1 &684455797
 GameObject:
@@ -17508,6 +17649,38 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 703335719}
   m_Mesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &710015218 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 531658413947325320, guid: 4698ab2bafbbde1438fba48a554ad160, type: 3}
+  m_PrefabInstance: {fileID: 206530748}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &710015226
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 710015218}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 055075898864f9c44aded2daac477cc4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NotebookTicketBridge
+  ticketManager: {fileID: 1238468672}
+  deviceLabel: "Notebook da Esta\xE7\xE3o 03"
+  stationNpc: {fileID: 0}
+  acceptedTicketIds:
+  - notebook-sem-ram
+  - notebook-sem-ssd
+  - notebook-sem-sistema
+  - notebook-sem-boot
+  prepareProblemOnClaim: 1
+  deviceRoot: {fileID: 0}
+  recentCooldownSeconds: 180
+  checkInterval: 0.25
+  comecarFuncional: 1
+  ramPrefab: {fileID: 6495865664642062047, guid: da878ccd396edf14e956a24f013e4206, type: 3}
+  ssdPrefab: {fileID: 7354686020147518978, guid: b93bff58f6f1f754eb5ada64b8768bd9, type: 3}
 --- !u!1001 &725583077
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -19762,6 +19935,48 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 7748088621342494807, guid: a67108ae80ac89788a2a4b48a7344482, type: 3}
   m_PrefabInstance: {fileID: 849924664}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &857238710 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7811944724179491041, guid: 2eef9da263513834cb0157a27912faa2, type: 3}
+  m_PrefabInstance: {fileID: 95139551}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &857238724
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 857238710}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4b4821954e43bb49961075de50ea886, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PcTicketBridge
+  ticketManager: {fileID: 1238468672}
+  deviceLabel: "PC da Esta\xE7\xE3o 05"
+  stationNpc: {fileID: 0}
+  acceptedTicketIds:
+  - pc-sem-energia
+  - pc-sem-ram
+  - pc-sem-hd
+  - pc-sem-rede
+  - pc-sem-sistema
+  - pc-pecas-ausentes
+  - pc-montagem-completa
+  - pc-sem-video-e-rede
+  - monitor-sem-imagem
+  - pc-cabo-rede-defeituoso
+  - pc-sem-rede-rack
+  - crimpar-cabo
+  prepareProblemOnClaim: 1
+  deviceRoot: {fileID: 0}
+  recentCooldownSeconds: 180
+  checkInterval: 0.25
+  scoreKeeper: {fileID: 1238468675}
+  pesoSoltoNaParede: 1
+  pesoSoltoNoEquipamento: 1
+  pesoAusente: 1
+  mesaDaEstacao: {fileID: 0}
 --- !u!1001 &861254378
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -20479,6 +20694,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5573758479837562980, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
       insertIndex: -1
       addedObject: {fileID: 593316208}
+    - targetCorrespondingSourceObject: {fileID: 9009184486882563329, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1690069911}
+    - targetCorrespondingSourceObject: {fileID: 6104327731293484125, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 570285579}
   m_SourcePrefab: {fileID: 100100000, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
 --- !u!4 &924880288 stripped
 Transform:
@@ -20558,6 +20779,48 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 4e7be1d279a919f4c9d278af7264ba35, type: 3}
+--- !u!1 &929825878 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 9009184486882563329, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
+  m_PrefabInstance: {fileID: 1796275225}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &929825892
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 929825878}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4b4821954e43bb49961075de50ea886, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PcTicketBridge
+  ticketManager: {fileID: 1238468672}
+  deviceLabel: "PC da Esta\xE7\xE3o 15"
+  stationNpc: {fileID: 0}
+  acceptedTicketIds:
+  - pc-sem-energia
+  - pc-sem-ram
+  - pc-sem-hd
+  - pc-sem-rede
+  - pc-sem-sistema
+  - pc-pecas-ausentes
+  - pc-montagem-completa
+  - pc-sem-video-e-rede
+  - monitor-sem-imagem
+  - pc-cabo-rede-defeituoso
+  - pc-sem-rede-rack
+  - crimpar-cabo
+  prepareProblemOnClaim: 1
+  deviceRoot: {fileID: 0}
+  recentCooldownSeconds: 180
+  checkInterval: 0.25
+  scoreKeeper: {fileID: 1238468675}
+  pesoSoltoNaParede: 1
+  pesoSoltoNoEquipamento: 1
+  pesoAusente: 1
+  mesaDaEstacao: {fileID: 0}
 --- !u!4 &936609510 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 1c94805a1ff772d4ea4265662ecd8d34, type: 3}
@@ -23433,10 +23696,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6c83207c11339e0488af1d96bd72cc70, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StationEmployee
-  employeeName: 
+  employeeName: "D\xE9bora"
   department: 
   stationLabel: "Esta\xE7\xE3o 09"
-  nomeNaPlaca: Diego
+  nomeNaPlaca: 
   corDaPlaca: {r: 0.18, g: 0.27, b: 0.55, a: 1}
 --- !u!1 &975543072
 GameObject:
@@ -24112,6 +24375,7 @@ MonoBehaviour:
   pesoSoltoNaParede: 1
   pesoSoltoNoEquipamento: 1
   pesoAusente: 1
+  mesaDaEstacao: {fileID: 0}
 --- !u!114 &1004853950
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -24670,6 +24934,7 @@ MonoBehaviour:
   pesoSoltoNaParede: 1
   pesoSoltoNoEquipamento: 1
   pesoAusente: 1
+  mesaDaEstacao: {fileID: 0}
 --- !u!114 &1021813912
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -29547,23 +29812,49 @@ MonoBehaviour:
     - pc-montagem-completa
     - pc-sem-video-e-rede
     - monitor-sem-imagem
+    subgroups:
+    - name: "Pe\xE7as"
+      ticketIds:
+      - pc-sem-ram
+      - pc-sem-hd
+      - pc-pecas-ausentes
+      - pc-montagem-completa
+      - pc-sem-sistema
+    - name: Cabos
+      ticketIds:
+      - pc-sem-energia
+      - pc-sem-rede
+      - monitor-sem-imagem
+      - pc-sem-video-e-rede
   - name: Notebook
     ticketIds:
     - notebook-sem-ram
     - notebook-sem-ssd
     - notebook-sem-sistema
     - notebook-sem-boot
+    subgroups: []
   - name: Impressora
     ticketIds:
     - impressora-sem-papel
     - impressora-sem-toner
     - impressora-sem-ip
     - impressora-sem-impressao
+    subgroups: []
   - name: Rede
     ticketIds:
     - crimpar-cabo
     - pc-cabo-rede-defeituoso
     - pc-sem-rede-rack
+    subgroups:
+    - name: Crimpagem
+      ticketIds:
+      - crimpar-cabo
+    - name: Rack
+      ticketIds:
+      - pc-sem-rede-rack
+    - name: Cabo defeituoso
+      ticketIds:
+      - pc-cabo-rede-defeituoso
 --- !u!114 &1238468677
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -29656,6 +29947,52 @@ MonoBehaviour:
   prefixoPreferencias: Estagiario.Pause
   previaNoEditor: 0
   previaConfiguracoes: 0
+  previaControles: 0
+  textoControles: CONTROLES
+  tituloControles: CONTROLES
+  dicaRolagem: Role o mouse ou arraste a lista para ver mais
+  alturaListaControles: 350
+  alturaLinhaControle: 88
+  proporcaoColunaTeclas: 0.34
+  listaControles:
+  - tecla: W A S D
+    acao: Mover o personagem
+  - tecla: MOUSE
+    acao: Olhar ao redor
+  - tecla: CLIQUE ESQUERDO
+    acao: "Pegar / interagir. Com um item na m\xE3o, soltar o item."
+  - tecla: CLIQUE DIREITO
+    acao: "Abrir a tela do equipamento / esta\xE7\xE3o, inclusive com um item na
+      m\xE3o."
+  - tecla: T
+    acao: Abrir / fechar o tablet
+  - tecla: ALT ESQUERDO
+    acao: Segurar para liberar o cursor no mundo 3D, com o tablet fechado.
+  - tecla: ESC
+    acao: Fechar a tela ou tablet aberto. No mundo 3D, pausar. No pause, voltar /
+      continuar.
+  - tecla: CLICAR / ARRASTAR
+    acao: "Usar bot\xF5es, pe\xE7as, ferramentas e fios nas telas e minigames, conforme
+      a tarefa."
+  - tecla: SETAS ESQ. / DIR.
+    acao: Trocar a vista do computador, notebook ou impressora.
+  - tecla: "0\u20139  /  PONTO"
+    acao: "Digitar o endere\xE7o de rede no painel da impressora."
+  - tecla: TAB
+    acao: "Alternar entre IP e m\xE1scara no painel da impressora."
+  - tecla: BACKSPACE
+    acao: Apagar um caractere no painel da impressora.
+  - tecla: DELETE
+    acao: Limpar o campo no painel da impressora.
+  - tecla: ENTER
+    acao: Confirmar no painel da impressora.
+  paginaControles: {fileID: 0}
+  listaControlesUI: {fileID: 0}
+  rolagemControles: {fileID: 0}
+  tituloControlesUI: {fileID: 0}
+  dicaControlesUI: {fileID: 0}
+  controlesUI: {fileID: 0}
+  voltarControlesUI: {fileID: 0}
   tamanhoPainel: {x: 780, y: 690}
   escalaMenu: 1
   posicaoMenu: {x: 0, y: 0}
@@ -35262,6 +35599,24 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 2112970894}
   m_SourcePrefab: {fileID: 100100000, guid: 658ae993be0888445bdb4656f0ddf4a4, type: 3}
+--- !u!1 &1420508968 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6104327731293484125, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
+  m_PrefabInstance: {fileID: 1796275225}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1420508972
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1420508968}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 256d0462af56a6848997fe90a53082fe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PontoDeRedeRack
+  portaRack: 11
 --- !u!43 &1425299873
 Mesh:
   m_ObjectHideFlags: 0
@@ -35649,6 +36004,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5561517070075018949, guid: 4698ab2bafbbde1438fba48a554ad160, type: 3}
       insertIndex: -1
       addedObject: {fileID: 965891505}
+    - targetCorrespondingSourceObject: {fileID: 531658413947325320, guid: 4698ab2bafbbde1438fba48a554ad160, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 328046061}
   m_SourcePrefab: {fileID: 100100000, guid: 4698ab2bafbbde1438fba48a554ad160, type: 3}
 --- !u!4 &1456540910 stripped
 Transform:
@@ -38621,10 +38979,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6c83207c11339e0488af1d96bd72cc70, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StationEmployee
-  employeeName: 
+  employeeName: Marcos
   department: 
   stationLabel: "Esta\xE7\xE3o 15"
-  nomeNaPlaca: "Ot\xE1vio"
+  nomeNaPlaca: 
   corDaPlaca: {r: 0.55, g: 0.6, b: 0.25, a: 1}
 --- !u!1 &1535260161
 GameObject:
@@ -39224,6 +39582,24 @@ MonoBehaviour:
   m_SelectedFaces: 
   m_SelectedEdges: []
   m_SelectedVertices: 
+--- !u!1 &1539759429 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6104327731293484125, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
+  m_PrefabInstance: {fileID: 1753374509}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1539759433
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1539759429}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 256d0462af56a6848997fe90a53082fe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PontoDeRedeRack
+  portaRack: 9
 --- !u!43 &1540027071
 Mesh:
   m_ObjectHideFlags: 0
@@ -42139,6 +42515,48 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1690069897 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 9009184486882563329, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
+  m_PrefabInstance: {fileID: 924880287}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1690069911
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1690069897}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4b4821954e43bb49961075de50ea886, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PcTicketBridge
+  ticketManager: {fileID: 1238468672}
+  deviceLabel: "PC da Esta\xE7\xE3o 07"
+  stationNpc: {fileID: 0}
+  acceptedTicketIds:
+  - pc-sem-energia
+  - pc-sem-ram
+  - pc-sem-hd
+  - pc-sem-rede
+  - pc-sem-sistema
+  - pc-pecas-ausentes
+  - pc-montagem-completa
+  - pc-sem-video-e-rede
+  - monitor-sem-imagem
+  - pc-cabo-rede-defeituoso
+  - pc-sem-rede-rack
+  - crimpar-cabo
+  prepareProblemOnClaim: 1
+  deviceRoot: {fileID: 0}
+  recentCooldownSeconds: 180
+  checkInterval: 0.25
+  scoreKeeper: {fileID: 1238468675}
+  pesoSoltoNaParede: 1
+  pesoSoltoNoEquipamento: 1
+  pesoAusente: 1
+  mesaDaEstacao: {fileID: 0}
 --- !u!1001 &1693172107
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -43012,7 +43430,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 450ce554f888afd479e825c66a1420b4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RedeGame
-  portasDoRack: 6
+  portasDoRack: 13
 --- !u!4 &1748204061
 Transform:
   m_ObjectHideFlags: 0
@@ -43315,6 +43733,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5573758479837562980, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
       insertIndex: -1
       addedObject: {fileID: 141947496}
+    - targetCorrespondingSourceObject: {fileID: 9009184486882563329, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 289589898}
+    - targetCorrespondingSourceObject: {fileID: 6104327731293484125, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1539759433}
   m_SourcePrefab: {fileID: 100100000, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
 --- !u!4 &1753374510 stripped
 Transform:
@@ -43672,6 +44096,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5573758479837562980, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1528080767}
+    - targetCorrespondingSourceObject: {fileID: 9009184486882563329, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 929825892}
+    - targetCorrespondingSourceObject: {fileID: 6104327731293484125, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1420508972}
   m_SourcePrefab: {fileID: 100100000, guid: a2f3c330daeb2c34687b46d3b4935f49, type: 3}
 --- !u!4 &1796275226 stripped
 Transform:
@@ -44889,10 +45319,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6c83207c11339e0488af1d96bd72cc70, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StationEmployee
-  employeeName: 
+  employeeName: "L\xFAcia"
   department: 
   stationLabel: "Esta\xE7\xE3o 16"
-  nomeNaPlaca: Sofia
+  nomeNaPlaca: 
   corDaPlaca: {r: 0.74, g: 0.28, b: 0.62, a: 1}
 --- !u!1001 &1850664688
 PrefabInstance:
@@ -46044,6 +46474,24 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1274265366}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1921359341 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5032907146815912381, guid: 2eef9da263513834cb0157a27912faa2, type: 3}
+  m_PrefabInstance: {fileID: 95139551}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1921359345
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1921359341}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 256d0462af56a6848997fe90a53082fe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PontoDeRedeRack
+  portaRack: 7
 --- !u!1001 &1922282147
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -48208,6 +48656,7 @@ MonoBehaviour:
   pesoSoltoNaParede: 1
   pesoSoltoNoEquipamento: 1
   pesoAusente: 1
+  mesaDaEstacao: {fileID: 0}
 --- !u!114 &1985901045
 MonoBehaviour:
   m_ObjectHideFlags: 0

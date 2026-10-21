@@ -87,7 +87,9 @@ Clique direito no corpo ou no painel abre a tela da impressora.
 - **Crimpagem** (caixa de cabo de rede, clique direito): com o **alicate de crimpar** na mão, cortar o cabo, tirar a
   capa, ordenar os 8 fios no padrão **T568B** e crimpar o RJ45. Sem o alicate aparece "Falta ferramenta".
 - **Testador de cabo:** encaixar as pontas e testar; os LEDs mostram os pares ligados.
-- **Rack:** ligar as portas do patch panel ao switch; só a ligação certa dá rede ao PC da estação.
+- **Rack:** ligar as portas do patch panel ao switch; só a ligação certa (P N ↔ S N) dá rede ao PC da estação. Cada
+  PC de estação tem a sua porta (o ponto de rede da parede diz qual); sobram duas portas livres no switch, onde podem
+  cair os defeitos de "porta trocada" e de laço S ↔ S.
 
 ## Quedas e itens quebrados
 
@@ -104,7 +106,11 @@ na segunda; monitor na primeira). Item quebrado não é instalado e não liga.
 - As etapas se completam pelo estado real do equipamento. O jogador **finaliza** pelo tablet; entrega incompleta ou
   com o equipamento aberto é recusada (com penalidade).
 - Cada chamado tem um **prazo** de referência (SLA): passar dele custa pontos, mas não bloqueia nada.
-- As mesas têm plaquinha com o nome do funcionário. Mesas sem funcionário não recebem chamados.
+- Todas as estações (PCs e notebooks) recebem chamados. A plaquinha, o tablet e o solicitante do chamado mostram o
+  nome do funcionário da estação (`StationEmployee`).
+- **Rodízio dos tipos** (`TicketCategoryRotation`): a cada ciclo sai um chamado de cada grupo (PC, Notebook,
+  Impressora, Rede), em ordem sorteada. Dentro de Rede, crimpagem, rack e cabo defeituoso se revezam sem repetir antes
+  de saírem os três; dentro de PC, chamados de peças e de cabos se alternam.
 
 ## Supervisor (chefe) e infrações
 

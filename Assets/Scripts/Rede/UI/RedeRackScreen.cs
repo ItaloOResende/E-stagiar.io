@@ -66,8 +66,9 @@ public class RedeRackScreen : MonoBehaviour
     [SerializeField] private PickupInteractable caboSemObjetoPrefab;
 
     // Geometria (pixels da referência 1920x1080; coordenadas LOCAIS do canvas, centro = 0).
-    private const float EspacamentoPorta = 200f;
-    private const float TomadaClique = 124f;
+    // espaçamento e tamanho da tomada com até 6 portas; com mais, encolhem para caber na largura do equipamento
+    private const float EspacamentoMaximo = 200f;
+    private const float TomadaMaxima = 124f;
     private const float LarguraEquip = 1460f;
     private const float PatchY = 250f, PatchAltura = 200f;
     private const float OrganizadorY = 70f, OrganizadorAltura = 96f;
@@ -77,6 +78,8 @@ public class RedeRackScreen : MonoBehaviour
 
     private bool construido;
     private int numPortas;
+    private float EspacamentoPorta => Mathf.Min(EspacamentoMaximo, (LarguraEquip - 40f) / numPortas);
+    private float TomadaClique => Mathf.Min(TomadaMaxima, EspacamentoPorta - 8f);
 
     private RectTransform bancada, cabos;
     private readonly Dictionary<PortaRack, PortaUi> portas = new Dictionary<PortaRack, PortaUi>();
@@ -130,7 +133,7 @@ public class RedeRackScreen : MonoBehaviour
 
         RedeUi.Esticar((RectTransform)transform);
         bancada = RedeUi.Cheio(transform, "Painel", CorPainel);
-        RedeUi.BotaoFechar(bancada, Fechar);
+        RectTransform fechar = RedeUi.BotaoFechar(bancada, Fechar);
 
         // gabinete do rack: fundo, trilhos laterais com a furação e a base
         Caixa(bancada, "Gabinete", CorGabinete, new Vector2(0f, -40f), new Vector2(LarguraEquip + 240f, 980f), true);
@@ -150,6 +153,7 @@ public class RedeRackScreen : MonoBehaviour
         cabos = RedeUi.Cheio(bancada, "Cabos", Color.clear);
         curvaLivre = NovaCurva("CaboNaMao");
         plugLivre = Plugue("PlugNaMao");
+        fechar.SetAsLastSibling();   // o X por cima de tudo (era o primeiro filho: o rack e os cabos o cobriam)
     }
 
     // Um equipamento de rack (1U/2U): carcaça, orelhas com parafusos, nome gravado e a fileira de portas.
@@ -162,9 +166,11 @@ public class RedeRackScreen : MonoBehaviour
             foreach (float yy in new[] { altura * 0.3f, -altura * 0.3f })
                 Caixa(eq, "Parafuso", CorFuro, new Vector2(x, yy), new Vector2(18f, 18f), true);
 
-        Text marca = RedeUi.Texto(eq, "Gravado", gravado, 18, TextAnchor.MiddleLeft, patch ? Color.Lerp(CorPatchSombra, Color.black, 0.35f) : TextoGravado);
-        RedeUi.Ancorar((RectTransform)marca.transform, new Vector2(0f, 1f), new Vector2(500f, 26f), new Vector2(0f, 1f));
-        ((RectTransform)marca.transform).anchoredPosition = new Vector2(70f, -10f);
+        // nome gravado: o do patch panel no alto do rack, acima do equipamento (as etiquetas das portas ocupam o topo
+        // dele); o do switch na faixa de cima do switch, acima dos LEDs
+        Text marca = RedeUi.Texto(patch ? bancada : eq, "Gravado" + nome, gravado, 18, TextAnchor.MiddleLeft, TextoGravado);
+        RedeUi.Ancorar((RectTransform)marca.transform, patch ? new Vector2(0.5f, 0.5f) : new Vector2(0f, 1f), new Vector2(500f, 24f), new Vector2(0f, 1f));
+        ((RectTransform)marca.transform).anchoredPosition = patch ? new Vector2(-(LarguraEquip * 0.5f), y + altura * 0.5f + 34f) : new Vector2(70f, -3f);
         marca.fontStyle = FontStyle.Bold;
         marca.raycastTarget = false;
 
