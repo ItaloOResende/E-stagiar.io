@@ -244,7 +244,8 @@ public class MainMenuScreen : MonoBehaviour
         if (!iniciou) return;
         if (Keyboard.current != null && teclaVoltar != Key.None && Keyboard.current[teclaVoltar].wasPressedThisFrame)
         {
-            if (estado == Estado.Aberto && paginaAlvo > .5f) MostrarPagina(false);
+            if (AvisoSairAberto) FecharAvisoSair();
+            else if (estado == Estado.Aberto && paginaAlvo > .5f) MostrarPagina(false);
         }
         if (estado != Estado.Aberto) return;
         if (Screen.width != larguraTela || Screen.height != alturaTela) { Canvas.ForceUpdateCanvases(); AtualizarLayout(); }
@@ -267,7 +268,7 @@ public class MainMenuScreen : MonoBehaviour
             entradasAlpha[i].interactable = t >= .95f; entradasAlpha[i].blocksRaycasts = t >= .95f;
         }
         // página do pause aberta por cima (controles): os botões do menu ficam cobertos, sem hover
-        bool coberto = referenciaPause != null && referenciaPause.PaginaAvulsaAberta;
+        bool coberto = (referenciaPause != null && referenciaPause.PaginaAvulsaAberta) || AvisoSairAberto;
         Vector2 mouse = Mouse.current != null && !coberto ? Mouse.current.position.ReadValue() : Vector2.one * -10000;
         foreach (var h in hovers)
         {
@@ -359,7 +360,43 @@ public class MainMenuScreen : MonoBehaviour
     public void SairDoJogo()
     {
         if (estado != Estado.Aberto || carregandoCena) return;
+        // no navegador Application.Quit não faz nada (o menu sumia e ficava só o fundo escuro): avisa para fechar a aba
+        if (Application.platform == RuntimePlatform.WebGLPlayer) { AbrirAvisoSair(); return; }
         carregandoCena = true; StartCoroutine(FecharAnimado(true));
+    }
+    private RectTransform avisoSair;
+    private bool AvisoSairAberto => avisoSair != null && avisoSair.gameObject.activeSelf;
+    private void AbrirAvisoSair()
+    {
+        if (avisoSair == null)
+        {
+            // por cima do menu inteiro, bloqueando os botões dele; card com o mesmo fundo do painel do menu
+            avisoSair = Imagem("AvisoSair", raiz, new Color(0, 0, 0, .55f), true).rectTransform; Stretch(avisoSair);
+            var fundoPainel = painel.GetComponent<Image>();
+            var card = Imagem("Card", avisoSair, fundoPainel.color, true);
+            card.sprite = fundoPainel.sprite; card.type = fundoPainel.type;
+            Centro(card.rectTransform, Vector2.zero, new Vector2(760, 380));
+            var titulo = Texto(card.transform, "Titulo", "SAIR DO JOGO", tamanhoTitulo);
+            titulo.fontStyle = FontStyles.Bold; titulo.color = corDestaque;
+            Centro(titulo.rectTransform, new Vector2(0, 120), new Vector2(680, 70));
+            var texto = Texto(card.transform, "Texto", "Para encerrar o jogo, é só fechar esta aba do navegador.", tamanhoTexto);
+            texto.color = corTexto; Centro(texto.rectTransform, new Vector2(0, 20), new Vector2(640, 100));
+            var holder = Rect("Voltar", card.transform); Centro(holder, new Vector2(0, -110), tamanhoBotao);
+            var voltar = Imagem("Botao", holder, Color.white, true); Stretch(voltar.rectTransform);
+            var b = voltar.gameObject.AddComponent<Button>(); b.targetGraphic = voltar;
+            b.navigation = new Navigation { mode = Navigation.Mode.None };
+            if (referenciaPause != null) referenciaPause.EstilizarBotaoExterno(b, "VOLTAR AO JOGO");
+            else Texto(voltar.transform, "Texto", "VOLTAR AO JOGO", tamanhoTexto);
+            b.onClick.AddListener(() => { Tocar(somClique); FecharAvisoSair(); });
+        }
+        avisoSair.SetAsLastSibling(); avisoSair.gameObject.SetActive(true);
+        if (cursorUI != null) cursorUI.SetAsLastSibling();
+        if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
+    }
+    private void FecharAvisoSair()
+    {
+        if (avisoSair != null) avisoSair.gameObject.SetActive(false);
+        if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
     }
     private IEnumerator FecharAnimado(bool sair)
     {
