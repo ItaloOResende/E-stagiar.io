@@ -370,14 +370,16 @@ public class MainMenuScreen : MonoBehaviour
     {
         if (avisoSair == null)
         {
-            // por cima do menu inteiro, bloqueando os botões dele; card com o mesmo fundo do painel do menu
-            avisoSair = Imagem("AvisoSair", raiz, new Color(0, 0, 0, .55f), true).rectTransform; Stretch(avisoSair);
+            // por cima do menu inteiro, bloqueando os botões dele: fundo TOTALMENTE escuro e card opaco (com o fundo
+            // translúcido o texto ficava difícil de ler)
+            avisoSair = Imagem("AvisoSair", raiz, Color.black, true).rectTransform; Stretch(avisoSair);
             var fundoPainel = painel.GetComponent<Image>();
-            var card = Imagem("Card", avisoSair, fundoPainel.color, true);
+            Color corCard = fundoPainel.color; corCard.a = 1f;
+            var card = Imagem("Card", avisoSair, corCard, true);
             card.sprite = fundoPainel.sprite; card.type = fundoPainel.type;
             Centro(card.rectTransform, Vector2.zero, new Vector2(760, 380));
             var titulo = Texto(card.transform, "Titulo", "SAIR DO JOGO", tamanhoTitulo);
-            titulo.fontStyle = FontStyles.Bold; titulo.color = corDestaque;
+            titulo.fontStyle = FontStyles.Bold; titulo.color = Color.white;
             Centro(titulo.rectTransform, new Vector2(0, 120), new Vector2(680, 70));
             var texto = Texto(card.transform, "Texto", "Para encerrar o jogo, é só fechar esta aba do navegador.", tamanhoTexto);
             texto.color = corTexto; Centro(texto.rectTransform, new Vector2(0, 20), new Vector2(640, 100));

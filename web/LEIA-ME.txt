@@ -1,0 +1,27 @@
+E-stagiar.io — Protótipo jogável (build WebGL)
+==============================================
+
+JOGAR NO NAVEGADOR (recomendado)
+  Link: https://e-stagiario.vercel.app/
+
+  Funciona em navegadores de computador atualizados (Chrome, Edge ou Firefox).
+  Use tela cheia, mouse e teclado.
+
+SOBRE ESTA PASTA
+  Estes são os arquivos do build WebGL publicado no link acima (index.html, favicon.svg,
+  vercel.json e a pasta Build).
+
+  Atenção: abrir o index.html com dois cliques NÃO funciona. O navegador bloqueia builds
+  WebGL abertos direto do computador, e os arquivos da pasta Build são comprimidos (.br)
+  e precisam de um servidor que envie o cabeçalho "Content-Encoding: br". O vercel.json
+  já traz essa configuração. Para rodar localmente, publique a pasta em qualquer hospedagem
+  estática com esses cabeçalhos (por exemplo, a Vercel).
+
+CONTROLES
+  W A S D ........ andar
+  Mouse .......... olhar / mirar
+  Clique esquerdo  pegar, usar, abrir/fechar, soltar
+  Clique direito . abrir a tela de manutenção do equipamento
+  T .............. tablet de chamados
+  Esc ............ fechar a tela aberta / pausar
+  Tab ............ minimizar as instruções (tutorial)
