@@ -103,6 +103,14 @@ public class ItemHolder : MonoBehaviour
     private Collider[] PlayerColliders =>
         System.Array.FindAll(GetComponentsInChildren<Collider>(), c => !c.transform.IsChildOf(holdPoint));
 
+    // O ponto atingido é de um móvel com WorkSurface, mas bem acima do tampo dele (o colisor da raiz).
+    private static bool AcimaDoTampo(RaycastHit h)
+    {
+        WorkSurface mesa = h.collider.GetComponentInParent<WorkSurface>();
+        if (mesa == null || h.collider.gameObject == mesa.gameObject || !mesa.TryGetComponent(out Collider tampo)) return false;
+        return h.point.y > tampo.bounds.max.y + 0.15f;
+    }
+
     /// <summary>O que está na mira: área de guardar de uma gaveta aberta, uma superfície horizontal, ou nada.</summary>
     private Target Aim(Transform cam, out RaycastHit hit, out DrawerContents drawer)
     {
@@ -126,6 +134,9 @@ public class ItemHolder : MonoBehaviour
                 hit = h; drawer = d;
                 return Target.Drawer;
             }
+            // partes altas de uma mesa/bancada (ex.: a prateleira do alto da bancada de manutenção) não são apoio: a mira
+            // segue até o tampo de baixo, onde o item fica
+            if (AcimaDoTampo(h)) continue;
             if (h.normal.y >= minSurfaceUp) { hit = h; return Target.Surface; }
             return Target.None;                                                      // parede/lado de móvel: cai
         }

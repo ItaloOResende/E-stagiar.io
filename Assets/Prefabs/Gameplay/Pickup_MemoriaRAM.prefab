@@ -286,8 +286,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PickupInteractable
   interactionMessage: Pegar
   promptIcon: {fileID: 0}
-  holdPositionOffset: {x: 0, y: 0, z: 0}
-  holdEulerOffset: {x: -60, y: 0, z: 0}
+  holdPositionOffset: {x: 0.005, y: -0.02, z: -0.04}
+  holdEulerOffset: {x: -55, y: 0, z: 0}
+  holdScale: 1
+  useGripPoint: 1
+  gripLocalPoint: {x: 0, y: 0.0017, z: -0.0155}
+  placedYawOffset: 0
   startsFrozen: 1
 --- !u!114 &8862713571856040191
 MonoBehaviour:

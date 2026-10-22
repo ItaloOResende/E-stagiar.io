@@ -132,6 +132,7 @@ public class PickupInteractable : Interactable
         // Só os colliders LIGADOS em repouso: os desligados de propósito (ex.: visual antigo trocado por outro modelo)
         // não podem voltar a ligar quando o item é solto.
         colliders = System.Array.FindAll(GetComponentsInChildren<Collider>(true), c => c.enabled);
+        AjustarCaixaAoVisual();
         if (colliders.Length == 0)
         {
             var box = gameObject.AddComponent<BoxCollider>();
@@ -144,6 +145,34 @@ public class PickupInteractable : Interactable
         }
 
         if (startsFrozen) body.isKinematic = true;
+    }
+
+    // Peças pequenas (do PC, notebook, impressora, pendrive, teclado, mouse): a caixa de colisão do prefab não
+    // acompanhava o modelo, que descia abaixo dela, e o item apoiado parecia entrar na mesa/bancada. Com uma única
+    // BoxCollider na raiz, ela passa a ser exatamente o volume dos renderers visíveis.
+    private void AjustarCaixaAoVisual()
+    {
+        if (colliders.Length != 1 || !(colliders[0] is BoxCollider caixa) || caixa.transform != transform) return;
+        if (GetComponent<ComputerPartItem>() == null && GetComponent<NotebookPartItem>() == null && GetComponent<ImpressoraPartItem>() == null
+            && GetComponent<PendriveItem>() == null && GetComponent<Periferico>() == null) return;
+        bool tem = false;
+        Bounds local = default;
+        Matrix4x4 paraMim = transform.worldToLocalMatrix;
+        foreach (Renderer r in renderers)
+        {
+            if (r == null || !r.enabled || !r.gameObject.activeInHierarchy) continue;
+            Bounds lb = r.localBounds;
+            Matrix4x4 m = paraMim * r.transform.localToWorldMatrix;
+            for (int i = 0; i < 8; i++)
+            {
+                Vector3 canto = lb.center + Vector3.Scale(lb.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1));
+                Vector3 p = m.MultiplyPoint3x4(canto);
+                if (!tem) { local = new Bounds(p, Vector3.zero); tem = true; } else local.Encapsulate(p);
+            }
+        }
+        if (!tem) return;
+        caixa.center = local.center;
+        caixa.size = Vector3.Max(local.size, Vector3.one * 0.004f);   // nunca uma caixa achatada a zero
     }
 
     private Bounds RenderBounds()
