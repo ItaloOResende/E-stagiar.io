@@ -119,8 +119,8 @@ public sealed class TutorialMontagem : MonoBehaviour
             "Pegue um cabo de rede no gaveteiro de cabos e ligue a porta de rede do gabinete ao ponto de rede da parede.",
             () => SeguraCabo() ? Gabinete() : alvoCabos, () => PassouDe("conectar-rede"));
         Nova("Encaixe o pendrive",
-            "Ele tem o instalador do sistema. Pegue-o no gaveteiro de suprimentos e encaixe-o numa USB da traseira do gabinete.",
-            () => SeguraPendrive() ? Gabinete() : alvoSuprimentos, () => (energia != null && energia.PendriveConnected) || PassouDe("instalar-sistema"));
+            "Ele tem o instalador do sistema. Pegue um na bancada de manutenção e encaixe-o numa USB da traseira do gabinete.",
+            () => SeguraPendrive() ? Gabinete() : alvoFerramentas, () => (energia != null && energia.PendriveConnected) || PassouDe("instalar-sistema"));
         Nova("Ligue o PC",
             "Aperte o botão Power na vista Frente. A instalação do sistema só avança enquanto você olha para o monitor.",
             () => energia != null && energia.State != PcPowerState.Off ? Monitor() : Gabinete(), () => PassouDe("validar-funcionamento"));
@@ -281,6 +281,8 @@ public sealed class TutorialMontagem : MonoBehaviour
 
     // ------------------------------------------------------------------ interface (uGUI)
     private Canvas canvas;
+    // marcador do cenário em vermelho forte: tem que saltar aos olhos em qualquer fundo
+    private static readonly Color CorMarcador = new Color(1f, .16f, .16f);
     private RectTransform painel, marcador, barraCheia, fim;
     private TMP_Text rotulo, contagem, titulo, texto, aviso, dica, atalho, textoMarcador, seta;
     private Image fundoPainel; private Outline bordaPainel;
@@ -288,6 +290,7 @@ public sealed class TutorialMontagem : MonoBehaviour
     private readonly Vector3[] cantos = new Vector3[4];
     private bool minimizado;
     private TMP_Text textoMinimizar;
+    private RectTransform botaoTutorial;   // painel minimizado: só este botão no canto (não cobre o gabinete na tela 2D)
     private readonly List<GameObject> detalhes = new List<GameObject>();   // some com o painel minimizado
     private Sprite arredondado;
     private readonly List<UnityEngine.Object> recursos = new List<UnityEngine.Object>();
@@ -344,21 +347,32 @@ public sealed class TutorialMontagem : MonoBehaviour
         textoMinimizar = Texto(minimizar.transform, "-", 22, new Color(0.62f, 0.70f, 0.78f), FontStyles.Bold);   // cinza (branco sumia no fundo)
         textoMinimizar.alignment = TextAlignmentOptions.Center; Esticar(textoMinimizar.rectTransform);
 
+        // minimizado: o painel some e fica só um botão "TUTORIAL" pequeno no canto; clicar nele (ou TAB) expande de novo
+        botaoTutorial = Caixa("BotaoTutorial", go.transform, out Image fundoBotao, out _);
+        botaoTutorial.anchorMin = botaoTutorial.anchorMax = botaoTutorial.pivot = new Vector2(0f, 1f);
+        botaoTutorial.anchoredPosition = new Vector2(24f, -24f); botaoTutorial.sizeDelta = new Vector2(210f, 54f);
+        fundoBotao.raycastTarget = true;
+        var bt = botaoTutorial.gameObject.AddComponent<Button>(); bt.targetGraphic = fundoBotao; bt.onClick.AddListener(AlternarMinimizado);
+        bt.navigation = new Navigation { mode = Navigation.Mode.None };
+        var textoBotao = Texto(botaoTutorial, "TUTORIAL  [TAB]", 20, HudEstilo.Valor, FontStyles.Bold);
+        textoBotao.alignment = TextAlignmentOptions.Center; Esticar(textoBotao.rectTransform);
+        botaoTutorial.gameObject.SetActive(false);
+
         tablet = FindFirstObjectByType<TicketTabletPrototype>();
 
         // marcador no cenário
         marcador = new GameObject("Marcador", typeof(RectTransform)).GetComponent<RectTransform>();
-        marcador.SetParent(go.transform, false); marcador.sizeDelta = new Vector2(300f, 70f);
+        marcador.SetParent(go.transform, false); marcador.sizeDelta = new Vector2(400f, 86f);
         // nome do alvo (em cima) + seta (embaixo; fora da tela, gira para o lado do alvo)
-        textoMarcador = Texto(marcador, "", 22, new Color(.55f, 1f, .6f), FontStyles.Bold);
+        textoMarcador = Texto(marcador, "", 28, CorMarcador, FontStyles.Bold);
         textoMarcador.alignment = TextAlignmentOptions.Bottom;
-        var r = textoMarcador.rectTransform; r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one; r.offsetMin = new Vector2(0f, 36f); r.offsetMax = Vector2.zero;
-        textoMarcador.outlineWidth = .25f; textoMarcador.outlineColor = new Color32(5, 10, 18, 255);
-        seta = Texto(marcador, "▼", 30, new Color(.55f, 1f, .6f), FontStyles.Bold);
+        var r = textoMarcador.rectTransform; r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one; r.offsetMin = new Vector2(0f, 44f); r.offsetMax = Vector2.zero;
+        textoMarcador.outlineWidth = .3f; textoMarcador.outlineColor = new Color32(5, 10, 18, 255);
+        seta = Texto(marcador, "▼", 36, CorMarcador, FontStyles.Bold);
         seta.alignment = TextAlignmentOptions.Center;
         seta.rectTransform.anchorMin = seta.rectTransform.anchorMax = new Vector2(.5f, 0f);
-        seta.rectTransform.anchoredPosition = new Vector2(0f, 18f); seta.rectTransform.sizeDelta = new Vector2(36f, 36f);
-        seta.outlineWidth = .25f; seta.outlineColor = new Color32(5, 10, 18, 255);
+        seta.rectTransform.anchoredPosition = new Vector2(0f, 20f); seta.rectTransform.sizeDelta = new Vector2(42f, 42f);
+        seta.outlineWidth = .3f; seta.outlineColor = new Color32(5, 10, 18, 255);
     }
 
     private void Desenhar()
@@ -367,7 +381,8 @@ public sealed class TutorialMontagem : MonoBehaviour
         bool oculto = PauseMenu.IsPaused || MainMenuScreen.Showing;
         canvas.enabled = !oculto;
         if (oculto) return;
-        painel.gameObject.SetActive(!concluido);
+        painel.gameObject.SetActive(!concluido && (!minimizado || confirmandoPulo));
+        botaoTutorial.gameObject.SetActive(!concluido && minimizado && !confirmandoPulo);
         if (concluido) { marcador.gameObject.SetActive(false); AlvoDoMarcador = null; MarcandoTablet = false; return; }
 
         Etapa e = etapas[Mathf.Min(atual, etapas.Count - 1)];
@@ -395,7 +410,7 @@ public sealed class TutorialMontagem : MonoBehaviour
                 botao.GetWorldCorners(cantos);   // canvas overlay: mundo = tela
                 Vector2 topo = (cantos[1] + cantos[2]) * .5f;
                 RectTransformUtility.ScreenPointToLocalPointInRectangle((RectTransform)canvas.transform, topo, null, out Vector2 local);
-                marcador.anchoredPosition = local + Vector2.up * 38f;
+                marcador.anchoredPosition = local + Vector2.up * 49f;
                 textoMarcador.text = "";
                 seta.rectTransform.localEulerAngles = Vector3.zero;
                 mostrar = true;
@@ -412,13 +427,13 @@ public sealed class TutorialMontagem : MonoBehaviour
         {
             // na tela: em cima do alvo, seta para baixo. Fora dela (ou atrás): preso à borda, seta girada para o lado dele
             var area = (RectTransform)canvas.transform;
-            Vector3 p = cam.WorldToScreenPoint(Topo(alvo) + Vector3.up * .35f);
+            Vector3 p = cam.WorldToScreenPoint(Topo(alvo) + Vector3.up * .06f);   // colado no item
             bool naTela = p.z > 0f && p.x > 0f && p.x < Screen.width && p.y > 0f && p.y < Screen.height;
             textoMarcador.text = NomeDoAlvo(alvo);
             if (naTela)
             {
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(area, p, null, out Vector2 local);
-                marcador.anchoredPosition = local + Vector2.up * 30f;
+                marcador.anchoredPosition = local + Vector2.up * 45f;   // ponta da seta logo acima do ponto
                 seta.rectTransform.localEulerAngles = Vector3.zero;
             }
             else
@@ -427,7 +442,7 @@ public sealed class TutorialMontagem : MonoBehaviour
                 Vector2 dir = (Vector2)p - centro;
                 if (p.z < 0f) dir = -dir;
                 if (dir.sqrMagnitude < 1f) dir = Vector2.down;
-                Vector2 meia = centro - new Vector2(160f, 110f) * (Screen.height / 1080f);
+                Vector2 meia = centro - new Vector2(240f, 130f) * (Screen.height / 1080f);
                 float k = Mathf.Min(meia.x / Mathf.Max(Mathf.Abs(dir.x), .001f), meia.y / Mathf.Max(Mathf.Abs(dir.y), .001f));
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(area, centro + dir * k, null, out Vector2 local);
                 marcador.anchoredPosition = local;

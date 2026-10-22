@@ -104,7 +104,9 @@ public static class TutorialMontagemSetup
         }
         Desempacotar(movel); Object.DestroyImmediate(movel); log.AppendLine("removido da sala: Bancada_Armarios (fundo)");
         GuardarNoEstoque(cena, pc.transform, gabinete.transform, log);
+        PendrivesNaBancada(cena, log);
         PrepararEstantes(cena, pc.transform, log, out List<Transform> teclados, out List<Transform> mouses);
+        MarcarPerifericos(cena, log);
         Transform cadeira = estacao.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == "Cadeira");
         if (cadeira != null) { Desempacotar(cadeira.gameObject); Object.DestroyImmediate(cadeira.gameObject); log.AppendLine("removido da sala: Cadeira da estação"); }
         foreach (string nome in ItensRemovidos)
@@ -336,6 +338,74 @@ public static class TutorialMontagemSetup
         }
         foreach (Transform t in new[] { modeloTeclado, modeloMouse }) { Desempacotar(t.gameObject); Object.DestroyImmediate(t.gameObject); }
     }
+    // Pendrive do tutorial: dois em cima da bancada de manutenção (no lugar dos cabos soltos que saem da cena) e nenhum
+    // no gaveteiro de suprimentos, onde ficava atrás da frente da gaveta e não dava para pegar. O de ferramentas fica.
+    private static void PendrivesNaBancada(Scene cena, StringBuilder log)
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Gameplay/Pickup_Pendrive.prefab");
+        GameObject bancada = Achar(cena, "Bancada_Manutencao");
+        if (prefab == null || bancada == null) { Debug.LogError("[Tutorial] Pickup_Pendrive ou Bancada_Manutencao não encontrados."); return; }
+        GameObject suprimentos = Achar(cena, "Gaveteiro3_Suprimentos");
+        if (suprimentos != null)
+            foreach (DrawerContents gaveta in suprimentos.GetComponentsInChildren<DrawerContents>(true))
+            {
+                var so = new SerializedObject(gaveta); var lista = so.FindProperty("entries");
+                for (int i = lista.arraySize - 1; i >= 0; i--)
+                {
+                    var item = lista.GetArrayElementAtIndex(i).FindPropertyRelative("prefab").objectReferenceValue as Component;
+                    if (item == null || item.GetComponent<PendriveItem>() == null) continue;
+                    lista.DeleteArrayElementAtIndex(i);
+                    log.AppendLine("pendrive tirado da gaveta: " + gaveta.name);
+                }
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+        Transform b = bancada.transform;
+        Physics.SyncTransforms();
+        for (int i = 0; i < 2; i++)
+        {
+            string nome = "Pendrive_Bancada_" + (i + 1);
+            GameObject velho = Achar(cena, nome);
+            if (velho != null) Object.DestroyImmediate(velho);
+            Vector3 ponto = b.TransformPoint(0.30f + i * 0.12f, 0f, -0.05f);
+            // tampo = topo do colisor da raiz da bancada (os limites do modelo incluem a prateleira do alto)
+            float topo = bancada.TryGetComponent(out Collider tampo) ? tampo.bounds.max.y : Limites(b).min.y + 0.906f;
+            var pen = (GameObject)PrefabUtility.InstantiatePrefab(prefab, cena);
+            pen.name = nome;
+            pen.transform.SetParent(b, true);
+            Colocar(pen.transform, b.rotation * Quaternion.Euler(0f, 90f, 0f), ponto, topo + 0.002f);
+            log.AppendLine($"pendrive na bancada: {nome} {Limites(pen.transform).min:F2}..{Limites(pen.transform).max:F2}");
+        }
+    }
+
+    /// <summary>Só os pendrives da cena do tutorial já montada (sem refazer a cena). Menu de apoio.</summary>
+    // Teclados e mouses das estantes com o marcador Periferico (a colisão deles acompanha o modelo: o mouse não entra na
+    // mesa). As cópias feitas antes do marcador existir não o têm.
+    private static void MarcarPerifericos(Scene cena, StringBuilder log)
+    {
+        foreach (Transform t in cena.GetRootGameObjects().SelectMany(r => r.GetComponentsInChildren<Transform>(true)))
+        {
+            bool teclado = t.name.StartsWith("Teclado_Estoque"), mouse = t.name.StartsWith("Mouse_Estoque_");
+            if ((!teclado && !mouse) || t.GetComponent<PickupInteractable>() == null) continue;
+            Periferico p = t.GetComponent<Periferico>() ?? t.gameObject.AddComponent<Periferico>();
+            p.Qual = teclado ? Periferico.Tipo.Teclado : Periferico.Tipo.Mouse;
+            log.AppendLine("periférico: " + t.name);
+        }
+    }
+
+    [MenuItem("Tools/E-stagiar.io/Tutorial/Ajustar cena atual (pendrives e mouses)")]
+    public static void SoPendrives()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode) { Debug.LogError("[Tutorial] Saia do Play antes."); return; }
+        if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+        Scene cena = EditorSceneManager.OpenScene(Destino, OpenSceneMode.Single);
+        var log = new StringBuilder();
+        PendrivesNaBancada(cena, log);
+        MarcarPerifericos(cena, log);
+        EditorSceneManager.MarkSceneDirty(cena);
+        EditorSceneManager.SaveScene(cena);
+        Debug.Log("[Tutorial] Pendrives: " + log);
+    }
+
     private static void Lista(SerializedProperty p, List<Transform> itens)
     {
         p.ClearArray();

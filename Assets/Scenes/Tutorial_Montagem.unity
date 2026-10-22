@@ -2764,6 +2764,7 @@ GameObject:
   - component: {fileID: 193892424}
   - component: {fileID: 193892423}
   - component: {fileID: 193892422}
+  - component: {fileID: 193892425}
   m_Layer: 0
   m_Name: Mouse_Estoque_4
   m_TagString: Untagged
@@ -2856,6 +2857,19 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.33229035, y: 0.042904854, z: 0.25989333}
   m_Center: {x: -0.0000001937151, y: 0.021452487, z: 0.000000074505806}
+--- !u!114 &193892425
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 193892420}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af578b5e202880548abb1a08866e5539, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Periferico
+  tipo: 1
 --- !u!4 &204004310 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1100146641110616451, guid: 108b2182a1df6a3419bd4f3b9724f8ce, type: 3}
@@ -3135,6 +3149,68 @@ Transform:
   - {fileID: 193892421}
   m_Father: {fileID: 361088023}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &251267343
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1739864798}
+    m_Modifications:
+    - target: {fileID: 4042422865326193985, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_Name
+      value: Pendrive_Bancada_2
+      objectReference: {fileID: 0}
+    - target: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.41999817
+      objectReference: {fileID: 0}
+    - target: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.908
+      objectReference: {fileID: 0}
+    - target: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.0499992
+      objectReference: {fileID: 0}
+    - target: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+--- !u!4 &251267344 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+  m_PrefabInstance: {fileID: 251267343}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &289318569
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3968,6 +4044,68 @@ Mesh:
       - serializedVersion: 1
         m_IndexStart: 0
         m_IndexCount: 0
+--- !u!1001 &421275101
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1739864798}
+    m_Modifications:
+    - target: {fileID: 4042422865326193985, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_Name
+      value: Pendrive_Bancada_1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.29999924
+      objectReference: {fileID: 0}
+    - target: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.908
+      objectReference: {fileID: 0}
+    - target: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.04999921
+      objectReference: {fileID: 0}
+    - target: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+--- !u!4 &421275102 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5261807312179411392, guid: 9a5cf4a1e2d97e74fb9093d4724cf5b8, type: 3}
+  m_PrefabInstance: {fileID: 421275101}
+  m_PrefabAsset: {fileID: 0}
 --- !u!43 &439927625
 Mesh:
   m_ObjectHideFlags: 0
@@ -5412,6 +5550,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Gaveteiro3_Suprimentos
       objectReference: {fileID: 0}
+    - target: {fileID: 5778788261583622445, guid: 2ba04de5918a9b44891af120120b960a, type: 3}
+      propertyPath: entries.Array.size
+      value: 2
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -6729,6 +6871,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6019342911511243933, guid: 55f47697352f9d740a77068f4dda31ee, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1509508142}
+    - targetCorrespondingSourceObject: {fileID: 6019342911511243933, guid: 55f47697352f9d740a77068f4dda31ee, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1509508144}
   m_SourcePrefab: {fileID: 100100000, guid: 55f47697352f9d740a77068f4dda31ee, type: 3}
 --- !u!1 &941802635 stripped
 GameObject:
@@ -7244,6 +7389,7 @@ GameObject:
   - component: {fileID: 1091302256}
   - component: {fileID: 1091302255}
   - component: {fileID: 1091302254}
+  - component: {fileID: 1091302257}
   m_Layer: 0
   m_Name: Mouse_Estoque_1
   m_TagString: Untagged
@@ -7336,6 +7482,19 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.33229035, y: 0.042904854, z: 0.25989333}
   m_Center: {x: -0.0000001937151, y: 0.021452487, z: 0.000000074505806}
+--- !u!114 &1091302257
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1091302252}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af578b5e202880548abb1a08866e5539, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Periferico
+  tipo: 1
 --- !u!1 &1145673527
 GameObject:
   m_ObjectHideFlags: 0
@@ -8868,23 +9027,27 @@ MonoBehaviour:
     - pc-montagem-completa
     - pc-sem-video-e-rede
     - monitor-sem-imagem
+    subgroups: []
   - name: Notebook
     ticketIds:
     - notebook-sem-ram
     - notebook-sem-ssd
     - notebook-sem-sistema
     - notebook-sem-boot
+    subgroups: []
   - name: Impressora
     ticketIds:
     - impressora-sem-papel
     - impressora-sem-toner
     - impressora-sem-ip
     - impressora-sem-impressao
+    subgroups: []
   - name: Rede
     ticketIds:
     - crimpar-cabo
     - pc-cabo-rede-defeituoso
     - pc-sem-rede-rack
+    subgroups: []
 --- !u!114 &1238468677
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8980,49 +9143,19 @@ MonoBehaviour:
   previaControles: 0
   textoControles: CONTROLES
   tituloControles: CONTROLES
-  dicaRolagem: Role o mouse ou arraste a lista para ver mais
-  alturaListaControles: 350
-  alturaLinhaControle: 88
-  proporcaoColunaTeclas: 0.34
-  listaControles:
-  - tecla: W A S D
-    acao: Mover o personagem
-  - tecla: MOUSE
-    acao: Olhar ao redor
-  - tecla: CLIQUE ESQUERDO
-    acao: "Pegar / interagir. Com um item na m\xE3o, soltar o item."
-  - tecla: CLIQUE DIREITO
-    acao: "Abrir a tela do equipamento / esta\xE7\xE3o, inclusive com um item na
-      m\xE3o."
-  - tecla: T
-    acao: Abrir / fechar o tablet
-  - tecla: ALT ESQUERDO
-    acao: Segurar para liberar o cursor no mundo 3D, com o tablet fechado.
-  - tecla: ESC
-    acao: Fechar a tela ou tablet aberto. No mundo 3D, pausar. No pause, voltar /
-      continuar.
-  - tecla: CLICAR / ARRASTAR
-    acao: "Usar bot\xF5es, pe\xE7as, ferramentas e fios nas telas e minigames, conforme
-      a tarefa."
-  - tecla: SETAS ESQ. / DIR.
-    acao: Trocar a vista do computador, notebook ou impressora.
-  - tecla: "0\u20139  /  PONTO"
-    acao: "Digitar o endere\xE7o de rede no painel da impressora."
-  - tecla: TAB
-    acao: "Alternar entre IP e m\xE1scara no painel da impressora."
-  - tecla: BACKSPACE
-    acao: Apagar um caractere no painel da impressora.
-  - tecla: DELETE
-    acao: Limpar o campo no painel da impressora.
-  - tecla: ENTER
-    acao: Confirmar no painel da impressora.
+  subtituloControles: Aprenda a se movimentar e interagir
+  tamanhoPaginaControles: {x: 1480, y: 940}
   paginaControles: {fileID: 0}
-  listaControlesUI: {fileID: 0}
-  rolagemControles: {fileID: 0}
   tituloControlesUI: {fileID: 0}
-  dicaControlesUI: {fileID: 0}
+  rolagemControles: {fileID: 0}
   controlesUI: {fileID: 0}
   voltarControlesUI: {fileID: 0}
+  teclasControles: []
+  setasControles: []
+  botoesMouse: []
+  titulosMouse: []
+  baseTeclas: []
+  baseSetas: []
   tamanhoPainel: {x: 780, y: 690}
   escalaMenu: 1
   posicaoMenu: {x: 0, y: 0}
@@ -9219,6 +9352,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6019342911511243933, guid: 55f47697352f9d740a77068f4dda31ee, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1240004087}
+    - targetCorrespondingSourceObject: {fileID: 6019342911511243933, guid: 55f47697352f9d740a77068f4dda31ee, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1240004089}
   m_SourcePrefab: {fileID: 100100000, guid: 55f47697352f9d740a77068f4dda31ee, type: 3}
 --- !u!1 &1240004086 stripped
 GameObject:
@@ -9273,6 +9409,19 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &1240004089
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1240004086}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af578b5e202880548abb1a08866e5539, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Periferico
+  tipo: 0
 --- !u!1001 &1256724613
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -9335,6 +9484,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6019342911511243933, guid: 55f47697352f9d740a77068f4dda31ee, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1256724616}
+    - targetCorrespondingSourceObject: {fileID: 6019342911511243933, guid: 55f47697352f9d740a77068f4dda31ee, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1256724618}
   m_SourcePrefab: {fileID: 100100000, guid: 55f47697352f9d740a77068f4dda31ee, type: 3}
 --- !u!4 &1256724614 stripped
 Transform:
@@ -9394,6 +9546,19 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &1256724618
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1256724615}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af578b5e202880548abb1a08866e5539, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Periferico
+  tipo: 0
 --- !u!1001 &1257012613
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -12192,6 +12357,19 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &1509508144
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 941802635}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af578b5e202880548abb1a08866e5539, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Periferico
+  tipo: 0
 --- !u!1001 &1516517221
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -12888,6 +13066,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6019342911511243933, guid: 55f47697352f9d740a77068f4dda31ee, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1673614347}
+    - targetCorrespondingSourceObject: {fileID: 6019342911511243933, guid: 55f47697352f9d740a77068f4dda31ee, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1673614349}
   m_SourcePrefab: {fileID: 100100000, guid: 55f47697352f9d740a77068f4dda31ee, type: 3}
 --- !u!4 &1673614345 stripped
 Transform:
@@ -12947,6 +13128,19 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &1673614349
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1673614346}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af578b5e202880548abb1a08866e5539, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Periferico
+  tipo: 0
 --- !u!1 &1683535811
 GameObject:
   m_ObjectHideFlags: 0
@@ -13696,7 +13890,13 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 3050142114367806553, guid: 5d45be2300d6c364c9b1e63ad6c70b3a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 421275102}
+    - targetCorrespondingSourceObject: {fileID: 3050142114367806553, guid: 5d45be2300d6c364c9b1e63ad6c70b3a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 251267344}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 5d45be2300d6c364c9b1e63ad6c70b3a, type: 3}
 --- !u!4 &1739864798 stripped
@@ -15594,6 +15794,7 @@ GameObject:
   - component: {fileID: 1974492457}
   - component: {fileID: 1974492456}
   - component: {fileID: 1974492455}
+  - component: {fileID: 1974492458}
   m_Layer: 0
   m_Name: Mouse_Estoque_3
   m_TagString: Untagged
@@ -15686,6 +15887,19 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.33229035, y: 0.042904854, z: 0.25989333}
   m_Center: {x: -0.0000001937151, y: 0.021452487, z: 0.000000074505806}
+--- !u!114 &1974492458
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1974492453}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af578b5e202880548abb1a08866e5539, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Periferico
+  tipo: 1
 --- !u!4 &1999938229 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 5385645995023908950, guid: 57055c566dfc69d418cf6aa6e17f6f08, type: 3}
@@ -15703,6 +15917,7 @@ GameObject:
   - component: {fileID: 2002863883}
   - component: {fileID: 2002863882}
   - component: {fileID: 2002863881}
+  - component: {fileID: 2002863884}
   m_Layer: 0
   m_Name: Mouse_Estoque_2
   m_TagString: Untagged
@@ -15795,6 +16010,19 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.33229035, y: 0.042904854, z: 0.25989333}
   m_Center: {x: -0.0000001937151, y: 0.021452487, z: 0.000000074505806}
+--- !u!114 &2002863884
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2002863879}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af578b5e202880548abb1a08866e5539, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Periferico
+  tipo: 1
 --- !u!1 &2015181881
 GameObject:
   m_ObjectHideFlags: 0
