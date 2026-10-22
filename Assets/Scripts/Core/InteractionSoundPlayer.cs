@@ -63,7 +63,9 @@ public class InteractionSoundPlayer : MonoBehaviour
             src.spatialBlend = 1f;
             src.pitch = pitch;
             src.PlayOneShot(clip, entry.volume);
-            Destroy(go, clip.length / Mathf.Max(0.1f, pitch) + 0.1f);
+            // WebGL: perguntar a duração de um som ainda não carregado gera aviso no console; sem ela, 3 s bastam
+            float duracao = clip.loadState == AudioDataLoadState.Loaded ? clip.length : 3f;
+            Destroy(go, duracao / Mathf.Max(0.1f, pitch) + 0.1f);
             return;
         }
 
